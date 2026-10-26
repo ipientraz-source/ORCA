@@ -296,14 +296,22 @@ test('Hapus motor dan pengajuan hanya Super-admin; riwayat ikut terhapus dan pen
   await q('insert into permintaan_servis_item (permintaan_id, motor_id) values ($1, $2), ($1, $3)', [P, X1, X2])
   const hapus = (tabel, rid) => q(`delete from ${tabel} where id = $1 returning id`, [rid])
 
-  await as(AA, async () => assert.equal((await hapus('motor', X1)).length, 0)) // Arcon boleh mengubah, tidak boleh menghapus
-  await as(CG, async () => assert.equal((await hapus('motor', X1)).length, 0))
-  await as(S, async () => assert.equal((await hapus('motor', X1)).length, 1))
+  const hapusMotor = (mid, alasan) => q('select hapus_motor($1, $2)', [mid, alasan])
+  await as(AA, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Hanya Super-admin/)) // Arcon boleh mengubah, tidak boleh menghapus
+  await as(CG, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Hanya Super-admin/))
+  await as(S, async () => {
+    assert.equal((await hapus('motor', X1)).length, 0) // jalan pintas lewat tabel ditutup
+    await assert.rejects(hapusMotor(X1, '  '), /Alasan penghapusan wajib/)
+    await hapusMotor(X1, 'Salah input plat')
+    const [r] = await q("select kode_motor, alasan, jumlah_servis, ds_id, data->>'kode_motor' k from motor_dihapus where motor_id = $1", [X1])
+    assert.deepEqual({ ...r }, { kode_motor: 'EV-X1', alasan: 'Salah input plat', jumlah_servis: 1, ds_id: GALAXY, k: 'EV-X1' })
+  })
+  await as(AA, async () => assert.equal((await q('select * from motor_dihapus')).length, 0)) // riwayat hanya untuk Super-admin
   assert.equal((await q('select * from servis_motor where motor_id = $1', [X1])).length, 0)
   assert.equal((await q('select * from permintaan_servis_item where permintaan_id = $1', [P])).length, 1)
   assert.equal((await q('select status from permintaan_servis where id = $1', [P]))[0].status, 'berjalan')
 
-  await as(S, async () => assert.equal((await hapus('motor', X2)).length, 1)) // item terakhir hilang: pengajuan selesai
+  await as(S, async () => await hapusMotor(X2, 'Duplikat')) // item terakhir hilang: pengajuan selesai
   assert.equal((await q('select status from permintaan_servis where id = $1', [P]))[0].status, 'selesai')
 
   await as(AA, async () => assert.equal((await hapus('permintaan_servis', P)).length, 0))
