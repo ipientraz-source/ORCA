@@ -18,6 +18,7 @@ export type Rusak = {
   deskripsi: string; pelapor_id: string | null; status: 'dilaporkan' | 'diproses' | 'selesai'; biaya: number
   ditanggung_asuransi: boolean; tanggal_selesai: string | null; catatan_perbaikan: string | null; foto: string[]
 }
+export type MotorDihapus = { id: string; motor_id: string; kode_motor: string; plat_nomor: string | null; ds_id: string | null; alasan: string; jumlah_servis: number; jumlah_kerusakan: number; dihapus_oleh: string | null; waktu: string }
 export type Pindah = { id: string; motor_id: string; dari_ds: string | null; ke_ds: string | null; alasan: string; waktu: string }
 
 export type Permintaan = {

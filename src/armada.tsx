@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Bike, ClipboardList, Wrench, Warehouse, X } from 'lucide-react'
 import { sb, today, useRows, ok, toast, konfirmasi, Err, Field, Select, Stat, Kosong, usePage, Pagination, type Ds, type Me, type Rider } from './lib'
-import { angka, BadgeStatus, rupiah, ServisBerikutnya, tgl, type ItemServis, type Motor, type Permintaan, type Pindah, type RingkasanPermintaan, type Rusak, type Servis } from './armada-lib'
+import { angka, BadgeStatus, rupiah, ServisBerikutnya, tgl, type ItemServis, type Motor, type MotorDihapus, type Permintaan, type Pindah, type RingkasanPermintaan, type Rusak, type Servis } from './armada-lib'
 import { BagianDiminta, FormPengajuan } from './armada-diminta'
 import { ImporMotor } from './armada-impor'
 import { normPlat } from './impor'
@@ -22,11 +22,12 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
   const pmt = useRows<Permintaan>(() => sb.from('permintaan_servis').select('*').order('dibuat', { ascending: false }).limit(500), [])
   const rng = useRows<RingkasanPermintaan>(() => sb.rpc('ringkasan_permintaan'), [])
   const itb = useRows<ItemServis>(() => sb.from('permintaan_servis_item').select('*').in('status', ['diminta', 'dijadwalkan']).limit(1000), [])
-  const [bagian, setBagian] = useState<'motor' | 'diminta' | 'servis' | 'kerusakan'>('motor')
+  const [bagian, setBagian] = useState<'motor' | 'diminta' | 'servis' | 'kerusakan' | 'dihapus'>('motor')
   const [pilih, setPilih] = useState<string | null>(null)
   const [modeAwal, setModeAwal] = useState<'servis' | null>(null) // dari "Catat servis" di daftar menunggu servis
   const [fds, setFds] = useState('')
-  const reloadSemua = () => { dsl.reload(); mts.reload(); srv.reload(); rsk.reload(); pnd.reload(); pmt.reload(); rng.reload(); itb.reload() }
+  const hps = useRows<MotorDihapus>(() => (me.peran === 'super_admin' ? sb.from('motor_dihapus').select('*').order('waktu', { ascending: false }).limit(500) : Promise.resolve({ data: [], error: null })), [])
+  const reloadSemua = () => { hps.reload(); dsl.reload(); mts.reload(); srv.reload(); rsk.reload(); pnd.reload(); pmt.reload(); rng.reload(); itb.reload() }
   const pilihMotor = (id: string | null) => { setModeAwal(null); setPilih(id) }
   const bukaServis = (id: string) => { setModeAwal('servis'); setPilih(id); setBagian('motor') }
 
@@ -56,7 +57,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {([['motor', 'Data Molis'], ['diminta', 'Molis diminta servis'], ['servis', 'Riwayat servis'], ['kerusakan', 'Kerusakan']] as const).map(([k, l]) => (
+        {([['motor', 'Data Molis'], ['diminta', 'Molis diminta servis'], ['servis', 'Riwayat servis'], ['kerusakan', 'Kerusakan'], ...(me.peran === 'super_admin' ? [['dihapus', 'Motor dihapus'] as const] : [])] as const).map(([k, l]) => (
           <button key={k} type="button" className={`tab ${bagian === k ? 'tab-on' : ''}`} onClick={() => setBagian(k)}>
             {l}{k === 'kerusakan' && terbuka > 0 ? ` (${terbuka})` : ''}{k === 'diminta' && itb.rows.length > 0 ? ` (${itb.rows.length})` : ''}
           </button>
@@ -75,10 +76,11 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
       {bagian === 'diminta' && (
         <BagianDiminta
           permintaan={pmt.rows} ringkasan={rng.rows} terbuka={itb.rows.filter((i) => !fds || dsMotor(i.motor_id) === fds)} motors={mts.rows.filter((m) => !fds || m.ds_id === fds)}
-          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} bukaServis={bukaServis} reload={reloadSemua}
+          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} superAdmin={me.peran === 'super_admin'} bukaServis={bukaServis} reload={reloadSemua}
         />
       )}
       {bagian === 'servis' && <BagianServis rows={srv.rows.filter((s) => !fds || dsMotor(s.motor_id) === fds)} motorKode={motorKode} />}
+      {bagian === 'dihapus' && <BagianDihapus rows={hps.rows} dsNama={dsNama} pelapor={pelapor} />}
       {bagian === 'kerusakan' && (
         <BagianRusak rows={rsk.rows.filter((r) => !fds || dsMotor(r.motor_id) === fds)} motorKode={motorKode} pelapor={pelapor} kelola={kelola} reload={reloadSemua} />
       )}
@@ -258,7 +260,7 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
   m: Motor; me: Me; kelola: boolean; dsBoleh: Ds[]; dsNama: (id: string | null) => string; riders: Rider[]; riderNama: (id: string | null) => string
   servis: Servis[]; rusak: Rusak[]; pindah: Pindah[]; pelapor: (id: string | null) => string; tutup: () => void; reload: () => void; modeAwal: 'servis' | null
 }) {
-  const [mode, setMode] = useState<null | 'edit' | 'servis' | 'lapor' | 'pindah' | 'mendesak'>(kelola ? modeAwal : null)
+  const [mode, setMode] = useState<null | 'edit' | 'servis' | 'lapor' | 'pindah' | 'mendesak' | 'hapus'>(kelola ? modeAwal : null)
   const selesai = () => { setMode(null); reload() }
   const tombol = (k: NonNullable<typeof mode>, label: string) => (
     <button className={mode === k ? 'btn' : 'btn2'} onClick={() => setMode(mode === k ? null : k)}>{label}</button>
@@ -282,6 +284,7 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
           {tombol('lapor', 'Lapor kerusakan')}
           {tombol('mendesak', 'Ajukan servis mendesak')}
           {kelola && tombol('pindah', 'Pindah DS')}
+          {me.peran === 'super_admin' && <button className={mode === 'hapus' ? 'btn' : 'btn2 text-danger'} onClick={() => setMode(mode === 'hapus' ? null : 'hapus')}>Hapus motor</button>}
           <button className="btn2" onClick={tutup}><X size={14} />Tutup</button>
         </div>
       </div>
@@ -307,6 +310,7 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
           {mode === 'lapor' && <FormLapor motorId={m.id} me={me} selesai={selesai} />}
           {mode === 'pindah' && <FormPindah m={m} dsBoleh={dsBoleh.filter((d) => d.id !== m.ds_id)} selesai={selesai} />}
           {mode === 'mendesak' && <FormMendesak m={m} selesai={selesai} />}
+          {mode === 'hapus' && <FormHapus m={m} servis={servis} rusak={rusak} pindah={pindah} selesai={() => { tutup(); reload() }} />}
         </div>
       )}
 
@@ -346,6 +350,27 @@ function FormMendesak({ m, selesai }: { m: Motor; selesai: () => void }) {
   )
 }
 
+// Hanya Super-admin: motor yang salah input (mis. salah plat). Alasan wajib dan tercatat di Riwayat motor dihapus; riwayat servis motor ikut hilang, fotonya dibersihkan dari Storage.
+function FormHapus({ m, servis, rusak, pindah, selesai }: { m: Motor; servis: Servis[]; rusak: Rusak[]; pindah: Pindah[]; selesai: () => void }) {
+  const [alasan, setAlasan] = useState('')
+  async function hapus() {
+    if (!alasan.trim()) return toast('Alasan penghapusan wajib diisi.')
+    if (!(await konfirmasi(`Motor ${m.kode_motor} (plat ${m.plat_nomor || 'belum diisi'}) dihapus beserta ${servis.length} catatan servis, ${rusak.length} laporan kerusakan, ${pindah.length} riwayat pindah, dan dikeluarkan dari pengajuan servis. Data motornya tersimpan di Riwayat motor dihapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus motor ini?', ya: 'Hapus motor', bahaya: true }))) return
+    if (!(await ok(sb.rpc('hapus_motor', { p_motor: m.id, p_alasan: alasan.trim() })))) return
+    const foto = [...servis, ...rusak].flatMap((x) => x.foto ?? [])
+    if (foto.length) await sb.storage.from('armada').remove(foto) // sisa foto tidak menggagalkan penghapusan
+    toast.ok(`Motor ${m.kode_motor} dihapus`)
+    selesai()
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">Untuk motor yang salah input atau tidak sesuai. Kalau hanya platnya yang salah, pakai Ubah data. Alasan wajib diisi dan tersimpan di riwayat.</p>
+      <Field label="Alasan penghapusan"><input className="inp w-full" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Mis. Salah input plat, motor ganda" /></Field>
+      <button className="btn" onClick={hapus}>Hapus motor</button>
+    </div>
+  )
+}
+
 function FormPindah({ m, dsBoleh, selesai }: { m: Motor; dsBoleh: Ds[]; selesai: () => void }) {
   const [ke, setKe] = useState('')
   const [alasan, setAlasan] = useState('')
@@ -366,6 +391,32 @@ function FormPindah({ m, dsBoleh, selesai }: { m: Motor; dsBoleh: Ds[]; selesai:
         <Field label="Alasan pemindahan"><input className="inp w-full" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Mis. DS asal kelebihan motor" /></Field>
       </div>
       <button className="btn" onClick={pindah}>Pindahkan motor</button>
+    </div>
+  )
+}
+
+// ───────── Riwayat motor yang dihapus (Super-admin) ─────────
+function BagianDihapus({ rows, dsNama, pelapor }: { rows: MotorDihapus[]; dsNama: (id: string | null) => string; pelapor: (id: string | null) => string }) {
+  const pg = usePage(rows, [rows.length])
+  return (
+    <div className="card">
+      <div className="mb-3 flex flex-wrap items-center gap-3"><b>Riwayat motor dihapus</b><span className="text-sm text-muted-foreground">{rows.length} motor</span></div>
+      <div className="overflow-x-auto">
+        <table className="tbl">
+          <thead><tr><th>Waktu</th><th>Kode</th><th>Plat</th><th>DS</th><th>Alasan</th><th>Ikut terhapus</th><th>Oleh</th></tr></thead>
+          <tbody>
+            {pg.rows.map((r) => (
+              <tr key={r.id}>
+                <td className="whitespace-nowrap">{new Date(r.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                <td className="font-mono font-medium">{r.kode_motor}</td><td>{r.plat_nomor || '–'}</td><td>{dsNama(r.ds_id)}</td><td>{r.alasan}</td>
+                <td className="text-muted-foreground">{r.jumlah_servis} servis · {r.jumlah_kerusakan} kerusakan</td><td>{pelapor(r.dihapus_oleh)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!rows.length && <Kosong teks="Belum ada motor yang dihapus." />}
+      <div className="mt-3"><Pagination {...pg} /></div>
     </div>
   )
 }

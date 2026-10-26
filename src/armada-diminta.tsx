@@ -1,12 +1,12 @@
 // Armada: pengajuan servis (mis. "Servis rutin Oktober 2026" untuk semua EV), daftar molis yang menunggu servis, dan riwayat pengajuan.
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
-import { sb, today, useRows, ok, toast, Field, Select, Kosong, usePage, Pagination, type Ds } from './lib'
+import { sb, today, useRows, ok, toast, konfirmasi, Field, Select, Kosong, usePage, Pagination, type Ds } from './lib'
 import { angka, BadgeItem, BadgeUrgent, FotoPicker, InputRupiah, JENIS_SERVIS, PilihPart, rupiah, Tenggat, tgl, type ItemServis, type Motor, type Permintaan, type RingkasanPermintaan } from './armada-lib'
 
 type Props = {
   permintaan: Permintaan[]; ringkasan: RingkasanPermintaan[]; terbuka: ItemServis[]; motors: Motor[]; dsNama: (id: string | null) => string
-  dsBoleh: Ds[]; kelola: boolean; bukaServis: (motorId: string) => void; reload: () => void
+  dsBoleh: Ds[]; kelola: boolean; superAdmin: boolean; bukaServis: (motorId: string) => void; reload: () => void
 }
 
 export function BagianDiminta(p: Props) {
@@ -236,7 +236,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
 }
 
 // ───────── pengajuan & riwayat ─────────
-function Pengajuan({ permintaan, ringkasan, motors, dsNama }: Props) {
+function Pengajuan({ permintaan, ringkasan, motors, dsNama, superAdmin, reload }: Props) {
   const [status, setStatus] = useState('berjalan')
   const [bulan, setBulan] = useState('')
   const daftar = permintaan.filter((r) => (status === 'semua' || r.status === status) && (!bulan || r.dibuat.slice(0, 7) === bulan))
@@ -251,7 +251,7 @@ function Pengajuan({ permintaan, ringkasan, motors, dsNama }: Props) {
         <span className="text-sm text-muted-foreground">{daftar.length} pengajuan</span>
       </div>
       <div className="space-y-3">
-        {pg.rows.map((r) => <KartuPengajuan key={r.id} r={r} s={ringkasan.find((x) => x.permintaan_id === r.id)} motors={motors} dsNama={dsNama} />)}
+        {pg.rows.map((r) => <KartuPengajuan key={r.id} r={r} s={ringkasan.find((x) => x.permintaan_id === r.id)} motors={motors} dsNama={dsNama} superAdmin={superAdmin} reload={reload} />)}
         {!daftar.length && <div className="card"><Kosong teks="Belum ada pengajuan servis." hint="Pengajuan yang sudah selesai tetap tersimpan di sini sebagai riwayat." /></div>}
       </div>
       <div className="mt-3"><Pagination {...pg} /></div>
@@ -259,8 +259,17 @@ function Pengajuan({ permintaan, ringkasan, motors, dsNama }: Props) {
   )
 }
 
-function KartuPengajuan({ r, s, motors, dsNama }: { r: Permintaan; s?: RingkasanPermintaan; motors: Motor[]; dsNama: (id: string | null) => string }) {
+function KartuPengajuan({ r, s, motors, dsNama, superAdmin, reload }: { r: Permintaan; s?: RingkasanPermintaan; motors: Motor[]; dsNama: (id: string | null) => string; superAdmin: boolean; reload: () => void }) {
   const [buka, setBuka] = useState(false)
+  // Hanya Super-admin: pengajuan yang salah dibuat. Item di dalamnya ikut terhapus; catatan servis motor tidak.
+  async function hapus() {
+    if (!(await konfirmasi(`Pengajuan "${r.judul}" dihapus beserta ${s?.total ?? 0} motor di dalamnya. Catatan servis yang sudah dicatat tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus pengajuan ini?', ya: 'Hapus pengajuan', bahaya: true }))) return
+    const { data, error } = await sb.from('permintaan_servis').delete().eq('id', r.id).select('id')
+    if (error) return toast(error.message)
+    if (!data?.length) return toast('Pengajuan tidak terhapus. Hanya Super-admin yang boleh menghapus pengajuan.')
+    toast.ok('Pengajuan dihapus')
+    reload()
+  }
   const total = s?.total ?? 0
   const beres = (s?.selesai ?? 0) + (s?.dilewati ?? 0)
   const tglPendek = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -285,6 +294,7 @@ function KartuPengajuan({ r, s, motors, dsNama }: { r: Permintaan; s?: Ringkasan
       {r.pekerjaan?.length > 0 && <p className="mt-1 text-sm text-muted-foreground">Part: {r.pekerjaan.join(', ')}</p>}
       {r.catatan && <p className="mt-1 text-sm text-muted-foreground">{r.catatan}</p>}
       {buka && <ItemPengajuan id={r.id} motors={motors} dsNama={dsNama} />}
+      {superAdmin && <div className="mt-2 text-right"><button type="button" className="btn2 text-danger" onClick={hapus}>Hapus pengajuan</button></div>}
     </div>
   )
 }
