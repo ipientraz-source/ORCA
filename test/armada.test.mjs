@@ -287,3 +287,26 @@ test('Foto di Storage: nama berkas {motor_id}/..., akses mengikuti hak lihat mot
   })
   await as(AB, async () => assert.equal(await boleh(`${M3}/a.jpg`, false), false)) // Arcon B hanya memegang Gowa
 })
+
+test('Hapus motor dan pengajuan hanya Super-admin; riwayat ikut terhapus dan pengajuan induk menyesuaikan', async () => {
+  const [X1, X2] = [id(291), id(292)]
+  await db.exec(`insert into motor (id, kode_motor, ds_id) values ('${X1}', 'EV-X1', '${GALAXY}'), ('${X2}', 'EV-X2', '${GALAXY}')`)
+  await q("insert into servis_motor (motor_id, tanggal, jenis) values ($1, today_wib(), 'Ganti ban')", [X1])
+  const [{ id: P }] = await q("insert into permintaan_servis (judul, jenis) values ('Uji hapus', 'Servis rutin') returning id")
+  await q('insert into permintaan_servis_item (permintaan_id, motor_id) values ($1, $2), ($1, $3)', [P, X1, X2])
+  const hapus = (tabel, rid) => q(`delete from ${tabel} where id = $1 returning id`, [rid])
+
+  await as(AA, async () => assert.equal((await hapus('motor', X1)).length, 0)) // Arcon boleh mengubah, tidak boleh menghapus
+  await as(CG, async () => assert.equal((await hapus('motor', X1)).length, 0))
+  await as(S, async () => assert.equal((await hapus('motor', X1)).length, 1))
+  assert.equal((await q('select * from servis_motor where motor_id = $1', [X1])).length, 0)
+  assert.equal((await q('select * from permintaan_servis_item where permintaan_id = $1', [P])).length, 1)
+  assert.equal((await q('select status from permintaan_servis where id = $1', [P]))[0].status, 'berjalan')
+
+  await as(S, async () => assert.equal((await hapus('motor', X2)).length, 1)) // item terakhir hilang: pengajuan selesai
+  assert.equal((await q('select status from permintaan_servis where id = $1', [P]))[0].status, 'selesai')
+
+  await as(AA, async () => assert.equal((await hapus('permintaan_servis', P)).length, 0))
+  await as(CG, async () => assert.equal((await hapus('permintaan_servis', P)).length, 0))
+  await as(S, async () => assert.equal((await hapus('permintaan_servis', P)).length, 1))
+})

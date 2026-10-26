@@ -75,7 +75,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
       {bagian === 'diminta' && (
         <BagianDiminta
           permintaan={pmt.rows} ringkasan={rng.rows} terbuka={itb.rows.filter((i) => !fds || dsMotor(i.motor_id) === fds)} motors={mts.rows.filter((m) => !fds || m.ds_id === fds)}
-          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} bukaServis={bukaServis} reload={reloadSemua}
+          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} superAdmin={me.peran === 'super_admin'} bukaServis={bukaServis} reload={reloadSemua}
         />
       )}
       {bagian === 'servis' && <BagianServis rows={srv.rows.filter((s) => !fds || dsMotor(s.motor_id) === fds)} motorKode={motorKode} />}
@@ -264,6 +264,19 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
     <button className={mode === k ? 'btn' : 'btn2'} onClick={() => setMode(mode === k ? null : k)}>{label}</button>
   )
   const pemegang = riderNama(m.dipegang_oleh)
+  // Hanya Super-admin: motor yang salah input (mis. salah plat). Riwayatnya ikut terhapus, foto dibersihkan dari Storage.
+  async function hapus() {
+    const ringkas = `${servis.length} catatan servis, ${rusak.length} laporan kerusakan, ${pindah.length} riwayat pindah`
+    if (!(await konfirmasi(`Motor ${m.kode_motor} (plat ${m.plat_nomor || 'belum diisi'}) dihapus beserta ${ringkas}, dan dikeluarkan dari pengajuan servis. Kalau hanya platnya yang salah, pakai Ubah data. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus motor ini?', ya: 'Hapus motor', bahaya: true }))) return
+    const { data, error } = await sb.from('motor').delete().eq('id', m.id).select('id')
+    if (error) return toast(error.message)
+    if (!data?.length) return toast('Motor tidak terhapus. Hanya Super-admin yang boleh menghapus motor (jalankan migrasi 0022 di Supabase).')
+    const foto = [...servis, ...rusak].flatMap((x) => x.foto ?? [])
+    if (foto.length) await sb.storage.from('armada').remove(foto) // sisa foto tidak menggagalkan penghapusan
+    toast.ok(`Motor ${m.kode_motor} dihapus`)
+    tutup()
+    reload()
+  }
   // Panel dirender di atas daftar: di HP, yang menekan Detail ada jauh di bawah, jadi panelnya digulir ke layar
   const panel = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -282,6 +295,7 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
           {tombol('lapor', 'Lapor kerusakan')}
           {tombol('mendesak', 'Ajukan servis mendesak')}
           {kelola && tombol('pindah', 'Pindah DS')}
+          {me.peran === 'super_admin' && <button className="btn2 text-danger" onClick={hapus}>Hapus motor</button>}
           <button className="btn2" onClick={tutup}><X size={14} />Tutup</button>
         </div>
       </div>
