@@ -8,7 +8,9 @@
 //  4. Shift TIDAK boleh berganti tanpa libur dulu (pagi→siang atau siang→pagi harus melewati minimal 1 hari libur).
 //     Kalau kuota tak mungkin terpenuhi tanpa melanggar ini, pelanggaran dilakukan sebagai pilihan terakhir dan dilaporkan (`langgar`).
 //  5. Setelah libur, rider melanjutkan shift yang sama seperti sebelum libur (ritme tidur terjaga), kecuali selisih
-//     pagi–siangnya sudah terlalu timpang (`ROTASI` hari): maka ia ditukar ke shift yang lebih jarang dikerjakannya.
+//     pagi–siangnya sudah timpang (`ROTASI` hari): maka ia ditukar ke shift yang lebih jarang dikerjakannya. Slot shift barunya
+//     dicadangkan dengan mengistirahatkan satu pelanjut di shift itu (selama kuota hari itu tetap penuh), jadi rotasi benar-benar
+//     terjadi. Rider yang belum punya riwayat dibagi selang-seling, bukan menurut urutan nama.
 //  6. Keadilan: yang total hari kerjanya paling sedikit didahulukan; di akhir pekan, yang akhir pekannya paling sedikit
 //     didahulukan di antara yang hari kerjanya sama. Total ikut menghitung `riwayat` (jadwal tersimpan sebelum
 //     periode ini, mis. 28 hari terakhir), jadi keadilan berlanjut walau jadwal dibuat minggu demi minggu.
@@ -29,7 +31,7 @@ export type Opsi = {
   tetap?: Record<string, 'pagi' | 'siang' | 'off'> // "riderId|tanggal" -> isian yang tidak boleh diubah
 }
 
-export const ROTASI = 8 // selisih hari pagi–siang yang memicu pertukaran shift setelah libur
+export const ROTASI = 4 // selisih hari pagi–siang yang memicu pertukaran shift setelah libur
 export const BATAS_RIWAYAT = 0.5 // hari: pengaruh maksimum ketimpangan riwayat terhadap prioritas seorang rider
 export const TOLERANSI_HK = 1 // di akhir pekan, selisih hari kerja sebesar ini dianggap "hampir sama" sehingga jumlah akhir pekan yang menentukan
 const KOSONG: Riwayat = { hk: 0, shiftKemarin: '', shiftTerakhir: '', beruntun: 0, pekanBerjalan: 0, pagi: 0, siang: 0, akhirPekan: 0 }
@@ -121,42 +123,74 @@ export function buatDraf(riderIds: string[], hari: string[], kuotaPagi: number, 
           const dw = nAkhirPekan.get(a)! - nAkhirPekan.get(b)!
           if (dw) return dw
         }
-        return dk || Number(!!kemarin.get(a)) - Number(!!kemarin.get(b)) || urutan.get(a)! - urutan.get(b)!
+        return dk || Number(!!kemarin.get(a)) - Number(!!kemarin.get(b)) || Math.abs(nPagi.get(b)! - nSiang.get(b)!) - Math.abs(nPagi.get(a)! - nSiang.get(a)!) || urutan.get(a)! - urutan.get(b)!
       })
 
     // Tahap 1a: pilih SIAPA yang masuk berdasarkan keadilan. Rider yang kemarin masuk hanya bisa melanjutkan shift-nya,
     // jadi jumlah yang melanjutkan tiap shift dibatasi sebesar ruang yang tersisa; sisanya libur dan tempatnya diambil
     // rider yang lebih segar. (Tanpa batas ini, pemegang slot siang tak pernah libur.)
     const ruang = { pagi: Math.max(0, sisa.pagi), siang: Math.max(0, sisa.siang) }
-    const terpilih: string[] = []
-    let lanjutPagi = 0
-    let lanjutSiang = 0
-    for (const id of boleh) {
-      if (terpilih.length >= ruang.pagi + ruang.siang) break
-      const k = kemarin.get(id)
-      if (k === 'pagi') {
-        if (lanjutPagi >= ruang.pagi) continue
-        lanjutPagi++
-      } else if (k === 'siang') {
-        if (lanjutSiang >= ruang.siang) continue
-        lanjutSiang++
-      }
-      terpilih.push(id)
+    const total = ruang.pagi + ruang.siang
+    const timpang = (id: string) => Math.abs(nPagi.get(id)! - nSiang.get(id)!)
+    // Memilih shift untuk rider yang kemarin libur (atau belum punya riwayat): melanjutkan shift terakhirnya (ritme tidur terjaga),
+    // kecuali selisih pagi–siangnya sudah timpang, maka ditukar ke shift yang lebih jarang dikerjakannya. Belum ada riwayat sama
+    // sekali: isi shift yang slotnya paling banyak tersisa, jadi nama-nama awal tidak semuanya kebagian pagi.
+    const pilihShift = (id: string, slot: { pagi: number; siang: number }): 'pagi' | 'siang' => {
+      const selisih = nPagi.get(id)! - nSiang.get(id)!
+      const t = terakhir.get(id)
+      // (hanya bila rider cukup untuk mengisi semua slot; kalau kurang, pagi diisi dulu dan kekurangan jatuh ke siang)
+      let pilihan: 'pagi' | 'siang' = t ? (t === 'siang' ? 'siang' : 'pagi') : terpilih.length >= total && slot.pagi < slot.siang ? 'siang' : 'pagi'
+      if (pilihan === 'pagi' && selisih >= ROTASI && slot.siang > 0) pilihan = 'siang'
+      else if (pilihan === 'siang' && -selisih >= ROTASI && slot.pagi > 0) pilihan = 'pagi'
+      return slot[pilihan] > 0 ? pilihan : pilihan === 'pagi' ? 'siang' : 'pagi'
     }
-    // Tahap 1b: bagi shift. Yang melanjutkan tetap di shift-nya; yang kemarin libur memilih shift terakhirnya (ritme tidur
-    // terjaga) kecuali selisih pagi–siangnya sudah timpang, maka ditukar ke shift yang lebih jarang dikerjakannya.
+    const seleksi = (batas: { pagi: number; siang: number }) => {
+      const out: string[] = []
+      let lanjutPagi = 0
+      let lanjutSiang = 0
+      for (const id of boleh) {
+        if (out.length >= total) break
+        const k = kemarin.get(id)
+        if (k === 'pagi') {
+          if (lanjutPagi >= batas.pagi) continue
+          lanjutPagi++
+        } else if (k === 'siang') {
+          if (lanjutSiang >= batas.siang) continue
+          lanjutSiang++
+        }
+        out.push(id)
+      }
+      return out
+    }
+    let terpilih = seleksi(ruang)
+    // Rider yang kembali dari libur dan sudah waktunya pindah shift (selisih pagi–siang ≥ ROTASI) mendapat slot shift lawannya.
+    // Slotnya DICADANGKAN dengan mengurangi satu pelanjut di shift itu, selama kuota hari itu tetap penuh dan tidak ada yang
+    // dipaksa pindah tanpa libur. Tanpa ini pemegang slot shift lawan selalu menghabiskan slot itu dan rotasi tidak pernah terjadi.
+    const lawanDari = (id: string) => {
+      const t = terakhir.get(id)
+      const selisih = nPagi.get(id)! - nSiang.get(id)!
+      return t === 'pagi' && selisih >= ROTASI ? 'siang' : t === 'siang' && -selisih >= ROTASI ? 'pagi' : null
+    }
+    // yang sudah waktunya pindah shift memilih lebih dulu (supaya slot shift barunya tidak diambil rider lain), lalu yang paling timpang
+    const kembali = (ids: string[]) => ids.filter((x) => !kemarin.get(x)).sort((x, y) => Number(!lawanDari(x)) - Number(!lawanDari(y)) || timpang(y) - timpang(x))
+    const dasar = terpilih.length
+    let batas = { ...ruang }
+    for (const id of kembali(terpilih)) {
+      const lawan = lawanDari(id)
+      if (!lawan || batas[lawan] <= 0) continue
+      const baru = { ...batas, [lawan]: batas[lawan] - 1 }
+      const calon = seleksi(baru)
+      if (calon.length >= dasar && calon.includes(id)) {
+        batas = baru
+        terpilih = calon
+      }
+    }
+    // Tahap 1b: bagi shift. Yang melanjutkan tetap di shift-nya; yang kembali dari libur memilih sesuai aturan di atas.
     for (const id of terpilih) {
       const k = kemarin.get(id)
       if (k === 'pagi' || k === 'siang') ambil(id, k)
     }
-    for (const id of terpilih) {
-      if (hariIni.has(id)) continue
-      const selisih = nPagi.get(id)! - nSiang.get(id)!
-      let pilihan: 'pagi' | 'siang' = terakhir.get(id) === 'siang' ? 'siang' : 'pagi' // belum ada riwayat: pagi dulu
-      if (pilihan === 'pagi' && selisih >= ROTASI && sisa.siang > 0) pilihan = 'siang'
-      else if (pilihan === 'siang' && -selisih >= ROTASI && sisa.pagi > 0) pilihan = 'pagi'
-      ambil(id, sisa[pilihan] > 0 ? pilihan : pilihan === 'pagi' ? 'siang' : 'pagi')
-    }
+    for (const id of kembali(terpilih)) if (!hariIni.has(id)) ambil(id, pilihShift(id, sisa))
     // Tahap 2 (darurat): kuota belum terpenuhi → rider yang tersisa boleh pindah shift tanpa libur, dicatat sebagai pelanggaran
     for (const id of boleh) {
       if (sisa.pagi <= 0 && sisa.siang <= 0) break

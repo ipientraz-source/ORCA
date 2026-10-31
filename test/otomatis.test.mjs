@@ -283,3 +283,31 @@ test('shift cenderung konsisten: rider pagi tetap pagi bila memungkinkan', () =>
   })
   assert.ok(campur.length <= 2, `terlalu sering berganti shift: ${campur}`)
 })
+
+test('awal tanpa riwayat: pagi tidak dibagikan ke nama-nama pertama saja (urutan abjad tidak menentukan siapa kebagian pagi)', () => {
+  const ids = riders(10)
+  const { grid } = buatDraf(ids, ['2026-10-26'], 5, 5)
+  const pagi = ids.filter((id) => grid[`${id}|2026-10-26`] === 'pagi')
+  assert.equal(pagi.length, 5)
+  assert.notDeepEqual(pagi, ids.slice(0, 5)) // dulu: r1–r5 semuanya pagi dan r6–r10 semuanya siang
+})
+
+test('beberapa minggu berturut-turut: porsi pagi tiap rider berdekatan, hari kerja tetap rata, tanpa pelanggaran shift', () => {
+  const ids = riders(15)
+  const geserHari = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10)
+  let senin = '2026-10-26'
+  let semua = []
+  for (let w = 0; w < 12; w++) {
+    const hari = Array.from({ length: 7 }, (_, i) => geserHari(senin, i))
+    const riwayat = hitungRiwayat(semua.filter((r) => r.tanggal >= geserHari(senin, -28)), ids, senin)
+    const { grid, langgar, kurang } = buatDraf(ids, hari, 6, 4, { riwayat })
+    assert.deepEqual(langgar, [], `minggu ${w + 1}`)
+    assert.deepEqual(kurang, [], `minggu ${w + 1}`)
+    semua = semua.concat(barisDari(grid))
+    senin = geserHari(senin, 7)
+  }
+  const porsi = ids.map((id) => semua.filter((r) => r.rider_id === id && r.shift === 'pagi').length / semua.filter((r) => r.rider_id === id).length)
+  const hk = ids.map((id) => semua.filter((r) => r.rider_id === id).length)
+  assert.ok(Math.max(...porsi) - Math.min(...porsi) <= 0.15, `porsi pagi ${Math.min(...porsi).toFixed(2)}–${Math.max(...porsi).toFixed(2)}`) // dulu 0.29–0.77
+  assert.ok(Math.max(...hk) - Math.min(...hk) <= 2, `hari kerja ${Math.min(...hk)}–${Math.max(...hk)}`)
+})
