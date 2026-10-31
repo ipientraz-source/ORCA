@@ -302,6 +302,28 @@ test('Super-admin memilih Arcon di DS: Arcon bukan rider (tim khusus), satu Arco
   })
 })
 
+test('Super-admin menaikkan Captain jadi Arcon: email dan riwayat tetap, DS dilepas, kursi Captain kosong; hanya Captain yang bisa dinaikkan', async () => {
+  const [DU, CU, RU] = [id(150), id(151), id(152)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${DU}', 'DS Uji Naik', 1, 1);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${CU}', 'MTR-CU', 'Captain Uji', '${DU}', 'captain', 'cap-uji@test.local', 'aktif'),
+      ('${RU}', 'MTR-RU', 'Rider Uji', '${DU}', 'rider', null, 'aktif');
+    update ds set captain_id = '${CU}' where id = '${DU}';`)
+  await as(AA, async () => await assert.rejects(q('select jadikan_arcon($1)', [CU]), /Hanya Super-admin/))
+  await as('cap-uji@test.local', async () => await assert.rejects(q('select jadikan_arcon($1)', [CU]), /Hanya Super-admin/))
+  await as(S, async () => {
+    await assert.rejects(q('select jadikan_arcon($1)', [RU]), /Hanya Captain/) // rider biasa tidak
+    await assert.rejects(q('select jadikan_arcon($1)', [R_AA]), /Hanya Captain/) // yang sudah Arcon tidak
+    assert.equal((await q('select jadikan_arcon($1) n', [CU]))[0].n, 1)
+  })
+  const [r] = await q('select peran, ds_id, email, status from riders where id = $1', [CU])
+  assert.deepEqual({ ...r }, { peran: 'arcon', ds_id: null, email: 'cap-uji@test.local', status: 'aktif' })
+  assert.equal((await q('select captain_id from ds where id = $1', [DU]))[0].captain_id, null)
+  await as(S, async () => await q('select pilih_arcon($1, $2)', [DU, CU])) // langsung bisa dipilih sebagai Arcon DS
+  await as('cap-uji@test.local', async () => assert.deepEqual(await nama(), ['Captain Uji', 'Rider Uji'])) // kini melihat DS-nya sebagai Arcon
+})
+
 test('Melepas Arcon dari semua DS menutup aksesnya tapi orangnya tetap Arcon; anon tak bisa memanggil', async () => {
   await as(S, async () => {
     await q('select lepas_arcon($1::uuid)', [GOWA])
