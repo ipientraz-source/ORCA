@@ -72,7 +72,7 @@ export function Kelola() {
         </div>
       </div>
 
-      <ArconTim arcons={rs.rows.filter((r) => r.peran === 'arcon')} semuaDs={dsl.rows} reload={rs.reload} />
+      <ArconTim arcons={rs.rows.filter((r) => r.peran === 'arcon')} captains={rs.rows.filter((r) => r.peran === 'captain' && r.status === 'aktif')} semuaDs={dsl.rows} reload={() => { dsl.reload(); rs.reload() }} />
 
       <div className="mb-3 mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
         <h2 className="mr-2 text-lg font-bold">Daftar DS</h2>
@@ -263,8 +263,20 @@ export function KelolaArcon({ dsList }: { dsList: Ds[] }) {
 }
 
 // Arcon = tim yang ditunjuk khusus (bukan rider). Dibuat di sini, lalu dipilih per DS di kartu DS.
-function ArconTim({ arcons, semuaDs, reload }: { arcons: Rider[]; semuaDs: Ds[]; reload: () => void }) {
+function ArconTim({ arcons, captains, semuaDs, reload }: { arcons: Rider[]; captains: Rider[]; semuaDs: Ds[]; reload: () => void }) {
   const [f, setF] = useState({ nama: '', email: '', pw: '' })
+  const [naik, setNaik] = useState('')
+  // Captain yang naik jabatan: orang, email, dan riwayatnya tetap; DS yang dulu dipimpin kehilangan Captain sampai ditunjuk yang baru
+  const jadikan = async () => {
+    const c = captains.find((x) => x.id === naik)
+    if (!c) return
+    const dsnya = semuaDs.filter((d) => d.captain_id === c.id).map((d) => d.nama)
+    if (!(await konfirmasi(`${c.nama} (${c.email}) naik jadi Arcon dengan email dan riwayat yang sama. ${dsnya.length ? `DS ${dsnya.join(', ')} jadi tanpa Captain sampai Anda menunjuk yang baru. ` : ''}Setelah itu pilih Arcon ini di kartu DS yang akan dipegang.`, { judul: 'Jadikan Arcon?', ya: 'Jadikan Arcon', bahaya: true }))) return
+    if (!(await ok(sb.rpc('jadikan_arcon', { p_rider: c.id })))) return
+    setNaik('')
+    toast.ok(`${c.nama} sekarang Arcon. Pilih di kartu DS untuk memberinya DS.`)
+    reload()
+  }
   const kurang = !f.nama.trim() ? 'Isi nama dulu' : !f.email.trim() ? 'Isi email untuk login' : f.pw && f.pw.length < 8 ? 'Password minimal 8 karakter' : ''
   return (
     <div className="card">
@@ -283,6 +295,13 @@ function ArconTim({ arcons, semuaDs, reload }: { arcons: Rider[]; semuaDs: Ds[];
       ) : (
         <p className="text-sm text-muted-foreground mb-5">Belum ada Arcon.</p>
       )}
+      <b className="block text-sm mb-1">Naikkan Captain jadi Arcon</b>
+      <p className="text-xs text-muted-foreground mb-3">Untuk Captain yang sudah ada: email login dan riwayatnya tetap, tidak perlu menambah orang baru.</p>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <Select className="w-72" value={naik} onChange={setNaik} placeholder="— pilih Captain —" opsi={captains.map((c) => ({ value: c.id, label: `${c.nama} (${c.email ?? 'tanpa email'})` }))} />
+        <button className="btn2" disabled={!naik} onClick={jadikan}>Jadikan Arcon</button>
+        {!captains.length && <span className="text-xs text-muted-foreground">Tidak ada Captain aktif.</span>}
+      </div>
       <b className="block text-sm mb-3">Tambah Arcon baru</b>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
         <Field label="Nama" hint="Nama lengkap orangnya.">
