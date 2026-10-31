@@ -116,6 +116,17 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
   const [pick, setPick] = useState('')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
+  // Tampilan Arcon: selain rider di DS ini, boleh mencari rider aktif yang belum punya DS (daftar rider Arcon tidak memuatnya)
+  const [cariBebas, setCariBebas] = useState('')
+  const [bebas, setBebas] = useState<{ id: string; nama: string }[]>([])
+  const cariRiderBebas = async () => {
+    const { data, error } = await sb.rpc('cari_rider', { p_q: cariBebas.trim() })
+    if (error) return toast(error.message)
+    const hasil = ((data ?? []) as { id: string; nama: string; ds_id: string | null; status: string }[]).filter((x) => !x.ds_id && x.status === 'aktif')
+    setBebas(hasil)
+    if (!hasil.length) toast('Tidak ada rider aktif yang belum punya DS dengan nama itu.')
+  }
+  const calonCaptain = terbatas ? [...candidates, ...bebas.filter((b) => !candidates.some((c) => c.id === b.id)).map((b) => ({ ...b, kode_mtr: null }))] : candidates
   const cap = riders.find((r) => r.id === d.captain_id)
   const berubah = f.kuota_pagi !== d.kuota_pagi || f.kuota_siang !== d.kuota_siang || (!terbatas && (f.nama.trim() !== d.nama || f.group_wa_id !== (d.group_wa_id ?? '')))
   const angka = (v: string) => Math.max(0, Math.floor(+v || 0))
@@ -181,7 +192,13 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
           <Field label="Rider yang jadi Captain" hint="Ketik nama untuk mencari, lalu pilih dari daftar.">
-            <RiderPick riders={candidates} value={pick} onChange={setPick} placeholder="— pilih rider —" />
+            <RiderPick riders={calonCaptain} value={pick} onChange={setPick} placeholder="— pilih rider —" />
+            {terbatas && (
+              <div className="mt-2 flex gap-2">
+                <input className="inp min-w-0 flex-1" placeholder="Cari rider yang belum punya DS" aria-label="Cari rider yang belum punya DS" value={cariBebas} onChange={(e) => setCariBebas(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && cariBebas.trim().length >= 2 && cariRiderBebas()} />
+                <button className="btn2" type="button" disabled={cariBebas.trim().length < 2} onClick={cariRiderBebas}>Cari</button>
+              </div>
+            )}
           </Field>
           <Field label="Email untuk login" hint="Captain memakai email ini untuk masuk ke aplikasi.">
             <input className="inp w-full" type="email" placeholder="nama@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -192,7 +209,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
             </Field>
           )}
         </div>
-        {terbatas && <p className="mt-2 text-xs text-muted-foreground">Captain membuat password sendiri lewat "Lupa password / buat password?" di layar masuk, memakai email di atas. Calon Captain hanya dari rider DS ini.</p>}
+        {terbatas && <p className="mt-2 text-xs text-muted-foreground">Captain membuat password sendiri lewat "Lupa password / buat password?" di layar masuk, memakai email di atas. Calon Captain: rider di DS ini, atau rider yang belum punya DS (cari lewat kolom di bawah daftar). Rider yang sudah di DS lain hanya bisa dipindah Super-admin.</p>}
         <div className="mt-3 flex items-center gap-3">
           <button className="btn2" disabled={!!kurang} onClick={tunjuk}>{cap ? 'Ganti Captain' : 'Jadikan Captain'}</button>
           {kurang && <span className="text-xs text-muted-foreground">{kurang}</span>}

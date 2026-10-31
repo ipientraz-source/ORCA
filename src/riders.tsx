@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UserCheck, UserMinus, Users } from 'lucide-react'
 import { cocokDs, namaDsBaru, ringkasPerRider, type Baris } from './impor'
 import { sb, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Field, Select, usePage, Pagination, toCsv, download, parseCsv, type Ds, type Me, type Rider } from './lib'
@@ -13,7 +13,11 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
   const dsNama = (id: string | null) => dsl.rows.find((d) => d.id === id)?.nama ?? '—'
 
-  const orang = rs.rows.filter((r) => r.peran !== 'super_admin') // super-admin bukan rider — dikelola di Kelola DS & Captain
+  // Status berubah langsung di layar begitu ditekan; bila database menolak atau data dimuat ulang, tampilan mengikuti kenyataan
+  const [lokal, setLokal] = useState<Record<string, Rider['status']>>({})
+  useEffect(() => setLokal({}), [rs.rows])
+  const semuaRider = rs.rows.map((r) => (lokal[r.id] ? { ...r, status: lokal[r.id] } : r))
+  const orang = semuaRider.filter((r) => r.peran !== 'super_admin') // super-admin bukan rider — dikelola di Kelola DS & Captain
   const shown = orang.filter(
     (r) => (r.nama + (r.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()) && (!fds || (fds === '-' ? !r.ds_id : r.ds_id === fds)),
   )
@@ -22,7 +26,10 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
 
   const setStatus = async (r: Rider) => {
     if (r.status === 'aktif' && !(await konfirmasi(`${r.nama} tidak akan muncul di jadwal baru dan tidak bisa masuk dengan Kode MTR. Bisa diaktifkan lagi kapan saja.`, { judul: 'Nonaktifkan rider ini?', ya: 'Nonaktifkan', bahaya: true }))) return
-    if (await ok(sb.from('riders').update({ status: r.status === 'aktif' ? 'nonaktif' : 'aktif' }).eq('id', r.id))) rs.reload()
+    const baru = r.status === 'aktif' ? 'nonaktif' : 'aktif'
+    setLokal((l) => ({ ...l, [r.id]: baru }))
+    if (await ok(sb.from('riders').update({ status: baru }).eq('id', r.id))) rs.reload()
+    else setLokal((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== r.id)))
   }
   const setDs = async (r: Rider, ds_id: string) => {
     if (await ok(sb.from('riders').update({ ds_id: ds_id || null }).eq('id', r.id))) rs.reload()
@@ -84,16 +91,18 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
       </div>
       {sup ? <ImportCsv done={() => { rs.reload(); dsl.reload() }} dsl={dsl.rows} /> : ds && <Tarik ds={ds} done={rs.reload} />}
       {sup && <TambahRider dsl={dsl.rows} done={rs.reload} />}
+      {!sup && me.peran === 'arcon' && <TambahRider dsl={dsList} done={rs.reload} wajibDs />}
     </div>
   )
 }
 
-function TambahRider({ dsl, done }: { dsl: Ds[]; done: () => void }) {
+// wajibDs = tampilan Arcon: rider hanya bisa ditambahkan ke DS yang dipegang (rider tanpa DS tak terlihat lagi oleh Arcon)
+function TambahRider({ dsl, done, wajibDs = false }: { dsl: Ds[]; done: () => void; wajibDs?: boolean }) {
   const [f, setF] = useState({ kode_mtr: '', nama: '', no_hp: '', ds_id: '' })
   return (
     <div className="card">
       <b className="block">Tambah satu rider</b>
-      <p className="text-sm text-muted-foreground mb-3">Untuk menambah rider satu per satu. Kalau banyak, pakai Import CSV di atas.</p>
+      <p className="text-sm text-muted-foreground mb-3">{wajibDs ? 'Rider baru langsung masuk ke DS yang dipilih. Captain DS itu bisa menjadwalkannya.' : 'Untuk menambah rider satu per satu. Kalau banyak, pakai Import CSV di atas.'}</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-start">
         <Field label="Kode MTR (wajib)" hint="Kode unik rider. Dipakai rider untuk login dan tidak boleh kembar.">
           <input className="inp w-full" placeholder="Contoh: MTR001" value={f.kode_mtr} onChange={(e) => setF({ ...f, kode_mtr: e.target.value })} />
@@ -104,14 +113,14 @@ function TambahRider({ dsl, done }: { dsl: Ds[]; done: () => void }) {
         <Field label="Nomor HP" hint="Boleh dikosongkan.">
           <input className="inp w-full" placeholder="Contoh: 08123456789" value={f.no_hp} onChange={(e) => setF({ ...f, no_hp: e.target.value })} />
         </Field>
-        <Field label="DS" hint="DS tempat rider bekerja. Kalau belum jelas, biarkan dulu — Captain bisa menariknya nanti.">
-          <Select className="w-full" value={f.ds_id} onChange={(v) => setF({ ...f, ds_id: v })} opsi={[{ value: '', label: '— belum punya DS —' }, ...dsl.map((d) => ({ value: d.id, label: d.nama }))]} />
+        <Field label={wajibDs ? 'DS (wajib)' : 'DS'} hint={wajibDs ? 'Pilih salah satu DS yang Anda pegang.' : 'DS tempat rider bekerja. Kalau belum jelas, biarkan dulu — Captain bisa menariknya nanti.'}>
+          <Select className="w-full" value={f.ds_id} onChange={(v) => setF({ ...f, ds_id: v })} placeholder={wajibDs ? '— pilih DS —' : undefined} opsi={[...(wajibDs ? [] : [{ value: '', label: '— belum punya DS —' }]), ...dsl.map((d) => ({ value: d.id, label: d.nama }))]} />
         </Field>
       </div>
       <div className="mt-3">
         <button
           className="btn"
-          disabled={!f.kode_mtr.trim() || !f.nama.trim()}
+          disabled={!f.kode_mtr.trim() || !f.nama.trim() || (wajibDs && !f.ds_id)}
           onClick={async () => {
             if (await ok(sb.from('riders').insert({ kode_mtr: f.kode_mtr, nama: f.nama.trim(), no_hp: f.no_hp || null, ds_id: f.ds_id || null }))) {
               setF({ kode_mtr: '', nama: '', no_hp: '', ds_id: '' })

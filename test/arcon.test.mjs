@@ -259,16 +259,43 @@ test('Arcon mengatur kebutuhan rider (kuota) dan menunjuk Captain hanya di DS ya
     assert.equal((await q('select captain_id from ds where id = $1', [ALSUT]))[0].captain_id, R_A)
     assert.deepEqual((await q('select id, peran from riders where id in ($1, $2) order by id', [R_CA, R_A])).map((r) => r.peran), ['rider', 'captain'])
     // rider dari DS lain tidak bisa dipakai; DS yang tidak dipegang ditolak
-    await assert.rejects(q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GALAXY, R_W, 'x@test.local']), /Arcon hanya bisa memilih Captain dari rider DS itu sendiri/)
+    await assert.rejects(q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GALAXY, R_W, 'x@test.local']), /dari rider aktif di DS itu atau rider yang belum punya DS/)
     await assert.rejects(q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GOWA, R_W, 'x@test.local']), /Arcon yang memegang DS ini/)
+    // rider aktif yang belum punya DS boleh dijadikan Captain (ia otomatis masuk DS itu)
+    await q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GALAXY, id(24), 'bebas@test.local'])
+    assert.deepEqual((await q('select ds_id, peran from riders where id = $1', [id(24)])).map((r) => [r.ds_id, r.peran]), [[GALAXY, 'captain']])
   })
   await as(CG, () => assert.rejects(q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GALAXY, R_G, 'x@test.local']), /Hanya Super-admin/)) // Captain tetap tidak bisa
   // kembalikan keadaan awal untuk tes berikutnya
   await as(S, async () => {
     await q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [ALSUT, R_CA, 'cap-alsut@test.local'])
+    await q('select tunjuk_captain($1::uuid, $2::uuid, $3)', [GALAXY, R_CG, 'cap-galaxy@test.local'])
+    await q('update riders set ds_id = null where id = $1', [id(24)]) // rider bebas kembali belum punya DS
     await q('update ds set kuota_pagi = 1, kuota_siang = 1 where id = $1', [GALAXY])
   })
   assert.equal((await q('select captain_id from ds where id = $1', [ALSUT]))[0].captain_id, R_CA)
+})
+
+test('Arcon menambah rider baru hanya ke DS yang dipegang, hanya sebagai rider biasa tanpa email login', async () => {
+  const tambah = (ds, extra = '') => q(`insert into riders (kode_mtr, nama, ds_id${extra ? ', ' + extra.split('=')[0] : ''}) values ('mtr-baru', 'Rider Baru', $1${extra ? ", '" + extra.split('=')[1] + "'" : ''})`, [ds])
+  await as(AA, async () => {
+    await tambah(GALAXY) // DS yang dipegang: boleh; kode dirapikan jadi huruf besar oleh trigger
+    assert.equal((await q("select kode_mtr, peran, status from riders where nama = 'Rider Baru'")).map((r) => [r.kode_mtr, r.peran, r.status]).join('|'), 'MTR-BARU,rider,aktif')
+    await assert.rejects(tambah(GOWA), /row-level security/) // DS yang tidak dipegang
+    await assert.rejects(q("insert into riders (kode_mtr, nama) values ('MTR-TANPA-DS', 'Tanpa DS')"), /row-level security/) // DS wajib
+    await assert.rejects(tambah(GALAXY, 'peran=captain'), /row-level security/) // bukan Captain/Arcon/Super-admin
+    await assert.rejects(tambah(GALAXY, 'email=login@test.local'), /row-level security/) // tanpa email login
+  })
+  await as(AB, async () => {
+    await assert.rejects(tambah(GALAXY), /row-level security/) // Arcon DS lain
+  })
+  await as(CG, async () => {
+    await assert.rejects(tambah(GALAXY), /row-level security/) // Captain tetap tidak bisa
+  })
+  await as(S, async () => {
+    await assert.rejects(tambah(GALAXY), /duplicate key|sudah ada|unique/i) // Kode MTR tidak boleh kembar
+    await q("delete from riders where nama = 'Rider Baru'") // bersihkan agar tidak memengaruhi tes lain
+  })
 })
 
 test('Super-admin memilih Arcon di DS: Arcon bukan rider (tim khusus), satu Arcon banyak DS, Arcon lama tetap Arcon', async () => {
