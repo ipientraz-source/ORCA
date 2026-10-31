@@ -90,7 +90,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
   const [foto, setFoto] = useState<string[]>([])
   const baris = terbuka
     .map((it) => ({ it, m: motors.find((x) => x.id === it.motor_id), r: permintaan.find((x) => x.id === it.permintaan_id) }))
-    .filter((b) => b.m && b.r && `${b.m.kode_motor} ${b.m.plat_nomor ?? ''} ${b.r.judul}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((b) => b.m && b.r && `${b.m.kode_motor} ${b.m.plat_nomor ?? ''} ${b.r.judul} ${dsNama(b.m.ds_id)}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => Number(b.r!.urgent) - Number(a.r!.urgent) || (a.r!.tenggat ?? '9999').localeCompare(b.r!.tenggat ?? '9999') || a.m!.kode_motor.localeCompare(b.m!.kode_motor))
   const pg = usePage(baris, [q, terbuka.length])
   const terpilih = baris.filter((b) => dipilih.has(b.it.id))
@@ -148,7 +148,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input className="inp w-64 max-w-full" placeholder="Cari kode, plat, atau pengajuan" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="inp w-64 max-w-full" placeholder="Cari kode, plat, DS, atau pengajuan" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="text-sm text-muted-foreground">{baris.length} motor menunggu servis</span>
       </div>
       {kelola && terpilih.length > 0 && (

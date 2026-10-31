@@ -101,7 +101,7 @@ function BagianMotor({ motors, me, kelola, dsBoleh, dsNama, riders, pilih, setPi
   const [dipilih, setDipilih] = useState<Set<string>>(new Set())
   const [ajukan, setAjukan] = useState(false)
   const riderNama = (id: string | null) => riders.find((r) => r.id === id)?.nama ?? '–'
-  const tampil = motors.filter((m) => (!fst || m.status === fst) && `${m.kode_motor} ${m.plat_nomor ?? ''} ${m.merek ?? ''} ${m.model ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+  const tampil = motors.filter((m) => (!fst || m.status === fst) && `${m.kode_motor} ${m.plat_nomor ?? ''} ${m.merek ?? ''} ${m.model ?? ''} ${dsNama(m.ds_id)}`.toLowerCase().includes(q.toLowerCase()))
   const pg = usePage(tampil, [q, fst, motors.length])
   const semua = tampil.length > 0 && tampil.every((m) => dipilih.has(m.id))
   const idDipilih = [...dipilih].filter((id) => motors.some((m) => m.id === id))
@@ -125,7 +125,7 @@ function BagianMotor({ motors, me, kelola, dsBoleh, dsNama, riders, pilih, setPi
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input className="inp w-64 max-w-full" placeholder="Cari kode, plat, merek, atau model" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="inp w-64 max-w-full" placeholder="Cari kode, plat, model, atau DS" value={q} onChange={(e) => setQ(e.target.value)} />
         <Select className="w-44" value={fst} onChange={setFst} opsi={STATUS} />
         <span className="text-sm text-muted-foreground">{tampil.length} motor</span>
         {kelola && (
