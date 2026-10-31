@@ -358,7 +358,7 @@ function AdminApp({ email }: { email: string }) {
           </div>
         </div>
         <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">Menu</div>
-        <nav className="space-y-1 flex-1 overflow-y-auto">
+        <nav className="space-y-1 flex-1 overflow-y-auto overflow-x-hidden">
           {tabs.map((t, i) => (
             <button key={t.nama} onClick={() => setTab(i)} className={`nav ${i === tab ? 'nav-on' : ''}`}>
               <t.Icon size={18} />
