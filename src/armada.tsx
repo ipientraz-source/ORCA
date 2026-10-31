@@ -76,7 +76,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
       {bagian === 'diminta' && (
         <BagianDiminta
           permintaan={pmt.rows} ringkasan={rng.rows} terbuka={itb.rows.filter((i) => !fds || dsMotor(i.motor_id) === fds)} motors={mts.rows.filter((m) => !fds || m.ds_id === fds)}
-          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} superAdmin={me.peran === 'super_admin'} bukaServis={bukaServis} reload={reloadSemua}
+          dsNama={dsNama} dsBoleh={dsBoleh} kelola={kelola} superAdmin={me.peran === 'super_admin'} pelapor={pelapor} bukaServis={bukaServis} reload={reloadSemua}
         />
       )}
       {bagian === 'servis' && <BagianServis rows={srv.rows.filter((s) => !fds || dsMotor(s.motor_id) === fds)} motorKode={motorKode} />}
