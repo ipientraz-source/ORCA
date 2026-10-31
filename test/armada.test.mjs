@@ -314,7 +314,16 @@ test('Hapus motor dan pengajuan hanya Super-admin; riwayat ikut terhapus dan pen
   await as(S, async () => await hapusMotor(X2, 'Duplikat')) // item terakhir hilang: pengajuan selesai
   assert.equal((await q('select status from permintaan_servis where id = $1', [P]))[0].status, 'selesai')
 
-  await as(AA, async () => assert.equal((await hapus('permintaan_servis', P)).length, 0))
-  await as(CG, async () => assert.equal((await hapus('permintaan_servis', P)).length, 0))
-  await as(S, async () => assert.equal((await hapus('permintaan_servis', P)).length, 1))
+  const hapusPengajuan = (pid, alasan) => q('select hapus_permintaan($1, $2)', [pid, alasan])
+  await as(AA, async () => await assert.rejects(hapusPengajuan(P, 'salah buat'), /Hanya Super-admin/))
+  await as(CG, async () => await assert.rejects(hapusPengajuan(P, 'salah buat'), /Hanya Super-admin/))
+  await as(S, async () => {
+    assert.equal((await hapus('permintaan_servis', P)).length, 0) // jalan pintas lewat tabel ditutup
+    await assert.rejects(hapusPengajuan(P, ' '), /Alasan penghapusan wajib/)
+    await hapusPengajuan(P, 'Salah buat')
+    const [r] = await q("select judul, alasan, jumlah_motor, jsonb_array_length(data->'item') n from permintaan_dihapus where permintaan_id = $1", [P])
+    assert.deepEqual({ ...r }, { judul: 'Uji hapus', alasan: 'Salah buat', jumlah_motor: 0, n: 0 })
+  })
+  assert.equal((await q('select * from permintaan_servis where id = $1', [P])).length, 0)
+  await as(AA, async () => assert.equal((await q('select * from permintaan_dihapus')).length, 0))
 })

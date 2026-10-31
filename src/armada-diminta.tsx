@@ -6,7 +6,7 @@ import { angka, BadgeItem, BadgeUrgent, FotoPicker, InputRupiah, JENIS_SERVIS, P
 
 type Props = {
   permintaan: Permintaan[]; ringkasan: RingkasanPermintaan[]; terbuka: ItemServis[]; motors: Motor[]; dsNama: (id: string | null) => string
-  dsBoleh: Ds[]; kelola: boolean; superAdmin: boolean; bukaServis: (motorId: string) => void; reload: () => void
+  dsBoleh: Ds[]; kelola: boolean; superAdmin: boolean; pelapor: (id: string | null) => string; bukaServis: (motorId: string) => void; reload: () => void
 }
 
 export function BagianDiminta(p: Props) {
@@ -236,37 +236,68 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
 }
 
 // ───────── pengajuan & riwayat ─────────
-function Pengajuan({ permintaan, ringkasan, motors, dsNama, superAdmin, reload }: Props) {
+type PengajuanDihapus = { id: string; judul: string; jenis: string | null; status: string | null; jumlah_motor: number; alasan: string; dihapus_oleh: string | null; waktu: string }
+
+// Riwayat pengajuan yang dihapus (Super-admin)
+function RiwayatDihapus({ pelapor }: { pelapor: (id: string | null) => string }) {
+  const h = useRows<PengajuanDihapus>(() => sb.from('permintaan_dihapus').select('*').order('waktu', { ascending: false }).limit(500), [])
+  const pg = usePage(h.rows, [h.rows.length])
+  return (
+    <div className="card">
+      {h.err && <p className="text-sm text-danger">{h.err}</p>}
+      <div className="overflow-x-auto">
+        <table className="tbl">
+          <thead><tr><th>Waktu</th><th>Pengajuan</th><th>Jenis</th><th>Motor</th><th>Alasan</th><th>Oleh</th></tr></thead>
+          <tbody>
+            {pg.rows.map((r) => (
+              <tr key={r.id}>
+                <td className="whitespace-nowrap">{new Date(r.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                <td className="font-medium">{r.judul}</td><td>{r.jenis ?? '–'}</td><td>{r.jumlah_motor}</td><td>{r.alasan}</td><td>{pelapor(r.dihapus_oleh)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!h.rows.length && <Kosong teks="Belum ada pengajuan yang dihapus." />}
+      <div className="mt-3"><Pagination {...pg} /></div>
+    </div>
+  )
+}
+
+function Pengajuan({ permintaan, ringkasan, motors, dsNama, superAdmin, pelapor, reload }: Props) {
   const [status, setStatus] = useState('berjalan')
   const [bulan, setBulan] = useState('')
-  const daftar = permintaan.filter((r) => (status === 'semua' || r.status === status) && (!bulan || r.dibuat.slice(0, 7) === bulan))
+  const daftar = permintaan.filter((r) => (status === 'semua' || status === 'dihapus' || r.status === status) && (!bulan || r.dibuat.slice(0, 7) === bulan))
   const pg = usePage(daftar, [status, bulan, permintaan.length])
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Select className="w-48" value={status} onChange={setStatus} opsi={[{ value: 'berjalan', label: 'Sedang berjalan' }, { value: 'selesai', label: 'Selesai (riwayat)' }, { value: 'semua', label: 'Semua pengajuan' }]} />
+        <Select className="w-48" value={status} onChange={setStatus} opsi={[{ value: 'berjalan', label: 'Sedang berjalan' }, { value: 'selesai', label: 'Selesai (riwayat)' }, { value: 'semua', label: 'Semua pengajuan' }, ...(superAdmin ? [{ value: 'dihapus', label: 'Dihapus (riwayat)' }] : [])]} />
         <label className="flex items-center gap-1.5 text-sm text-muted-foreground">Bulan <input type="month" className="inp" value={bulan} onChange={(e) => setBulan(e.target.value)} /></label>
         {bulan && <button className="btn2" onClick={() => setBulan('')}>Semua bulan</button>}
-        <span className="text-sm text-muted-foreground">{daftar.length} pengajuan</span>
+        {status !== 'dihapus' && <span className="text-sm text-muted-foreground">{daftar.length} pengajuan</span>}
       </div>
+      {status === 'dihapus' ? <RiwayatDihapus pelapor={pelapor} /> : <>
       <div className="space-y-3">
         {pg.rows.map((r) => <KartuPengajuan key={r.id} r={r} s={ringkasan.find((x) => x.permintaan_id === r.id)} motors={motors} dsNama={dsNama} superAdmin={superAdmin} reload={reload} />)}
         {!daftar.length && <div className="card"><Kosong teks="Belum ada pengajuan servis." hint="Pengajuan yang sudah selesai tetap tersimpan di sini sebagai riwayat." /></div>}
       </div>
       <div className="mt-3"><Pagination {...pg} /></div>
+      </>}
     </div>
   )
 }
 
 function KartuPengajuan({ r, s, motors, dsNama, superAdmin, reload }: { r: Permintaan; s?: RingkasanPermintaan; motors: Motor[]; dsNama: (id: string | null) => string; superAdmin: boolean; reload: () => void }) {
   const [buka, setBuka] = useState(false)
-  // Hanya Super-admin: pengajuan yang salah dibuat. Item di dalamnya ikut terhapus; catatan servis motor tidak.
+  // Hanya Super-admin: pengajuan yang salah dibuat. Alasan wajib dan tercatat di riwayat; item di dalamnya ikut terhapus, catatan servis motor tidak.
+  const [hapusBuka, setHapusBuka] = useState(false)
+  const [alasan, setAlasan] = useState('')
   async function hapus() {
-    if (!(await konfirmasi(`Pengajuan "${r.judul}" dihapus beserta ${s?.total ?? 0} motor di dalamnya. Catatan servis yang sudah dicatat tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus pengajuan ini?', ya: 'Hapus pengajuan', bahaya: true }))) return
-    const { data, error } = await sb.from('permintaan_servis').delete().eq('id', r.id).select('id')
-    if (error) return toast(error.message)
-    if (!data?.length) return toast('Pengajuan tidak terhapus. Hanya Super-admin yang boleh menghapus pengajuan.')
+    if (!alasan.trim()) return toast('Alasan penghapusan wajib diisi.')
+    if (!(await konfirmasi(`Pengajuan "${r.judul}" dihapus beserta ${s?.total ?? 0} motor di dalamnya. Catatan servis yang sudah dicatat tidak ikut terhapus. Pengajuan ini tersimpan di riwayat dihapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus pengajuan ini?', ya: 'Hapus pengajuan', bahaya: true }))) return
+    if (!(await ok(sb.rpc('hapus_permintaan', { p_id: r.id, p_alasan: alasan.trim() })))) return
     toast.ok('Pengajuan dihapus')
     reload()
   }
@@ -294,7 +325,13 @@ function KartuPengajuan({ r, s, motors, dsNama, superAdmin, reload }: { r: Permi
       {r.pekerjaan?.length > 0 && <p className="mt-1 text-sm text-muted-foreground">Part: {r.pekerjaan.join(', ')}</p>}
       {r.catatan && <p className="mt-1 text-sm text-muted-foreground">{r.catatan}</p>}
       {buka && <ItemPengajuan id={r.id} motors={motors} dsNama={dsNama} />}
-      {superAdmin && <div className="mt-2 text-right"><button type="button" className="btn2 text-danger" onClick={hapus}>Hapus pengajuan</button></div>}
+      {superAdmin && (
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+          {hapusBuka && <input className="inp min-w-0 flex-1" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Alasan penghapusan (wajib)" aria-label="Alasan penghapusan" />}
+          {hapusBuka && <button type="button" className="btn" onClick={hapus}>Hapus</button>}
+          <button type="button" className="btn2 text-danger" onClick={() => setHapusBuka(!hapusBuka)}>{hapusBuka ? 'Batal' : 'Hapus pengajuan'}</button>
+        </div>
+      )}
     </div>
   )
 }
