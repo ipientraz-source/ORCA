@@ -6,6 +6,7 @@ import { sb, today, useRows, ok, toast, konfirmasi, Err, Field, Select, Stat, Ko
 import { angka, BadgeStatus, rupiah, ServisBerikutnya, tgl, type ItemServis, type Motor, type MotorDihapus, type Permintaan, type Pindah, type RingkasanPermintaan, type Rusak, type Servis } from './armada-lib'
 import { BagianDiminta, FormPengajuan } from './armada-diminta'
 import { ImporMotor } from './armada-impor'
+import { RingkasanArmada } from './armada-kpi'
 import { normPlat } from './impor'
 import { FormLapor, FormServis, ListRusak, namaPelapor, TabelServis } from './armada-catatan'
 
@@ -22,12 +23,13 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
   const pmt = useRows<Permintaan>(() => sb.from('permintaan_servis').select('*').order('dibuat', { ascending: false }).limit(500), [])
   const rng = useRows<RingkasanPermintaan>(() => sb.rpc('ringkasan_permintaan'), [])
   const itb = useRows<ItemServis>(() => sb.from('permintaan_servis_item').select('*').in('status', ['diminta', 'dijadwalkan']).limit(1000), [])
-  const [bagian, setBagian] = useState<'motor' | 'diminta' | 'servis' | 'kerusakan' | 'dihapus'>('motor')
+  const semuaItem = useRows<ItemServis>(() => sb.from('permintaan_servis_item').select('*').limit(2000), []) // itb hanya yang belum selesai; ringkasan butuh semuanya
+  const [bagian, setBagian] = useState<'motor' | 'diminta' | 'servis' | 'kerusakan' | 'ringkasan' | 'dihapus'>('motor')
   const [pilih, setPilih] = useState<string | null>(null)
   const [modeAwal, setModeAwal] = useState<'servis' | null>(null) // dari "Catat servis" di daftar menunggu servis
   const [fds, setFds] = useState('')
   const hps = useRows<MotorDihapus>(() => (me.peran === 'super_admin' ? sb.from('motor_dihapus').select('*').order('waktu', { ascending: false }).limit(500) : Promise.resolve({ data: [], error: null })), [])
-  const reloadSemua = () => { hps.reload(); dsl.reload(); mts.reload(); srv.reload(); rsk.reload(); pnd.reload(); pmt.reload(); rng.reload(); itb.reload() }
+  const reloadSemua = () => { hps.reload(); dsl.reload(); mts.reload(); srv.reload(); rsk.reload(); pnd.reload(); pmt.reload(); rng.reload(); itb.reload(); semuaItem.reload() }
   const pilihMotor = (id: string | null) => { setModeAwal(null); setPilih(id) }
   const bukaServis = (id: string) => { setModeAwal('servis'); setPilih(id); setBagian('motor') }
 
@@ -57,7 +59,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {([['motor', 'Data Molis'], ['diminta', 'Molis diminta servis'], ['servis', 'Riwayat servis'], ['kerusakan', 'Kerusakan'], ...(me.peran === 'super_admin' ? [['dihapus', 'Motor dihapus'] as const] : [])] as const).map(([k, l]) => (
+        {([['motor', 'Data Molis'], ['diminta', 'Molis diminta servis'], ['servis', 'Riwayat servis'], ['kerusakan', 'Kerusakan'], ['ringkasan', 'Ringkasan'], ...(me.peran === 'super_admin' ? [['dihapus', 'Motor dihapus'] as const] : [])] as const).map(([k, l]) => (
           <button key={k} type="button" className={`tab ${bagian === k ? 'tab-on' : ''}`} onClick={() => setBagian(k)}>
             {l}{k === 'kerusakan' && terbuka > 0 ? ` (${terbuka})` : ''}{k === 'diminta' && itb.rows.length > 0 ? ` (${itb.rows.length})` : ''}
           </button>
@@ -80,6 +82,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
         />
       )}
       {bagian === 'servis' && <BagianServis rows={srv.rows.filter((s) => !fds || dsMotor(s.motor_id) === fds)} motorKode={motorKode} />}
+      {bagian === 'ringkasan' && <RingkasanArmada ds={dsBoleh} dsId={fds} motor={mts.rows} servis={srv.rows} rusak={rsk.rows} items={semuaItem.rows} hari={hari} />}
       {bagian === 'dihapus' && <BagianDihapus rows={hps.rows} dsNama={dsNama} pelapor={pelapor} />}
       {bagian === 'kerusakan' && (
         <BagianRusak rows={rsk.rows.filter((r) => !fds || dsMotor(r.motor_id) === fds)} motorKode={motorKode} pelapor={pelapor} kelola={kelola} reload={reloadSemua} />
