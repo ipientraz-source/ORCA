@@ -6,10 +6,10 @@ import { addDays, Err, Kosong, Select, konfirmasi, parseCsv, sb, toast, today, u
 import { tgl } from './armada-lib'
 import { KATEGORI_BERHENTI } from './berhenti'
 
-type Rekrut = { direkrut: number; berhenti: number; aktif: number; aktif_tidak_hadir: number; tidak_pernah_hadir: number; baru: number; hari_ke_hadir_pertama: number | null }
+type Rekrut = { direkrut: number; berhenti: number; aktif: number; aktif_tidak_hadir: number; tidak_pernah_hadir: number; belum_dijadwalkan: number; baru: number; sudah_mulai: number; hari_ke_mulai: number | null; hari_ke_hadir_pertama: number | null }
 type Turn = { mulai: string; selesai: string; berjalan: boolean; awal: number; akhir: number; bergabung: number; berhenti: number; mengundurkan_diri: number; diberhentikan: number; kontrak_selesai: number; tidak_diketahui: number; berhenti_dini: number; persen: number | null }
 type Retensi = { bulan: string; direkrut: number; eval30: number; tetap30: number; eval60: number; tetap60: number; eval90: number; tetap90: number }
-type Sumber = { sumber: string; direkrut: number; aktif: number; berhenti: number; baru: number; aktif_tidak_hadir: number; tidak_pernah_hadir: number }
+type Sumber = { sumber: string; direkrut: number; aktif: number; berhenti: number; baru: number; aktif_tidak_hadir: number; tidak_pernah_hadir: number; belum_dijadwalkan: number }
 type Alasan = { kategori: string; jumlah: number }
 
 const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : null)
@@ -48,8 +48,9 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
   const bagian = r && r.direkrut ? [
     { k: 'Aktif dan hadir', n: r.aktif, w: 'bg-success' },
     { k: 'Aktif tapi tidak hadir 14 hari', n: r.aktif_tidak_hadir, w: 'bg-warning' },
-    { k: 'Tidak pernah hadir', n: r.tidak_pernah_hadir, w: 'bg-danger' },
-    { k: 'Baru (belum dinilai)', n: r.baru, w: 'bg-muted-foreground/40' },
+    { k: 'Belum masuk jadwal', n: r.belum_dijadwalkan, w: 'bg-primary' },
+    { k: 'Sudah dijadwalkan tapi tidak pernah hadir', n: r.tidak_pernah_hadir, w: 'bg-danger' },
+    { k: 'Baru (sudah dijadwalkan, belum sempat hadir)', n: r.baru, w: 'bg-muted-foreground/40' },
     { k: 'Sudah berhenti', n: r.berhenti, w: 'bg-foreground/70' },
   ] : []
   const label = (t: Turn) => (per === 'bulan' ? namaBulan(t.mulai) : `${tgl(t.mulai)} – ${tgl(t.selesai)}`)
@@ -77,13 +78,15 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kartu judul="Rider direkrut" nilai={r?.direkrut ?? 0} sub="diterima jadi rider pada rentang ini" />
-        <Kartu judul="Betul-betul aktif" nilai={r ? r.aktif : 0} sub={persenAktif === null ? 'belum ada yang bisa dinilai' : `${persenAktif}% dari ${dinilai} yang sudah bisa dinilai`} nada={persenAktif === null ? undefined : persenAktif >= 80 ? 'baik' : persenAktif >= 60 ? 'awas' : 'buruk'} />
-        <Kartu judul="Sudah berhenti" nilai={r?.berhenti ?? 0} sub={r && r.direkrut ? `${pct(r.berhenti, r.direkrut)}% dari yang direkrut` : undefined} nada={r?.berhenti ? 'awas' : undefined} />
-        <Kartu judul="Tidak pernah hadir" nilai={r?.tidak_pernah_hadir ?? 0} sub="diterima tapi belum sekali pun hadir" nada={r?.tidak_pernah_hadir ? 'buruk' : undefined} />
+        <Kartu judul="Sudah mulai aktif" nilai={r?.sudah_mulai ?? 0} sub={r && r.direkrut ? `${pct(r.sudah_mulai, r.direkrut)}% dari direkrut, sudah masuk jadwal atau laporan Captain` : 'masuk jadwal atau laporan Captain'} />
+        <Kartu judul="Betul-betul aktif" nilai={r ? r.aktif : 0} sub={r && r.direkrut ? `${pct(r.aktif, r.direkrut)}% dari semua direkrut${persenAktif === null ? '' : ` · ${persenAktif}% dari ${dinilai} yang bisa dinilai`}` : 'hadir dalam 14 hari terakhir'} nada={persenAktif === null ? undefined : persenAktif >= 80 ? 'baik' : persenAktif >= 60 ? 'awas' : 'buruk'} />
+        <Kartu judul="Belum masuk jadwal" nilai={r?.belum_dijadwalkan ?? 0} sub="diterima tapi belum disusun ke jadwal" nada={r?.belum_dijadwalkan ? 'buruk' : undefined} />
         <Kartu judul="Aktif tapi tidak hadir" nilai={r?.aktif_tidak_hadir ?? 0} sub="berstatus aktif, tidak hadir 14 hari terakhir" nada={r?.aktif_tidak_hadir ? 'awas' : undefined} />
-        <Kartu judul="Hari sampai hadir pertama" nilai={r?.hari_ke_hadir_pertama ?? '–'} sub="rata-rata sejak diterima" />
+        <Kartu judul="Tidak pernah hadir" nilai={r?.tidak_pernah_hadir ?? 0} sub="sudah dijadwalkan tapi belum sekali pun hadir" nada={r?.tidak_pernah_hadir ? 'buruk' : undefined} />
+        <Kartu judul="Sudah berhenti" nilai={r?.berhenti ?? 0} sub={r && r.direkrut ? `${pct(r.berhenti, r.direkrut)}% dari yang direkrut` : undefined} nada={r?.berhenti ? 'awas' : undefined} />
+        <Kartu judul="Hari sampai mulai aktif" nilai={r?.hari_ke_mulai ?? '–'} sub={`rata-rata sejak diterima${r?.hari_ke_hadir_pertama != null ? ` · hadir pertama ${r.hari_ke_hadir_pertama} hari` : ''}`} />
       </div>
 
       {bagian.length > 0 && (
@@ -95,7 +98,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
           <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {bagian.map((b) => <li key={b.k} className="flex items-center gap-2"><span className={`size-2.5 shrink-0 rounded-full ${b.w}`} /><span className="flex-1">{b.k}</span><b>{b.n}</b></li>)}
           </ul>
-          <p className="mt-3 text-xs text-muted-foreground">"Betul-betul aktif" = berstatus aktif dan hadir (atau menggantikan) dalam 14 hari terakhir. Rider yang baru diterima kurang dari 14 hari dan belum pernah hadir dipisah sebagai "baru", supaya tidak dianggap gagal sebelum sempat dijadwalkan.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Rider dinyatakan <b>mulai aktif</b> saat pertama kali masuk jadwal atau tercatat di laporan Captain. "Betul-betul aktif" = berstatus aktif dan hadir (atau menggantikan) dalam 14 hari terakhir. "Belum masuk jadwal" adalah rider yang sudah diterima tapi belum disusun Arcon atau Captain ke jadwal mana pun. Yang sudah dijadwalkan tapi diterima kurang dari 14 hari dan belum hadir disebut "baru", supaya tidak dianggap gagal sebelum sempat bekerja.</p>
         </div>
       )}
 
@@ -170,7 +173,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
           </div>
           <div className="overflow-x-auto">
             <table className="tbl">
-              <thead><tr><th className="text-left">Sumber</th><th>Direkrut</th><th>Aktif</th><th>% aktif</th><th>Tidak pernah hadir</th></tr></thead>
+              <thead><tr><th className="text-left">Sumber</th><th>Direkrut</th><th>Aktif</th><th>% aktif</th><th>Belum dijadwalkan</th><th>Tidak pernah hadir</th></tr></thead>
               <tbody>
                 {sm.rows.map((x) => {
                   const p = pct(x.aktif, x.direkrut - x.baru)
@@ -178,6 +181,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
                     <tr key={x.sumber} className="text-center">
                       <td className="text-left font-medium">{x.sumber}</td><td>{x.direkrut}</td><td>{x.aktif}</td>
                       <td className={p === null ? 'text-muted-foreground' : p >= 80 ? 'text-success' : p >= 60 ? 'text-warning' : 'text-danger'}>{p === null ? '–' : `${p}%`}</td>
+                      <td className={x.belum_dijadwalkan ? 'text-warning' : ''}>{x.belum_dijadwalkan}</td>
                       <td className={x.tidak_pernah_hadir ? 'text-danger' : ''}>{x.tidak_pernah_hadir}</td>
                     </tr>
                   )

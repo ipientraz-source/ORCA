@@ -20,6 +20,17 @@ const GAYA: Record<Status, string> = {
 const SUMBER = ['Referral rider', 'Walk-in', 'Grup WhatsApp', 'Media sosial', 'Job board', 'Lainnya']
 const hari = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 864e5
 
+// Rider hasil rekrutmen dinyatakan mulai aktif saat pertama kali masuk jadwal atau tercatat di laporan Captain
+function Penempatan({ p }: { p: { kelas: string; mulai_aktif: string | null } }) {
+  const [teks, gaya] = !p.mulai_aktif ? ['Belum masuk jadwal', 'font-semibold text-warning']
+    : p.kelas === 'aktif' ? [`Aktif sejak ${tgl(p.mulai_aktif)}`, 'text-success']
+    : p.kelas === 'aktif_tidak_hadir' ? ['Aktif, tidak hadir 14 hari', 'text-warning']
+    : p.kelas === 'tidak_pernah_hadir' ? ['Dijadwalkan, tak pernah hadir', 'text-danger']
+    : p.kelas === 'berhenti' ? ['Sudah berhenti', 'text-muted-foreground']
+    : [`Dijadwalkan sejak ${tgl(p.mulai_aktif)}`, 'text-muted-foreground']
+  return <div className={`mt-1 text-xs ${gaya}`}>{teks}</div>
+}
+
 function DaftarKandidat({ me }: { me: Me }) {
   const bisaUbah = me.peran === 'super_admin' || me.peran === 'recruiter'
   const kb = useRows<KebutuhanDs>(() => sb.rpc('ds_rekrut'), [])
@@ -35,7 +46,9 @@ function DaftarKandidat({ me }: { me: Me }) {
   const referral = baru.sumber === 'Referral rider'
   const [aksi, setAksi] = useState<{ id: string; jenis: 'tolak' | 'terima' } | null>(null)
   const [isi, setIsi] = useState('') // alasan menolak, atau kode MTR saat menerima
-  const reload = () => { kb.reload(); kd.reload() }
+  const pn = useRows<{ kandidat_id: string; kelas: string; mulai_aktif: string | null }>(() => sb.rpc('kandidat_penempatan'), [])
+  const penempatan = Object.fromEntries(pn.rows.map((p) => [p.kandidat_id, p]))
+  const reload = () => { kb.reload(); kd.reload(); pn.reload() }
   const dsNama = (id: string | null) => kb.rows.find((d) => d.ds_id === id)?.ds_nama
   const opsiDs = kb.rows.map((d) => ({ value: d.ds_id, label: d.ds_nama }))
 
@@ -219,7 +232,12 @@ function DaftarKandidat({ me }: { me: Me }) {
                       <td className="min-w-40">
                         {bisaUbah && !tutup
                           ? <Select value={k.status} onChange={(v) => v !== k.status && ubahTahap(k, v as Status)} opsi={AKTIF.map((s) => ({ value: s, label: LABEL[s] }))} />
-                          : <span className={`badge ${GAYA[k.status]}`}>{LABEL[k.status]}</span>}
+                          : (
+                            <>
+                              <span className={`badge ${GAYA[k.status]}`}>{LABEL[k.status]}</span>
+                              {k.status === 'diterima' && penempatan[k.id] && <Penempatan p={penempatan[k.id]} />}
+                            </>
+                          )}
                       </td>
                       <td className="whitespace-nowrap">
                         <div>{tgl(k.dibuat.slice(0, 10))}</div>

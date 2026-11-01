@@ -2,8 +2,9 @@
 -- Dasarnya riwayat bergabung / berhenti / kembali tiap rider (tabel rider_peristiwa), dicatat OTOMATIS oleh trigger di tabel riders,
 -- plus alasan berhenti yang wajib diisi saat menonaktifkan rider (lewat nonaktifkan_rider). Jalankan SETELAH 20261020000029.
 --
--- Rider "betul-betul aktif" = berstatus aktif DAN hadir (atau menggantikan) paling lambat 14 hari lalu. Rider yang baru diterima
--- kurang dari 14 hari dan belum pernah hadir dipisah sebagai "baru" supaya tidak dianggap gagal sebelum sempat dijadwalkan.
+-- Rider hasil rekrutmen "mulai aktif" saat pertama kali masuk jadwal atau tercatat di laporan Captain (tanpa persetujuan tambahan).
+-- "Betul-betul aktif" = berstatus aktif DAN hadir (atau menggantikan) paling lambat 14 hari lalu. Yang diterima tapi belum masuk jadwal
+-- dihitung terpisah (belum_dijadwalkan); yang sudah dijadwalkan, diterima < 14 hari, dan belum hadir disebut "baru" agar tidak dianggap gagal.
 -- Turnover = rider berhenti pada periode ÷ rata-rata jumlah rider (awal + akhir) / 2 × 100.
 
 create table rider_peristiwa (
@@ -83,15 +84,19 @@ create function kpi_valid_sejak() returns date language sql stable security defi
                   (select min(dicatat)::date from rider_peristiwa where sumber = 'awal'), today_wib())
 $$;
 
--- Angkatan rekrutmen: tiap kandidat yang diterima dalam rentang, dengan kelasnya sekarang
+-- Angkatan rekrutmen: tiap kandidat yang diterima dalam rentang, dengan kelasnya sekarang.
+-- Rider dinyatakan MULAI AKTIF saat pertama kali masuk jadwal (shift selain libur) atau tercatat di laporan Captain (hadir/pengganti).
+-- Kelas: berhenti | aktif (hadir ≤ 14 hari lalu) | aktif_tidak_hadir | belum_dijadwalkan (belum masuk jadwal maupun laporan) |
+--        baru (sudah masuk jadwal, belum hadir, diterima < 14 hari) | tidak_pernah_hadir (sudah dijadwalkan tapi tak pernah hadir)
 create function kpi_kohort(p_dari date, p_sampai date, p_ds uuid default null)
-returns table (kandidat_id uuid, rider_id uuid, ds_id uuid, sumber text, masuk date, kelas text, pertama_hadir date)
+returns table (kandidat_id uuid, rider_id uuid, ds_id uuid, sumber text, masuk date, kelas text, pertama_hadir date, mulai_aktif date)
 language sql stable security definer set search_path = public as $$
   with c as (
     select k.id as kid, k.rider_id as rid, k.ds_id as dsid, coalesce(k.sumber, 'Tanpa sumber') as sumber,
            (k.ditutup at time zone 'Asia/Jakarta')::date as masuk, r.status as rstatus,
            (select min(a.tanggal) from actual_harian a where a.rider_id = k.rider_id and a.status in ('hadir', 'pengganti')) as pertama,
-           (select max(a.tanggal) from actual_harian a where a.rider_id = k.rider_id and a.status in ('hadir', 'pengganti')) as terakhir
+           (select max(a.tanggal) from actual_harian a where a.rider_id = k.rider_id and a.status in ('hadir', 'pengganti')) as terakhir,
+           (select min(j.tanggal) from jadwal j where j.rider_id = k.rider_id and j.shift <> 'off') as jadwal_pertama
     from kandidat k left join riders r on r.id = k.rider_id
     where k.status = 'diterima' and k.ditutup is not null
       and (k.ditutup at time zone 'Asia/Jakarta')::date between p_dari and p_sampai
@@ -102,33 +107,45 @@ language sql stable security definer set search_path = public as $$
          case when rstatus is distinct from 'aktif' then 'berhenti'
               when terakhir >= today_wib() - 14 then 'aktif'
               when terakhir is not null then 'aktif_tidak_hadir'
+              when jadwal_pertama is null then 'belum_dijadwalkan'
               when masuk > today_wib() - 14 then 'baru'
               else 'tidak_pernah_hadir' end,
-         pertama
+         pertama, least(jadwal_pertama, pertama)
   from c
 $$;
 
--- 1 dan 2: berapa yang direkrut, dan dari mereka berapa yang betul-betul aktif
+-- Status penempatan tiap kandidat yang sudah diterima (semua waktu, sesuai hak lihat): untuk ditampilkan di daftar kandidat
+create function kandidat_penempatan() returns table (kandidat_id uuid, kelas text, mulai_aktif date)
+language sql stable security definer set search_path = public as $$
+  select k.kandidat_id, k.kelas, k.mulai_aktif from kpi_kohort(date '2000-01-01', today_wib()) k
+$$;
+
+-- 1 dan 2: berapa yang direkrut, berapa yang sudah mulai aktif (masuk jadwal / laporan), dan berapa yang betul-betul aktif
 create function kpi_rekrut(p_dari date, p_sampai date, p_ds uuid default null)
-returns table (direkrut int, berhenti int, aktif int, aktif_tidak_hadir int, tidak_pernah_hadir int, baru int, hari_ke_hadir_pertama numeric)
+returns table (direkrut int, berhenti int, aktif int, aktif_tidak_hadir int, tidak_pernah_hadir int, belum_dijadwalkan int, baru int,
+               sudah_mulai int, hari_ke_mulai numeric, hari_ke_hadir_pertama numeric)
 language sql stable security definer set search_path = public as $$
   select count(*)::int,
          count(*) filter (where kelas = 'berhenti')::int,
          count(*) filter (where kelas = 'aktif')::int,
          count(*) filter (where kelas = 'aktif_tidak_hadir')::int,
          count(*) filter (where kelas = 'tidak_pernah_hadir')::int,
+         count(*) filter (where kelas = 'belum_dijadwalkan')::int,
          count(*) filter (where kelas = 'baru')::int,
+         count(*) filter (where mulai_aktif is not null)::int,
+         round(avg(mulai_aktif - masuk) filter (where mulai_aktif is not null), 1),
          round(avg(pertama_hadir - masuk) filter (where pertama_hadir is not null), 1)
   from kpi_kohort(p_dari, p_sampai, p_ds)
 $$;
 
 -- Kualitas per sumber: bukan hanya sumber mana yang paling banyak, tapi yang ridernya betul-betul bertahan dan hadir
 create function kpi_sumber(p_dari date, p_sampai date, p_ds uuid default null)
-returns table (sumber text, direkrut int, aktif int, berhenti int, baru int, aktif_tidak_hadir int, tidak_pernah_hadir int)
+returns table (sumber text, direkrut int, aktif int, berhenti int, baru int, aktif_tidak_hadir int, tidak_pernah_hadir int, belum_dijadwalkan int)
 language sql stable security definer set search_path = public as $$
   select k.sumber, count(*)::int,
          count(*) filter (where kelas = 'aktif')::int, count(*) filter (where kelas = 'berhenti')::int, count(*) filter (where kelas = 'baru')::int,
-         count(*) filter (where kelas = 'aktif_tidak_hadir')::int, count(*) filter (where kelas = 'tidak_pernah_hadir')::int
+         count(*) filter (where kelas = 'aktif_tidak_hadir')::int, count(*) filter (where kelas = 'tidak_pernah_hadir')::int,
+         count(*) filter (where kelas = 'belum_dijadwalkan')::int
   from kpi_kohort(p_dari, p_sampai, p_ds) k group by k.sumber order by count(*) desc, k.sumber
 $$;
 
@@ -230,7 +247,7 @@ end $$;
 
 -- fungsi baru default-nya bisa dieksekusi anon di Supabase → cabut
 revoke execute on function nonaktifkan_rider(uuid, text, text, date), kpi_valid_sejak(), kpi_rekrut(date, date, uuid), kpi_sumber(date, date, uuid),
-  kpi_retensi(date, date, uuid), kpi_alasan(date, date, uuid), kpi_turnover(date, date, text, uuid), impor_riwayat_rider(jsonb) from public, anon;
+  kpi_retensi(date, date, uuid), kpi_alasan(date, date, uuid), kpi_turnover(date, date, text, uuid), impor_riwayat_rider(jsonb), kandidat_penempatan() from public, anon;
 grant execute on function nonaktifkan_rider(uuid, text, text, date), kpi_valid_sejak(), kpi_rekrut(date, date, uuid), kpi_sumber(date, date, uuid),
-  kpi_retensi(date, date, uuid), kpi_alasan(date, date, uuid), kpi_turnover(date, date, text, uuid), impor_riwayat_rider(jsonb) to authenticated;
+  kpi_retensi(date, date, uuid), kpi_alasan(date, date, uuid), kpi_turnover(date, date, text, uuid), impor_riwayat_rider(jsonb), kandidat_penempatan() to authenticated;
 revoke execute on function catat_peristiwa_rider(), rider_aktif_pada(uuid, date), kpi_kohort(date, date, uuid) from public, anon, authenticated;

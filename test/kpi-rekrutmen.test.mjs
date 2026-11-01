@@ -84,11 +84,15 @@ test('Perubahan status lewat jalur lain tetap tercatat; mengaktifkan kembali dic
   assert.equal((await q("select count(*)::int as n from rider_peristiwa where rider_id = $1 and jenis = 'kembali'", [rid]))[0].n, 1)
 })
 
-test('Rider direkrut dan betul-betul aktif: aktif, aktif tapi tidak hadir, tidak pernah hadir, baru, berhenti', async () => {
+const jadwal = (rid, hariDariSekarang) =>
+  db.exec(`insert into jadwal (tanggal, rider_id, shift, ds_id) values (today_wib() + (${hariDariSekarang}), '${rid}', 'pagi', '${GALAXY}')`)
+
+test('Rider direkrut dan betul-betul aktif: mulai aktif = masuk jadwal atau tercatat di laporan Captain', async () => {
   const a = await rekrut('Aktif', 30)
   const b = await rekrut('Hadir Lama', 40)
-  await rekrut('Tidak Pernah', 30)
-  await rekrut('Baru', 3)
+  const c = await rekrut('Tidak Pernah', 30)
+  await rekrut('Belum Dijadwalkan', 30)
+  const baru = await rekrut('Baru', 3)
   const e = await rekrut('Berhenti', 30)
   const pengganti = await rekrut('Pengganti', 25)
   await rekrut('Di Luar Rentang', 200)
@@ -96,18 +100,32 @@ test('Rider direkrut dan betul-betul aktif: aktif, aktif tapi tidak hadir, tidak
   await hadir(a, 10)
   await hadir(b, 20)
   await hadir(pengganti, 5, 'pengganti') // menggantikan rider lain juga dihitung bekerja
+  await jadwal(c, -25) // sudah masuk jadwal tapi tidak pernah hadir
+  await jadwal(baru, 1) // dijadwalkan besok, belum sempat hadir
   await db.exec(`update riders set status = 'nonaktif' where id = '${e}'`)
   await as(S, async () => {
     const [k] = await q('select * from kpi_rekrut(today_wib() - 100, today_wib())')
     assert.deepEqual(
-      [k.direkrut, k.aktif, k.aktif_tidak_hadir, k.tidak_pernah_hadir, k.baru, k.berhenti],
-      [6, 2, 1, 1, 1, 1], // aktif = Aktif + Pengganti
+      [k.direkrut, k.aktif, k.aktif_tidak_hadir, k.tidak_pernah_hadir, k.belum_dijadwalkan, k.baru, k.berhenti],
+      [7, 2, 1, 1, 1, 1, 1], // aktif = Aktif + Pengganti
     )
-    // hari dari diterima ke hadir pertama: Aktif 30-10=20, Pengganti 25-5=20, Hadir Lama 40-20=20
+    assert.equal(k.sudah_mulai, 5) // Aktif, Hadir Lama, Tidak Pernah (jadwal), Baru (jadwal), Pengganti
+    // hari dari diterima ke mulai aktif (jadwal atau hadir pertama, mana yang lebih dulu): 20, 20, 5, 4, 20 → 13,8
+    assert.equal(Number(k.hari_ke_mulai), 13.8)
+    // hari ke hadir pertama: Aktif 30-10=20, Pengganti 25-5=20, Hadir Lama 40-20=20
     assert.equal(Number(k.hari_ke_hadir_pertama), 20)
     const singkat = await q('select * from kpi_rekrut(today_wib() - 5, today_wib())')
     assert.equal(singkat[0].direkrut, 1) // hanya "Baru"
+    // status per kandidat untuk daftar kandidat (semua waktu)
+    const p = await q('select k.nama, p.kelas, p.mulai_aktif is not null as mulai from kandidat_penempatan() p join kandidat k on k.id = p.kandidat_id order by k.nama')
+    const per = Object.fromEntries(p.map((x) => [x.nama, [x.kelas, x.mulai]]))
+    assert.deepEqual(per['Belum Dijadwalkan'], ['belum_dijadwalkan', false])
+    assert.deepEqual(per['Tidak Pernah'], ['tidak_pernah_hadir', true])
+    assert.deepEqual(per['Baru'], ['baru', true])
+    assert.equal(p.length, 8)
   })
+  await as(CG, async () => assert.equal((await q('select * from kandidat_penempatan()')).length, 8)) // semua di DS Galaxy
+  await as(REC, async () => assert.equal((await q('select * from kandidat_penempatan()')).length, 8))
 })
 
 test('Kualitas per sumber: sumber yang ridernya betul-betul bertahan terlihat berbeda dari yang hanya banyak', async () => {
@@ -121,7 +139,7 @@ test('Kualitas per sumber: sumber yang ridernya betul-betul bertahan terlihat be
   await hadir(c, 6)
   await as(S, async () => {
     const rows = await q('select * from kpi_sumber(today_wib() - 100, today_wib())')
-    const per = Object.fromEntries(rows.map((r) => [r.sumber, [r.direkrut, r.aktif, r.tidak_pernah_hadir]]))
+    const per = Object.fromEntries(rows.map((r) => [r.sumber, [r.direkrut, r.aktif, r.belum_dijadwalkan]]))
     assert.deepEqual(per['Referral rider'], [2, 2, 0])
     assert.deepEqual(per['Job board'], [3, 1, 2])
   })
