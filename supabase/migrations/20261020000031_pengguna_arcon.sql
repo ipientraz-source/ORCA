@@ -3,6 +3,9 @@
 --    dan motor yang dipegangnya dikembalikan (jadwal dan absensi yang sudah lewat tetap). DS dipilihkan lewat Kelola DS.
 -- 2) Arcon yang sudah nonaktif dan tidak memegang DS bisa dihapus, dengan alasan wajib dan tercatat di Riwayat.
 -- 3) Riwayat menyimpan nama pelaku saat kejadian, supaya aktivitas orang yang kemudian dihapus tetap tampak atas nama dia.
+-- 4) Akun yang masuk dengan email tidak boleh berperan Rider (rider masuk dengan Kode MTR). Penunjukan Captain/Arcon yang lama
+--    menurunkan orang jadi rider TANPA menghapus emailnya, sehingga muncul "rider beremail". Kini penurunan peran otomatis
+--    mengosongkan email, rider baru tidak boleh beremail, dan data lama bisa dibereskan lewat hapus_email_rider.
 
 -- ───────── 3) nama pelaku tersimpan di catatan ─────────
 alter table log_aktivitas add column pelaku_nama text;
@@ -64,3 +67,36 @@ end $$;
 
 revoke execute on function hapus_arcon(uuid, text) from public, anon;
 grant execute on function hapus_arcon(uuid, text) to authenticated;
+
+-- ───────── 4) rider tidak boleh punya email login ─────────
+-- Berjalan sesudah riders_guard_t (urutan nama), jadi email sudah dirapikan. Data lama yang sudah beremail tidak disentuh sampai
+-- diubah: baris itu masih boleh diubah statusnya dsb., tapi email baru tidak bisa dipasang ke rider.
+create function riders_peran_email() returns trigger language plpgsql as $$
+begin
+  if new.peran = 'rider' and new.email is not null then
+    if tg_op = 'UPDATE' and old.peran <> 'rider' then
+      new.email := null; -- diturunkan jadi rider: tidak lagi masuk dengan email, melainkan Kode MTR
+    elsif tg_op = 'INSERT' or new.email is distinct from old.email then
+      raise exception 'Rider masuk dengan Kode MTR, bukan email. Akun beremail harus berperan Arcon, Captain, atau Super-admin';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger riders_peran_email_t before insert or update on riders for each row execute function riders_peran_email();
+
+-- Membereskan rider beremail yang sudah ada: email dihapus, orangnya tetap rider (masuk dengan Kode MTR)
+create function hapus_email_rider(p_rider uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare r riders%rowtype;
+begin
+  if not is_super() then raise exception 'Hanya Super-admin'; end if;
+  select * into r from riders where id = p_rider for update;
+  if not found then raise exception 'Orang tidak ditemukan'; end if;
+  if r.peran <> 'rider' then raise exception 'Hanya email rider yang dihapus dari sini'; end if;
+  if r.email is null then raise exception 'Rider ini tidak punya email'; end if;
+  insert into log_aktivitas (captain_id, aksi, detail) values (me(), 'hapus email rider', r.nama || ' (' || r.email || ')');
+  update riders set email = null where id = p_rider;
+end $$;
+revoke execute on function hapus_email_rider(uuid) from public, anon;
+grant execute on function hapus_email_rider(uuid) to authenticated;
+revoke execute on function riders_peran_email() from public, anon, authenticated;

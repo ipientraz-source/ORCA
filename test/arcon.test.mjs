@@ -284,7 +284,7 @@ test('Arcon menambah rider baru hanya ke DS yang dipegang, hanya sebagai rider b
     await assert.rejects(tambah(GOWA), /row-level security/) // DS yang tidak dipegang
     await assert.rejects(q("insert into riders (kode_mtr, nama) values ('MTR-TANPA-DS', 'Tanpa DS')"), /row-level security/) // DS wajib
     await assert.rejects(tambah(GALAXY, 'peran=captain'), /row-level security/) // bukan Captain/Arcon/Super-admin
-    await assert.rejects(tambah(GALAXY, 'email=login@test.local'), /row-level security/) // tanpa email login
+    await assert.rejects(tambah(GALAXY, 'email=login@test.local'), /row-level security|Rider masuk dengan Kode MTR/) // tanpa email login (ditolak penjaga peran-email atau RLS)
   })
   await as(AB, async () => {
     await assert.rejects(tambah(GALAXY), /row-level security/) // Arcon DS lain
@@ -355,9 +355,11 @@ test('Rider berakun email dinaikkan jadi Arcon: jadwal ke depan dihapus, yang la
   const [DR, RE, RT, MR] = [id(160), id(161), id(162), id(163)]
   await db.exec(`
     insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${DR}', 'DS Uji Rider Naik', 1, 1);
+    alter table riders disable trigger riders_peran_email_t; -- meniru data lama: rider yang sudah beremail sebelum penjaga dipasang
     insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
       ('${RE}', 'MTR-RE', 'Rider Berakun', '${DR}', 'rider', 'rider-akun@test.local', 'aktif'),
       ('${RT}', 'MTR-RT', 'Rider Tanpa Akun', '${DR}', 'rider', null, 'aktif');
+    alter table riders enable trigger riders_peran_email_t;
     insert into jadwal (tanggal, rider_id, shift, ds_id) values
       (today_wib() - 3, '${RE}', 'pagi', '${DR}'), (today_wib(), '${RE}', 'pagi', '${DR}'), (today_wib() + 2, '${RE}', 'siang', '${DR}');
     insert into actual_harian (tanggal, rider_id, ds_id, status) values (today_wib() - 3, '${RE}', '${DR}', 'hadir');
@@ -375,6 +377,37 @@ test('Rider berakun email dinaikkan jadi Arcon: jadwal ke depan dihapus, yang la
   assert.equal((await q("select detail from log_aktivitas where aksi = 'rider jadi arcon'"))[0].detail, 'Rider Berakun, 2 jadwal ke depan dihapus, 1 motor dilepas')
   await as(S, async () => await q('select pilih_arcon($1, $2)', [DR, RE]))
   await as('rider-akun@test.local', async () => assert.deepEqual(await nama(), ['Rider Berakun', 'Rider Tanpa Akun'])) // kini melihat DS-nya sebagai Arcon
+})
+
+test('Akun beremail tidak boleh jadi Rider: rider baru beremail ditolak, diturunkan dari Captain/Arcon mengosongkan email, data lama dibereskan Super-admin', async () => {
+  const [DK, CK, AK, LK] = [id(180), id(181), id(182), id(183)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${DK}', 'DS Uji Email', 1, 1);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email) values
+      ('${CK}', 'MTR-CK', 'Mantan Captain', '${DK}', 'captain', 'mantan-captain@test.local'),
+      ('${AK}', 'MTR-AK', 'Mantan Arcon', null, 'arcon', 'mantan-arcon@test.local');`)
+  // rider baru beremail, atau memasang email ke rider, ditolak
+  await assert.rejects(q("insert into riders (nama, ds_id, peran, email) values ('Rider Beremail', $1, 'rider', 'x@test.local')", [DK]), /Rider masuk dengan Kode MTR/)
+  await db.exec(`insert into riders (id, nama, ds_id, kode_mtr) values ('${LK}', 'Rider Biasa', '${DK}', 'MTR-LK')`)
+  await assert.rejects(q("update riders set email = 'x@test.local' where id = $1", [LK]), /Rider masuk dengan Kode MTR/)
+  // diturunkan jadi rider (jalur mana pun, mis. Captain diganti): email otomatis dikosongkan
+  await db.exec(`update riders set peran = 'rider' where id in ('${CK}', '${AK}')`)
+  assert.deepEqual((await q('select peran, email from riders where id in ($1, $2) order by nama', [CK, AK])).map((r) => [r.peran, r.email]), [['rider', null], ['rider', null]])
+  // Arcon/Captain yang email-nya tetap, tidak terganggu
+  await db.exec(`update riders set email = 'arcon-baru@test.local', peran = 'arcon' where id = '${LK}'`)
+  assert.equal((await q('select email from riders where id = $1', [LK]))[0].email, 'arcon-baru@test.local')
+  // data lama (rider beremail sebelum penjaga ada): masih bisa diubah statusnya, dan dibereskan Super-admin
+  await db.exec(`alter table riders disable trigger riders_peran_email_t; update riders set peran = 'rider', email = 'lama@test.local' where id = '${AK}'; alter table riders enable trigger riders_peran_email_t;`)
+  await db.exec(`update riders set status = 'nonaktif' where id = '${AK}'`) // tidak terblokir walau beremail
+  await as(AA, async () => await assert.rejects(q('select hapus_email_rider($1)', [AK]), /Hanya Super-admin/))
+  await as(S, async () => {
+    await assert.rejects(q('select hapus_email_rider($1)', [LK]), /Hanya email rider/) // sudah Arcon
+    await assert.rejects(q('select hapus_email_rider($1)', [CK]), /tidak punya email/) // sudah tanpa email
+    await q('select hapus_email_rider($1)', [AK])
+  })
+  const [a] = await q('select peran, email, kode_mtr from riders where id = $1', [AK])
+  assert.deepEqual({ ...a }, { peran: 'rider', email: null, kode_mtr: 'MTR-AK' }) // tetap rider, masuk dengan Kode MTR
+  assert.equal((await q("select detail from log_aktivitas where aksi = 'hapus email rider'"))[0].detail, 'Mantan Arcon (lama@test.local)')
 })
 
 test('Hapus Arcon: hanya yang nonaktif dan tidak memegang DS, alasan wajib, tercatat, dan jejak lamanya tetap atas namanya', async () => {

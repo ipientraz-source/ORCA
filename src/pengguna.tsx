@@ -16,7 +16,7 @@ const URUT: Peran[] = ['super_admin', 'arcon', 'captain', 'recruiter', 'rider']
 export function Pengguna() {
   const rs = useRows<Rider>(() => sb.from('riders').select('*').order('nama').limit(1000), [])
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
-  const [f, setF] = useState<'semua' | Peran>('semua')
+  const [f, setF] = useState<'semua' | 'perlu' | Peran>('semua')
   const [q, setQ] = useState('')
   const jml = (p: Peran) => rs.rows.filter((r) => r.peran === p).length
   const dsNama = (id: string | null) => dsl.rows.find((d) => d.id === id)?.nama
@@ -26,8 +26,11 @@ export function Pengguna() {
     : r.peran === 'captain' ? dsl.rows.filter((d) => d.captain_id === r.id).map((d) => d.nama)
     : r.peran === 'rider' && dsNama(r.ds_id) ? [dsNama(r.ds_id)!]
     : []
+  // Rider masuk dengan Kode MTR; akun beremail seharusnya Arcon/Captain. Rider beremail (mis. bekas Captain) perlu dibereskan.
+  const beremail = rs.rows.filter((r) => r.peran === 'rider' && r.email)
+  const fa = f === 'perlu' && !beremail.length ? 'semua' : f // tab "Perlu dicek" hilang bila sudah beres semua
   const tampil = rs.rows
-    .filter((r) => f === 'semua' || r.peran === f)
+    .filter((r) => fa === 'semua' || (fa === 'perlu' ? r.peran === 'rider' && !!r.email : r.peran === fa))
     .filter((r) => `${r.nama} ${r.email ?? ''} ${r.kode_mtr ?? ''}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => URUT.indexOf(a.peran) - URUT.indexOf(b.peran) || a.nama.localeCompare(b.nama))
   const pg = usePage(tampil, [f, q])
@@ -48,6 +51,18 @@ export function Pengguna() {
   }
 
   const [hapus, setHapus] = useState<Rider | null>(null) // Arcon nonaktif yang akan dihapus (wajib beralasan)
+
+  // Rider beremail: emailnya dihapus, orangnya tetap rider dan masuk dengan Kode MTR
+  const hapusEmail = async (r: Rider) => {
+    const yakin = await konfirmasi(
+      `${r.nama} (${r.email}) tidak akan bisa masuk dengan email lagi dan tetap berperan Rider. ${r.kode_mtr ? `Ia masuk dengan Kode MTR ${r.kode_mtr}.` : 'Ia belum punya Kode MTR, jadi belum bisa masuk sama sekali sampai diberi kode.'}`,
+      { judul: `Hapus email ${r.nama}?`, ya: 'Hapus email', bahaya: true },
+    )
+    if (yakin && (await ok(sb.rpc('hapus_email_rider', { p_rider: r.id })))) {
+      toast.ok(`Email ${r.nama} dihapus. Ia tetap rider.`)
+      rs.reload()
+    }
+  }
 
   // Captain atau rider berakun email naik jabatan: orang, email, dan riwayat tetap.
   // Captain: DS yang dulu dipimpin kehilangan Captain sampai ditunjuk yang baru. Rider: jadwal ke depan dihapus dan motor dilepas.
@@ -80,14 +95,28 @@ export function Pengguna() {
         <Stat icon={Users} label="Rider" value={jml('rider')} tone="zinc" />
       </div>
 
+      {beremail.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-start gap-3 rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
+          <span className="min-w-60 flex-1">
+            <b>{beremail.length} rider punya email login.</b> Rider masuk dengan Kode MTR, sedangkan akun beremail seharusnya Arcon atau Captain (biasanya bekas Captain yang diganti). Pilih per orang: <b>Jadikan Arcon</b>, atau <b>Hapus email</b> (tetap rider, masuk dengan Kode MTR).
+          </span>
+          {f !== 'perlu' && <button type="button" className="btn2" onClick={() => setF('perlu')}>Lihat daftarnya</button>}
+        </div>
+      )}
+
       <div className="card !p-0 overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
           <div className="flex flex-wrap gap-1.5">
             {(['semua', ...URUT] as const).map((p) => (
-              <button key={p} type="button" className={`tab ${f === p ? 'tab-on' : ''}`} onClick={() => setF(p)}>
+              <button key={p} type="button" className={`tab ${fa === p ? 'tab-on' : ''}`} onClick={() => setF(p)}>
                 {p === 'semua' ? 'Semua' : PERAN[p].label} <span className="opacity-70">{p === 'semua' ? rs.rows.length : jml(p)}</span>
               </button>
             ))}
+            {beremail.length > 0 && (
+              <button type="button" className={`tab ${f === 'perlu' ? 'tab-on' : '!text-warning'}`} onClick={() => setF('perlu')}>
+                Perlu dicek <span className="opacity-70">{beremail.length}</span>
+              </button>
+            )}
           </div>
           <input className="inp ml-auto w-64 max-w-full" placeholder="Cari nama, email, atau Kode MTR" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -124,6 +153,9 @@ export function Pengguna() {
                         <button className="btn2" disabled={!r.email} title={r.email ? 'Naikkan jadi Arcon' : 'Captain ini belum punya email login'} onClick={() => jadikanArcon(r)}>
                           Jadikan Arcon
                         </button>
+                      )}
+                      {r.peran === 'rider' && r.email && (
+                        <button className="btn2 ml-1.5" title="Hapus email: tetap rider, masuk dengan Kode MTR" onClick={() => hapusEmail(r)}>Hapus email</button>
                       )}
                       {r.peran === 'arcon' && r.status === 'nonaktif' && (
                         <button className="btn2 !text-danger" disabled={ds.length > 0} title={ds.length ? 'Masih memegang DS. Lepas dulu di Kelola DS' : 'Hapus Arcon yang sudah tidak aktif'} onClick={() => setHapus(r)}>
