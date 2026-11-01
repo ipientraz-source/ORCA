@@ -123,7 +123,7 @@ export function Dashboard() {
     [],
   )
   const log = useRows<Any>(
-    () => sb.from('log_aktivitas').select('waktu,aksi,detail,captain:riders!log_aktivitas_captain_id_fkey(nama)').order('waktu', { ascending: false }).limit(10),
+    () => sb.from('log_aktivitas').select('waktu,aksi,detail,pelaku_nama,captain:riders!log_aktivitas_captain_id_fkey(nama)').order('waktu', { ascending: false }).limit(10),
     [],
   )
   const kosong = d.rows.filter((x) => jmlBelum(x) > 0)
@@ -226,7 +226,7 @@ export function Dashboard() {
           <ul className="text-sm mt-1 space-y-1">
             {log.rows.map((l: Any, i: number) => (
               <li key={i}>
-                {l.captain?.nama}: {l.aksi} <span className="text-muted-foreground/70">{l.detail} · {jam(l.waktu)}</span>
+                {l.captain?.nama ?? l.pelaku_nama}: {l.aksi} <span className="text-muted-foreground/70">{l.detail} · {jam(l.waktu)}</span>
               </li>
             ))}
           </ul>

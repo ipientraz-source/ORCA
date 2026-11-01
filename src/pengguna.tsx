@@ -47,11 +47,17 @@ export function Pengguna() {
     }
   }
 
-  // Captain naik jabatan: orang, email, dan riwayat tetap; DS yang dulu dipimpin kehilangan Captain sampai ditunjuk yang baru
+  const [hapus, setHapus] = useState<Rider | null>(null) // Arcon nonaktif yang akan dihapus (wajib beralasan)
+
+  // Captain atau rider berakun email naik jabatan: orang, email, dan riwayat tetap.
+  // Captain: DS yang dulu dipimpin kehilangan Captain sampai ditunjuk yang baru. Rider: jadwal ke depan dihapus dan motor dilepas.
   const jadikanArcon = async (r: Rider) => {
     const dsnya = dipegang(r)
+    const akibat = r.peran === 'captain'
+      ? (dsnya.length ? `DS ${dsnya.join(', ')} jadi tanpa Captain sampai Anda menunjuk yang baru. ` : '')
+      : 'Jadwal dari hari ini ke depan dihapus dan motor yang dipegangnya dilepas (jadwal dan absensi lama tetap). '
     const yakin = await konfirmasi(
-      `${r.nama} (${r.email}) naik jadi Arcon dengan email dan riwayat yang sama. ${dsnya.length ? `DS ${dsnya.join(', ')} jadi tanpa Captain sampai Anda menunjuk yang baru. ` : ''}Setelah itu pilih Arcon ini di kartu DS yang akan dipegang.`,
+      `${r.nama} (${r.email}) naik jadi Arcon dengan email dan riwayat yang sama. ${akibat}Setelah itu pilih Arcon ini di kartu DS yang akan dipegang.`,
       { judul: `Jadikan ${r.nama} Arcon?`, ya: 'Jadikan Arcon', bahaya: true },
     )
     if (yakin && (await ok(sb.rpc('jadikan_arcon', { p_rider: r.id })))) {
@@ -65,6 +71,7 @@ export function Pengguna() {
     <div>
       <Err msg={rs.err || dsl.err} />
       {berhenti && <DialogBerhenti rider={berhenti} tutup={() => setBerhenti(null)} selesai={() => { setBerhenti(null); rs.reload() }} />}
+      {hapus && <DialogHapusArcon arcon={hapus} tutup={() => setHapus(null)} selesai={() => { setHapus(null); rs.reload(); dsl.reload() }} />}
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat icon={ShieldCheck} label="Super-admin" value={jml('super_admin')} />
         <Stat icon={Network} label="Arcon" value={jml('arcon')} />
@@ -112,10 +119,15 @@ export function Pengguna() {
                         {r.status}
                       </button>
                     </td>
-                    <td>
-                      {r.peran === 'captain' && (
+                    <td className="whitespace-nowrap">
+                      {(r.peran === 'captain' || (r.peran === 'rider' && r.email && r.status === 'aktif')) && (
                         <button className="btn2" disabled={!r.email} title={r.email ? 'Naikkan jadi Arcon' : 'Captain ini belum punya email login'} onClick={() => jadikanArcon(r)}>
                           Jadikan Arcon
+                        </button>
+                      )}
+                      {r.peran === 'arcon' && r.status === 'nonaktif' && (
+                        <button className="btn2 !text-danger" disabled={ds.length > 0} title={ds.length ? 'Masih memegang DS. Lepas dulu di Kelola DS' : 'Hapus Arcon yang sudah tidak aktif'} onClick={() => setHapus(r)}>
+                          Hapus
                         </button>
                       )}
                     </td>
@@ -129,8 +141,39 @@ export function Pengguna() {
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain bisa dinaikkan jadi Arcon dari tombol di barisnya. Untuk menunjuk atau mengganti Captain dan Arcon di tiap DS, pakai halaman Kelola DS &amp; Captain.
+        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain, atau rider yang sudah punya email login, bisa dinaikkan jadi Arcon dari tombol di barisnya. Arcon yang sudah nonaktif dan tidak memegang DS bisa dihapus. Untuk menunjuk atau mengganti Captain dan Arcon di tiap DS, pakai halaman Kelola DS &amp; Captain.
       </p>
+    </div>
+  )
+}
+
+// Menghapus Arcon yang sudah tidak aktif: alasan wajib dan tercatat di Riwayat. Aktivitas lamanya tetap tampil atas namanya.
+function DialogHapusArcon({ arcon, tutup, selesai }: { arcon: Rider; tutup: () => void; selesai: () => void }) {
+  const [alasan, setAlasan] = useState('')
+  const [proses, setProses] = useState(false)
+  const kirim = async () => {
+    setProses(true)
+    const hasil = await ok(sb.rpc('hapus_arcon', { p_rider: arcon.id, p_alasan: alasan.trim() }))
+    setProses(false)
+    if (hasil) {
+      toast.ok(`${arcon.nama} dihapus`)
+      selesai()
+    }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label={`Hapus ${arcon.nama}`} onClick={tutup}>
+      <div className="card !mb-0 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <h3 className="mb-1 text-lg font-bold">Hapus {arcon.nama}?</h3>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {arcon.email ? `${arcon.email} tidak bisa masuk lagi. ` : ''}Penghapusan tercatat di Riwayat dan tidak bisa dibatalkan. Aktivitas lamanya tetap tampil atas namanya.
+        </p>
+        <label className="lbl">Alasan menghapus</label>
+        <input autoFocus className="inp w-full" placeholder="mis. sudah pindah divisi" value={alasan} onChange={(e) => setAlasan(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && alasan.trim() && kirim()} />
+        <div className="mt-5 flex justify-end gap-2">
+          <button className="btn2" onClick={tutup}>Batal</button>
+          <button className="btn !bg-danger" disabled={!alasan.trim() || proses} onClick={kirim}>{proses ? 'Menghapus…' : 'Hapus'}</button>
+        </div>
+      </div>
     </div>
   )
 }

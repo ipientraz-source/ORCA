@@ -340,8 +340,8 @@ test('Super-admin menaikkan Captain jadi Arcon: email dan riwayat tetap, DS dile
   await as(AA, async () => await assert.rejects(q('select jadikan_arcon($1)', [CU]), /Hanya Super-admin/))
   await as('cap-uji@test.local', async () => await assert.rejects(q('select jadikan_arcon($1)', [CU]), /Hanya Super-admin/))
   await as(S, async () => {
-    await assert.rejects(q('select jadikan_arcon($1)', [RU]), /Hanya Captain/) // rider biasa tidak
-    await assert.rejects(q('select jadikan_arcon($1)', [R_AA]), /Hanya Captain/) // yang sudah Arcon tidak
+    await assert.rejects(q('select jadikan_arcon($1)', [RU]), /belum punya email/) // rider tanpa email login tidak bisa
+    await assert.rejects(q('select jadikan_arcon($1)', [R_AA]), /Hanya Captain atau rider/) // yang sudah Arcon tidak
     assert.equal((await q('select jadikan_arcon($1) n', [CU]))[0].n, 1)
   })
   const [r] = await q('select peran, ds_id, email, status from riders where id = $1', [CU])
@@ -349,6 +349,57 @@ test('Super-admin menaikkan Captain jadi Arcon: email dan riwayat tetap, DS dile
   assert.equal((await q('select captain_id from ds where id = $1', [DU]))[0].captain_id, null)
   await as(S, async () => await q('select pilih_arcon($1, $2)', [DU, CU])) // langsung bisa dipilih sebagai Arcon DS
   await as('cap-uji@test.local', async () => assert.deepEqual(await nama(), ['Captain Uji', 'Rider Uji'])) // kini melihat DS-nya sebagai Arcon
+})
+
+test('Rider berakun email dinaikkan jadi Arcon: jadwal ke depan dihapus, yang lampau tetap, motor dilepas; tanpa email ditolak', async () => {
+  const [DR, RE, RT, MR] = [id(160), id(161), id(162), id(163)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${DR}', 'DS Uji Rider Naik', 1, 1);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${RE}', 'MTR-RE', 'Rider Berakun', '${DR}', 'rider', 'rider-akun@test.local', 'aktif'),
+      ('${RT}', 'MTR-RT', 'Rider Tanpa Akun', '${DR}', 'rider', null, 'aktif');
+    insert into jadwal (tanggal, rider_id, shift, ds_id) values
+      (today_wib() - 3, '${RE}', 'pagi', '${DR}'), (today_wib(), '${RE}', 'pagi', '${DR}'), (today_wib() + 2, '${RE}', 'siang', '${DR}');
+    insert into actual_harian (tanggal, rider_id, ds_id, status) values (today_wib() - 3, '${RE}', '${DR}', 'hadir');
+    insert into motor (id, kode_motor, ds_id, dipegang_oleh) values ('${MR}', 'EV-UJI-NAIK', '${DR}', '${RE}');`)
+  await as(AA, async () => await assert.rejects(q('select jadikan_arcon($1)', [RE]), /Hanya Super-admin/))
+  await as(S, async () => {
+    await assert.rejects(q('select jadikan_arcon($1)', [RT]), /belum punya email/)
+    await q('select jadikan_arcon($1)', [RE])
+  })
+  const [r] = await q('select peran, ds_id, email, status from riders where id = $1', [RE])
+  assert.deepEqual({ ...r }, { peran: 'arcon', ds_id: null, email: 'rider-akun@test.local', status: 'aktif' })
+  assert.equal((await q('select count(*)::int n from jadwal where rider_id = $1', [RE]))[0].n, 1) // hanya yang lampau
+  assert.equal((await q('select count(*)::int n from actual_harian where rider_id = $1', [RE]))[0].n, 1) // absensi lampau tetap
+  assert.equal((await q('select dipegang_oleh from motor where id = $1', [MR]))[0].dipegang_oleh, null)
+  assert.equal((await q("select detail from log_aktivitas where aksi = 'rider jadi arcon'"))[0].detail, 'Rider Berakun, 2 jadwal ke depan dihapus, 1 motor dilepas')
+  await as(S, async () => await q('select pilih_arcon($1, $2)', [DR, RE]))
+  await as('rider-akun@test.local', async () => assert.deepEqual(await nama(), ['Rider Berakun', 'Rider Tanpa Akun'])) // kini melihat DS-nya sebagai Arcon
+})
+
+test('Hapus Arcon: hanya yang nonaktif dan tidak memegang DS, alasan wajib, tercatat, dan jejak lamanya tetap atas namanya', async () => {
+  const [AX, DX] = [id(170), id(171)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${DX}', 'DS Uji Hapus Arcon', 1, 1);
+    insert into riders (id, nama, peran, email, status) values ('${AX}', 'Arcon Mantan', 'arcon', 'arcon-mantan@test.local', 'aktif');
+    update ds set arcon_id = '${AX}' where id = '${DX}';
+    insert into log_aktivitas (captain_id, aksi, detail) values ('${AX}', 'ubah jadwal', 'aktivitas lama');`)
+  await as(AA, async () => await assert.rejects(q("select hapus_arcon($1, 'x')", [AX]), /Hanya Super-admin/))
+  await as(S, async () => {
+    await assert.rejects(q("select hapus_arcon($1, 'x')", [AX]), /Nonaktifkan Arcon ini dulu/) // masih aktif
+    await q("update riders set status = 'nonaktif' where id = $1", [AX])
+    await assert.rejects(q("select hapus_arcon($1, 'x')", [AX]), /masih memegang DS/) // masih memegang DS
+    await q('select lepas_arcon($1)', [DX])
+    await assert.rejects(q("select hapus_arcon($1, '   ')", [AX]), /Alasan menghapus wajib/)
+    await assert.rejects(q("select hapus_arcon($1, 'x')", [R_G]), /Hanya Arcon/) // bukan Arcon
+    await q("select hapus_arcon($1, 'sudah pindah divisi')", [AX])
+  })
+  assert.equal((await q('select * from riders where id = $1', [AX])).length, 0)
+  const [h] = await q("select detail, captain_id from log_aktivitas where aksi = 'hapus arcon'")
+  assert.equal(h.detail, 'Arcon Mantan (arcon-mantan@test.local): sudah pindah divisi')
+  assert.equal(h.captain_id, id(1))
+  const [lama] = await q("select captain_id, pelaku_nama from log_aktivitas where detail = 'aktivitas lama'")
+  assert.deepEqual([lama.captain_id, lama.pelaku_nama], [null, 'Arcon Mantan']) // nama pelaku tidak hilang walau orangnya dihapus
 })
 
 test('Melepas Arcon dari semua DS menutup aksesnya tapi orangnya tetap Arcon; anon tak bisa memanggil', async () => {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { addDays, Err, Kosong, Pagination, Select, sb, today, usePage, useRows, type Ds } from './lib'
 
-type Baris = { id: string; waktu: string; aksi: string; detail: string | null; jenis: 'tambah' | 'ubah' | 'hapus' | null; ds_id: string | null; captain: { nama: string } | null }
+type Baris = { id: string; waktu: string; aksi: string; detail: string | null; jenis: 'tambah' | 'ubah' | 'hapus' | null; ds_id: string | null; pelaku_nama: string | null; captain: { nama: string } | null }
 
 const JENIS = [{ value: '', label: 'Semua jenis' }, { value: 'tambah', label: 'Tambah' }, { value: 'ubah', label: 'Ubah' }, { value: 'hapus', label: 'Hapus' }]
 const GAYA = { tambah: 'bg-success-soft text-success', ubah: 'bg-primary-soft text-primary-soft-foreground', hapus: 'bg-danger-soft text-danger' }
@@ -21,14 +21,14 @@ export function Riwayat() {
   const [q, setQ] = useState('')
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
   const log = useRows<Baris>(() => {
-    let r = sb.from('log_aktivitas').select('id,waktu,aksi,detail,jenis,ds_id,captain:riders!log_aktivitas_captain_id_fkey(nama)')
+    let r = sb.from('log_aktivitas').select('id,waktu,aksi,detail,jenis,ds_id,pelaku_nama,captain:riders!log_aktivitas_captain_id_fkey(nama)')
       .gte('waktu', `${dari}T00:00:00+07:00`).lte('waktu', `${sampai}T23:59:59.999+07:00`)
     if (fds) r = r.eq('ds_id', fds)
     if (fj) r = r.eq('jenis', fj)
     return r.order('waktu', { ascending: false }).limit(BATAS)
   }, [dari, sampai, fds, fj])
   const dsNama = (id: string | null) => dsl.rows.find((d) => d.id === id)?.nama
-  const tampil = log.rows.filter((x) => `${x.aksi} ${x.detail ?? ''} ${x.captain?.nama ?? 'Sistem'} ${dsNama(x.ds_id) ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+  const tampil = log.rows.filter((x) => `${x.aksi} ${x.detail ?? ''} ${x.captain?.nama ?? x.pelaku_nama ?? 'Sistem'} ${dsNama(x.ds_id) ?? ''}`.toLowerCase().includes(q.toLowerCase()))
   const pg = usePage(tampil, [dari, sampai, fds, fj, q])
 
   return (
@@ -63,7 +63,7 @@ export function Riwayat() {
                     <div className="font-medium">{tglWib(x.waktu)}</div>
                     <div className="font-mono text-xs text-muted-foreground">{jamWib(x.waktu)}</div>
                   </td>
-                  <td className="whitespace-nowrap">{x.captain?.nama ?? <span className="text-muted-foreground">Sistem</span>}</td>
+                  <td className="whitespace-nowrap">{x.captain?.nama ?? x.pelaku_nama ?? <span className="text-muted-foreground">Sistem</span>}</td>
                   <td className="whitespace-nowrap">
                     {x.jenis ? <span className={`badge ${GAYA[x.jenis]}`}>{x.aksi}</span> : <span className="badge bg-muted text-foreground/80">{x.aksi}</span>}
                   </td>
