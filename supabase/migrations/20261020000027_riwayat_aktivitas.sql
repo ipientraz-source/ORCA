@@ -47,7 +47,7 @@ language sql stable security definer set search_path = public as $$
            'baru', riwayat_nilai(e.key, e.value #>> '{}'))), '[]'::jsonb)
   from jsonb_each(p_baru) e
   where e.value is distinct from p_lama -> e.key
-    and e.key <> all (array['jam_input', 'dibuat', 'periode_terkunci'])
+    and e.key <> all (array['jam_input', 'dibuat', 'periode_terkunci', 'status_berubah', 'ditutup'])
 $$;
 
 -- "kuota siang 1 → 2, nama A → B" (maksimal 4 kolom)
