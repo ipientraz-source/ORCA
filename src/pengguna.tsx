@@ -43,6 +43,20 @@ export function Pengguna() {
     }
   }
 
+  // Captain naik jabatan: orang, email, dan riwayat tetap; DS yang dulu dipimpin kehilangan Captain sampai ditunjuk yang baru
+  const jadikanArcon = async (r: Rider) => {
+    const dsnya = dipegang(r)
+    const yakin = await konfirmasi(
+      `${r.nama} (${r.email}) naik jadi Arcon dengan email dan riwayat yang sama. ${dsnya.length ? `DS ${dsnya.join(', ')} jadi tanpa Captain sampai Anda menunjuk yang baru. ` : ''}Setelah itu pilih Arcon ini di kartu DS yang akan dipegang.`,
+      { judul: `Jadikan ${r.nama} Arcon?`, ya: 'Jadikan Arcon', bahaya: true },
+    )
+    if (yakin && (await ok(sb.rpc('jadikan_arcon', { p_rider: r.id })))) {
+      toast.ok(`${r.nama} sekarang Arcon. Pilih di kartu DS untuk memberinya DS.`)
+      rs.reload()
+      dsl.reload()
+    }
+  }
+
   return (
     <div>
       <Err msg={rs.err || dsl.err} />
@@ -67,7 +81,7 @@ export function Pengguna() {
         <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
-              <tr><th>Nama</th><th>Peran</th><th>Email / ID Driver</th><th>DS yang dipegang</th><th>Status</th></tr>
+              <tr><th>Nama</th><th>Peran</th><th>Email / ID Driver</th><th>DS yang dipegang</th><th>Status</th><th>Aksi</th></tr>
             </thead>
             <tbody>
               {pg.rows.map((r) => {
@@ -92,6 +106,13 @@ export function Pengguna() {
                         {r.status}
                       </button>
                     </td>
+                    <td>
+                      {r.peran === 'captain' && (
+                        <button className="btn2" disabled={!r.email} title={r.email ? 'Naikkan jadi Arcon' : 'Captain ini belum punya email login'} onClick={() => jadikanArcon(r)}>
+                          Jadikan Arcon
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 )
               })}
@@ -102,7 +123,7 @@ export function Pengguna() {
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Untuk menunjuk atau mengganti Captain dan Arcon, pakai halaman Kelola DS &amp; Captain.
+        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain bisa dinaikkan jadi Arcon dari tombol di barisnya. Untuk menunjuk atau mengganti Captain dan Arcon di tiap DS, pakai halaman Kelola DS &amp; Captain.
       </p>
     </div>
   )
