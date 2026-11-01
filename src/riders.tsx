@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { UserCheck, UserMinus, Users } from 'lucide-react'
 import { cocokDs, namaDsBaru, ringkasPerRider, type Baris } from './impor'
+import { DialogBerhenti } from './berhenti'
 import { sb, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Field, Select, usePage, Pagination, toCsv, download, parseCsv, type Ds, type Me, type Rider } from './lib'
 
 type Hasil = { inserted: number; updated: number; errors: { baris: number; pesan: string }[] }
@@ -24,7 +25,9 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
   const aktif = orang.filter((r) => r.status === 'aktif').length
   const pg = usePage(shown, [q, fds])
 
+  const [berhenti, setBerhenti] = useState<Rider | null>(null) // rider yang sedang dinonaktifkan (wajib beralasan)
   const setStatus = async (r: Rider) => {
+    if (r.status === 'aktif' && r.peran === 'rider') return setBerhenti(r)
     if (r.status === 'aktif' && !(await konfirmasi(`${r.nama} tidak akan muncul di jadwal baru dan tidak bisa masuk dengan Kode MTR. Bisa diaktifkan lagi kapan saja.`, { judul: 'Nonaktifkan rider ini?', ya: 'Nonaktifkan', bahaya: true }))) return
     const baru = r.status === 'aktif' ? 'nonaktif' : 'aktif'
     setLokal((l) => ({ ...l, [r.id]: baru }))
@@ -54,6 +57,7 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
         )}
       </div>
       <Err msg={rs.err} />
+      {berhenti && <DialogBerhenti rider={berhenti} tutup={() => setBerhenti(null)} selesai={() => { setBerhenti(null); rs.reload() }} />}
       {!shown.length && (
         <div className="card">
           <Kosong teks={orang.length ? 'Tidak ada rider yang cocok' : 'Belum ada rider'} hint={orang.length ? 'Ubah kata kunci atau filter DS.' : 'Import CSV di bawah, atau tambah rider satuan.'} />
