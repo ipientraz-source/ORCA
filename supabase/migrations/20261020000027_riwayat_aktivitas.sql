@@ -26,7 +26,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare v text;
 begin
   if p_nilai is null then return '(kosong)'; end if;
-  if p_kolom in ('rider_id', 'captain_id', 'arcon_id', 'dipegang_oleh', 'backup_untuk_id', 'pelapor_id', 'diinput_oleh', 'dikunci_oleh') then
+  if p_kolom in ('rider_id', 'captain_id', 'arcon_id', 'dipegang_oleh', 'backup_untuk_id', 'pelapor_id', 'diinput_oleh', 'dikunci_oleh', 'perujuk_id') then
     select nama into v from riders where id = p_nilai::uuid;
   elsif p_kolom in ('ds_id', 'dari_ds', 'ke_ds') then
     select nama into v from ds where id = p_nilai::uuid;
@@ -47,7 +47,7 @@ language sql stable security definer set search_path = public as $$
            'baru', riwayat_nilai(e.key, e.value #>> '{}'))), '[]'::jsonb)
   from jsonb_each(p_baru) e
   where e.value is distinct from p_lama -> e.key
-    and e.key <> all (array['jam_input', 'dibuat', 'periode_terkunci', 'status_berubah', 'ditutup'])
+    and e.key <> all (array['jam_input', 'dibuat', 'periode_terkunci', 'status_berubah', 'ditutup', 'perujuk_nama'])
 $$;
 
 -- "kuota siang 1 → 2, nama A → B" (maksimal 4 kolom)

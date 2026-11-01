@@ -6,7 +6,8 @@ import { Err, Field, Kosong, Pagination, Select, Stat, ok, sb, toast, usePage, u
 import { tgl } from './armada-lib'
 
 type Status = 'baru' | 'dihubungi' | 'interview' | 'training' | 'diterima' | 'ditolak'
-type Kandidat = { id: string; nama: string; no_hp: string | null; sumber: string | null; ds_id: string | null; status: Status; alasan_tolak: string | null; catatan: string | null; rider_id: string | null; dibuat: string; ditutup: string | null }
+type Perujuk = { id: string; nama: string; kode_mtr: string | null; ds_nama: string | null }
+type Kandidat = { id: string; nama: string; no_hp: string | null; sumber: string | null; perujuk_id: string | null; perujuk_nama: string | null; ds_id: string | null; status: Status; alasan_tolak: string | null; catatan: string | null; rider_id: string | null; dibuat: string; ditutup: string | null }
 type KebutuhanDs = { ds_id: string; ds_nama: string; kuota: number; perlu: number; rider_aktif: number; kandidat_proses: number; kurang: number }
 
 const AKTIF: Status[] = ['baru', 'dihubungi', 'interview', 'training']
@@ -26,7 +27,11 @@ export function Rekrutmen({ me }: { me: Me }) {
   const [fds, setFds] = useState('')
   const [q, setQ] = useState('')
   const [tambah, setTambah] = useState(false)
-  const [baru, setBaru] = useState({ nama: '', no_hp: '', sumber: '', ds: '', catatan: '' })
+  const KOSONG = { nama: '', no_hp: '', sumber: '', ds: '', catatan: '', perujuk: '', perujukNama: '' }
+  const [baru, setBaru] = useState(KOSONG)
+  const [cariP, setCariP] = useState('')
+  const [hasilP, setHasilP] = useState<Perujuk[]>([])
+  const referral = baru.sumber === 'Referral rider'
   const [aksi, setAksi] = useState<{ id: string; jenis: 'tolak' | 'terima' } | null>(null)
   const [isi, setIsi] = useState('') // alasan menolak, atau kode MTR saat menerima
   const reload = () => { kb.reload(); kd.reload() }
@@ -41,16 +46,34 @@ export function Rekrutmen({ me }: { me: Me }) {
   const putus = jml('diterima') + jml('ditolak')
   const sumberTerbaik = Object.entries(diterima.reduce<Record<string, number>>((a, k) => ({ ...a, [k.sumber ?? 'Tanpa sumber']: (a[k.sumber ?? 'Tanpa sumber'] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1])[0]
 
+  // perujuk teratas: yang kandidatnya paling banyak jadi rider (diurutkan juga menurut jumlah kandidat)
+  const perujuk = Object.values(kd.rows.filter((k) => k.perujuk_nama).reduce<Record<string, { nama: string; total: number; diterima: number }>>((a, k) => {
+    const kunci = k.perujuk_id ?? k.perujuk_nama!
+    const e = a[kunci] ?? { nama: k.perujuk_nama!, total: 0, diterima: 0 }
+    e.total++
+    if (k.status === 'diterima') e.diterima++
+    a[kunci] = e
+    return a
+  }, {})).sort((a, b) => b.diterima - a.diterima || b.total - a.total).slice(0, 5)
+
   const tampil = kd.rows
     .filter((k) => (tahap === 'semua' || k.status === tahap) && (!fds || k.ds_id === fds))
-    .filter((k) => `${k.nama} ${k.no_hp ?? ''} ${k.sumber ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((k) => `${k.nama} ${k.no_hp ?? ''} ${k.sumber ?? ''} ${k.perujuk_nama ?? ''}`.toLowerCase().includes(q.toLowerCase()))
   const pg = usePage(tampil, [tahap, fds, q])
 
+  const cariPerujuk = async () => {
+    const { data, error } = await sb.rpc('cari_perujuk', { p_q: cariP.trim() })
+    if (error) return toast(error.message)
+    setHasilP((data ?? []) as Perujuk[])
+    if (!data?.length) toast('Tidak ada rider atau Captain aktif dengan nama atau kode itu.')
+  }
   const simpanBaru = async () => {
-    const hasil = await ok(sb.from('kandidat').insert({ nama: baru.nama.trim(), no_hp: baru.no_hp.trim() || null, sumber: baru.sumber || null, ds_id: baru.ds || null, catatan: baru.catatan.trim() || null }))
+    const hasil = await ok(sb.from('kandidat').insert({ nama: baru.nama.trim(), no_hp: baru.no_hp.trim() || null, sumber: baru.sumber || null, perujuk_id: referral ? baru.perujuk : null, ds_id: baru.ds || null, catatan: baru.catatan.trim() || null }))
     if (!hasil) return
     toast.ok(`${baru.nama.trim()} ditambahkan sebagai kandidat`)
-    setBaru({ nama: '', no_hp: '', sumber: '', ds: '', catatan: '' })
+    setBaru(KOSONG)
+    setCariP('')
+    setHasilP([])
     setTambah(false)
     reload()
   }
@@ -134,8 +157,40 @@ export function Rekrutmen({ me }: { me: Me }) {
             <Field label="Sumber"><Select value={baru.sumber} onChange={(v) => setBaru({ ...baru, sumber: v })} placeholder="— pilih sumber —" opsi={SUMBER.map((s) => ({ value: s, label: s }))} /></Field>
             <Field label="DS tujuan" hint="Wajib diisi sebelum kandidat bisa diterima."><Select value={baru.ds} onChange={(v) => setBaru({ ...baru, ds: v })} placeholder="— pilih DS —" opsi={opsiDs} /></Field>
           </div>
+          {referral && (
+            <Field label="Dirujuk oleh" hint="Rider atau Captain yang merekomendasikan kandidat ini. Wajib untuk sumber Referral rider." className="mt-3">
+              {baru.perujuk ? (
+                <div className="flex items-center gap-2">
+                  <span className="badge bg-success-soft text-success !text-sm !px-3 !py-1">{baru.perujukNama}</span>
+                  <button type="button" className="btn2" onClick={() => setBaru({ ...baru, perujuk: '', perujukNama: '' })}>Ganti</button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex max-w-md gap-2">
+                    <input className="inp min-w-0 flex-1" placeholder="Cari nama atau kode MTR perujuk" aria-label="Cari perujuk" value={cariP} onChange={(e) => setCariP(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && cariP.trim().length >= 2 && cariPerujuk()} />
+                    <button type="button" className="btn2" disabled={cariP.trim().length < 2} onClick={cariPerujuk}>Cari</button>
+                  </div>
+                  {hasilP.length > 0 && (
+                    <ul className="mt-2 max-w-md divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+                      {hasilP.map((r) => (
+                        <li key={r.id}>
+                          <button type="button" className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-muted/60" onClick={() => { setBaru({ ...baru, perujuk: r.id, perujukNama: r.nama }); setHasilP([]) }}>
+                            <span className="font-medium">{r.nama}</span>
+                            <span className="text-xs text-muted-foreground">{r.kode_mtr ?? 'tanpa kode'} · {r.ds_nama ?? 'tanpa DS'}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </Field>
+          )}
           <Field label="Catatan (opsional)" className="mt-3"><input className="inp w-full" value={baru.catatan} onChange={(e) => setBaru({ ...baru, catatan: e.target.value })} /></Field>
-          <div className="mt-3"><button className="btn" disabled={!baru.nama.trim()} onClick={simpanBaru}>Simpan kandidat</button></div>
+          <div className="mt-3 flex items-center gap-3">
+            <button className="btn" disabled={!baru.nama.trim() || (referral && !baru.perujuk)} onClick={simpanBaru}>Simpan kandidat</button>
+            {referral && !baru.perujuk && <span className="text-xs text-muted-foreground">Pilih rider yang merujuk dulu</span>}
+          </div>
         </div>
       )}
 
@@ -155,7 +210,10 @@ export function Rekrutmen({ me }: { me: Me }) {
                         {k.status === 'ditolak' && k.alasan_tolak && <div className="mt-1 text-xs text-danger">Ditolak: {k.alasan_tolak}</div>}
                         {k.catatan && <div className="mt-1 text-xs text-muted-foreground">{k.catatan}</div>}
                       </td>
-                      <td className="text-muted-foreground">{k.sumber ?? '–'}</td>
+                      <td className="text-muted-foreground">
+                        {k.sumber ?? '–'}
+                        {k.sumber === 'Referral rider' && <div className="text-xs">oleh <b className="text-foreground">{k.perujuk_nama ?? 'tidak tercatat'}</b></div>}
+                      </td>
                       <td className={k.ds_id ? '' : 'text-warning'}>{dsNama(k.ds_id) ?? (k.ds_id ? '–' : 'Belum dipilih')}</td>
                       <td className="min-w-40">
                         {bisaUbah && !tutup
@@ -209,6 +267,19 @@ export function Rekrutmen({ me }: { me: Me }) {
         {!tampil.length && <Kosong teks={kd.rows.length ? 'Tidak ada kandidat yang cocok.' : 'Belum ada kandidat.'} hint={bisaUbah ? 'Klik Tambah kandidat untuk mulai.' : undefined} />}
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
+      {perujuk.length > 0 && (
+        <div className="card">
+          <div className="lbl">Perujuk teratas</div>
+          <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            {perujuk.map((p) => (
+              <li key={p.nama} className="flex justify-between gap-3 border-b border-border/60 py-1">
+                <span className="font-medium">{p.nama}</span>
+                <span className="text-muted-foreground"><b className="text-success">{p.diterima}</b> diterima dari {p.total} kandidat</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {sumberTerbaik && <p className="text-xs text-muted-foreground">Sumber yang paling banyak jadi rider: <b className="text-foreground">{sumberTerbaik[0]}</b> ({sumberTerbaik[1]} orang).</p>}
     </div>
   )

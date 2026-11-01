@@ -12,6 +12,8 @@ create table kandidat (
   nama text not null check (length(trim(nama)) > 0),
   no_hp text,
   sumber text,
+  perujuk_id uuid references riders(id) on delete set null, -- rider/Captain yang merujuk, wajib bila sumber "Referral rider"
+  perujuk_nama text, -- nama saat dirujuk: tetap terbaca walau perujuknya kemudian dihapus
   ds_id uuid references ds(id) on delete set null, -- DS tujuan
   status text not null default 'baru' check (status in ('baru', 'dihubungi', 'interview', 'training', 'diterima', 'ditolak')),
   alasan_tolak text,
@@ -26,6 +28,7 @@ create table kandidat (
 );
 create index on kandidat (ds_id, status);
 create index on kandidat (status, dibuat desc);
+create index on kandidat (perujuk_id);
 -- satu nomor HP tidak boleh ada dua kali selama masih diproses (mencegah kandidat dobel)
 create unique index kandidat_hp_aktif on kandidat (no_hp) where no_hp is not null and status in ('baru', 'dihubungi', 'interview', 'training');
 
@@ -37,6 +40,18 @@ create policy kandidat_insert on kandidat for insert to authenticated with check
 create policy kandidat_update on kandidat for update to authenticated
   using (is_super() or my_peran() = 'recruiter') with check (is_super() or my_peran() = 'recruiter');
 create policy kandidat_delete on kandidat for delete to authenticated using (is_super());
+
+-- Cari rider / Captain aktif untuk dipilih sebagai perujuk (Super-admin dan Recruiter)
+create function cari_perujuk(p_q text) returns table (id uuid, nama text, kode_mtr text, ds_nama text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not (is_super() or my_peran() = 'recruiter') then raise exception 'Tidak berwenang'; end if;
+  return query
+    select r.id, r.nama, r.kode_mtr, d.nama
+    from riders r left join ds d on d.id = r.ds_id
+    where r.peran in ('rider', 'captain') and r.status = 'aktif' and (r.nama ilike '%' || trim(p_q) || '%' or r.kode_mtr ilike '%' || trim(p_q) || '%')
+    order by r.nama limit 20;
+end $$;
 
 -- Penjaga: data dirapikan; waktu status dan waktu tutup diisi sistem; "diterima" hanya lewat terima_kandidat (membuat ridernya)
 create function kandidat_guard() returns trigger language plpgsql as $$
@@ -64,6 +79,31 @@ begin
   return new;
 end $$;
 create trigger kandidat_guard_t before insert or update on kandidat for each row execute function kandidat_guard();
+
+-- Perujuk: sumber "Referral rider" wajib menyebut perujuknya (rider atau Captain aktif); nama disimpan saat itu; dikosongkan bila
+-- sumbernya diganti. Berstatus definer karena Recruiter tidak boleh membaca daftar rider. Berjalan sesudah kandidat_guard_t (urutan nama).
+create function kandidat_perujuk() returns trigger language plpgsql security definer set search_path = public as $$
+declare v_cek boolean;
+begin
+  if new.sumber is distinct from 'Referral rider' then
+    new.perujuk_id := null;
+    new.perujuk_nama := null;
+    return new;
+  end if;
+  if tg_op = 'INSERT' then v_cek := true;
+  else
+    -- perujuknya dihapus dari sistem (foreign key mengosongkan perujuk_id): nama saat dirujuk tetap tersimpan
+    if new.perujuk_id is null and old.perujuk_id is not null and old.sumber = 'Referral rider' then return new; end if;
+    v_cek := old.sumber is distinct from 'Referral rider' or new.perujuk_id is distinct from old.perujuk_id;
+  end if;
+  if v_cek then
+    if new.perujuk_id is null then raise exception 'Pilih rider yang merujuk kandidat ini'; end if;
+    select nama into new.perujuk_nama from riders where id = new.perujuk_id and peran in ('rider', 'captain') and status = 'aktif';
+    if new.perujuk_nama is null then raise exception 'Perujuk harus rider atau Captain yang aktif'; end if;
+  end if;
+  return new;
+end $$;
+create trigger kandidat_perujuk_t before insert or update on kandidat for each row execute function kandidat_perujuk();
 
 -- Terima jadi rider: membuat rider aktif di DS tujuan, lalu menandai kandidat diterima. Kode MTR boleh diisi nanti di Data Rider.
 create function terima_kandidat(p_id uuid, p_kode text default null) returns uuid
@@ -121,6 +161,7 @@ create trigger riwayat_ubah after update on kandidat referencing old table as ol
 create trigger riwayat_hapus after delete on kandidat referencing old table as old_rows for each statement execute function catat_hapus('kandidat');
 
 -- fungsi baru default-nya bisa dieksekusi anon di Supabase → cabut
-revoke execute on function terima_kandidat(uuid, text), ds_rekrut() from public, anon;
-grant execute on function terima_kandidat(uuid, text), ds_rekrut() to authenticated;
+revoke execute on function terima_kandidat(uuid, text), ds_rekrut(), cari_perujuk(text) from public, anon;
+grant execute on function terima_kandidat(uuid, text), ds_rekrut(), cari_perujuk(text) to authenticated;
+revoke execute on function kandidat_perujuk() from public, anon, authenticated;
 revoke execute on function riwayat_objek(text, jsonb) from public, anon, authenticated;

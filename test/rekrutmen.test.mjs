@@ -138,6 +138,33 @@ test('Kebutuhan rekrut: kuota × 7/6 dibulatkan ke atas, dikurangi rider aktif; 
   await as(AA, async () => assert.deepEqual((await q('select ds_nama from ds_rekrut()')).map((r) => r.ds_nama), ['Alam Sutera', 'Galaxy']))
 })
 
+test('Referral: wajib menyebut perujuk (rider/Captain aktif), nama tersimpan, dikosongkan bila sumber diganti', async () => {
+  const kid = await as(REC, async () => {
+    await assert.rejects(q("insert into kandidat (nama, sumber) values ('Tanpa Perujuk', 'Referral rider')"), /Pilih rider yang merujuk/)
+    await assert.rejects(q("insert into kandidat (nama, sumber, perujuk_id) values ('Perujuk Salah', 'Referral rider', $1)", [R_AA]), /rider atau Captain yang aktif/) // Arcon bukan perujuk
+    const [{ id }] = await q("insert into kandidat (nama, sumber, perujuk_id, ds_id) values ('Dirujuk', 'Referral rider', $1, $2) returning id", [R_G, GALAXY])
+    const [k] = await q('select perujuk_id, perujuk_nama from kandidat where id = $1', [id])
+    assert.deepEqual([k.perujuk_id, k.perujuk_nama], [R_G, 'Rider Galaxy'])
+    // Recruiter tidak boleh membaca daftar rider, tapi boleh mencari perujuk lewat fungsi khusus
+    assert.deepEqual((await q("select nama from cari_perujuk('galaxy')")).map((r) => r.nama), ['Captain Galaxy', 'Rider Galaxy'])
+    assert.deepEqual((await q("select nama from cari_perujuk('MTR021')")).map((r) => r.nama), ['Rider Galaxy'])
+    return id
+  })
+  await as(CG, () => assert.rejects(q("select * from cari_perujuk('galaxy')"), /Tidak berwenang/))
+  await as(REC, async () => {
+    await q("update kandidat set sumber = 'Walk-in' where id = $1", [kid])
+    const [k] = await q('select perujuk_id, perujuk_nama from kandidat where id = $1', [kid])
+    assert.deepEqual([k.perujuk_id, k.perujuk_nama], [null, null]) // sumber bukan referral lagi
+    await assert.rejects(q("update kandidat set sumber = 'Referral rider' where id = $1", [kid]), /Pilih rider yang merujuk/)
+  })
+  // perujuk berhenti (dihapus): nama saat dirujuk tetap terbaca
+  await db.exec(`insert into riders (id, nama, ds_id, peran, status) values ('${id(777)}', 'Rider Sementara', '${GALAXY}', 'rider', 'aktif')`)
+  await db.exec(`insert into kandidat (nama, sumber, perujuk_id) values ('Dirujuk Sementara', 'Referral rider', '${id(777)}')`)
+  await db.exec(`delete from riders where id = '${id(777)}'`)
+  const [s] = await q("select perujuk_id, perujuk_nama from kandidat where nama = 'Dirujuk Sementara'")
+  assert.deepEqual([s.perujuk_id, s.perujuk_nama], [null, 'Rider Sementara'])
+})
+
 test('Aktivitas kandidat tercatat di Riwayat dengan pelaku dan nilai lama → baru', async () => {
   const kid = await as(REC, () => tambah('Rina', '086000000001'))
   await as(REC, () => q("update kandidat set status = 'dihubungi' where id = $1", [kid]))
