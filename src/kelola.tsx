@@ -88,7 +88,8 @@ export function Kelola() {
       </div>
 
       <ArconTim arcons={rs.rows.filter((r) => r.peran === 'arcon')} captains={rs.rows.filter((r) => r.peran === 'captain' && r.status === 'aktif')} semuaDs={dsl.rows} reload={() => { dsl.reload(); rs.reload() }} />
-      <SuperAdmins admins={rs.rows.filter((r) => r.peran === 'super_admin')} reload={rs.reload} />
+      <AkunTim peran="recruiter" judul="Recruiter" ket="Tim rekrutmen: mengelola kandidat rider dan menerimanya jadi rider. Hanya melihat menu Rekrutmen. Jumlahnya boleh lebih dari satu." orang={rs.rows.filter((r) => r.peran === 'recruiter')} reload={rs.reload} />
+      <AkunTim peran="super_admin" judul="Super-admin" ket="Bisa melihat semua DS dan mengatur sistem. Jumlahnya boleh lebih dari satu." orang={rs.rows.filter((r) => r.peran === 'super_admin')} reload={rs.reload} />
     </div>
   )
 }
@@ -359,19 +360,20 @@ function ArconTim({ arcons, captains, semuaDs, reload }: { arcons: Rider[]; capt
   )
 }
 
-function SuperAdmins({ admins, reload }: { admins: Rider[]; reload: () => void }) {
+// Akun tim yang dibuat Super-admin (Super-admin lain, Recruiter): daftar orangnya dan formulir menambah
+function AkunTim({ orang, reload, peran, judul, ket }: { orang: Rider[]; reload: () => void; peran: 'super_admin' | 'recruiter'; judul: string; ket: string }) {
   const [f, setF] = useState({ nama: '', email: '', pw: '' })
   const kurang = !f.nama.trim() ? 'Isi nama dulu' : !f.email.trim() ? 'Isi email untuk login' : f.pw && f.pw.length < 8 ? 'Password minimal 8 karakter' : ''
   return (
     <details className="card">
-      <summary className="cursor-pointer font-bold">Super-admin <span className="badge ml-1 bg-muted text-muted-foreground">{admins.length}</span></summary>
-      <p className="mt-2 text-sm text-muted-foreground mb-3">Bisa melihat semua DS dan mengatur sistem. Jumlahnya boleh lebih dari satu.</p>
+      <summary className="cursor-pointer font-bold">{judul} <span className="badge ml-1 bg-muted text-muted-foreground">{orang.length}</span></summary>
+      <p className="mt-2 text-sm text-muted-foreground mb-3">{ket}</p>
       <ul className="flex flex-wrap gap-2 mb-5">
-        {admins.map((a) => (
+        {orang.map((a) => (
           <li key={a.id} className="badge bg-primary-soft text-primary-soft-foreground !text-sm !px-3 !py-1">{a.nama} · {a.email}</li>
         ))}
       </ul>
-      <b className="block text-sm mb-3">Tambah Super-admin baru</b>
+      <b className="block text-sm mb-3">Tambah {judul} baru</b>
       <div className="grid gap-4 sm:grid-cols-2 items-start">
         <Field label="Nama" hint="Nama lengkap orangnya.">
           <input className="inp w-full" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} />
@@ -388,14 +390,14 @@ function SuperAdmins({ admins, reload }: { admins: Rider[]; reload: () => void }
           className="btn2"
           disabled={!!kurang}
           onClick={async () => {
-            if (!(await ok(sb.from('riders').insert({ nama: f.nama.trim(), email: f.email, peran: 'super_admin' })))) return
+            if (!(await ok(sb.from('riders').insert({ nama: f.nama.trim(), email: f.email, peran })))) return
             if (f.pw) await buatAkun(f.email, f.pw)
             setF({ nama: '', email: '', pw: '' })
-            toast.ok('Super-admin ditambahkan')
+            toast.ok(`${judul} ditambahkan`)
             reload()
           }}
         >
-          Tambah Super-admin
+          Tambah {judul}
         </button>
         {kurang && <span className="text-xs text-muted-foreground">{kurang}</span>}
       </div>

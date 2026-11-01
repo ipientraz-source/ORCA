@@ -5,7 +5,7 @@ import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRigh
 
 export const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 
-export type Peran = 'rider' | 'captain' | 'arcon' | 'super_admin'
+export type Peran = 'rider' | 'captain' | 'arcon' | 'recruiter' | 'super_admin'
 export type Me = { id: string; nama: string; peran: Peran; ds_id: string | null; email: string }
 export type Ds = { id: string; nama: string; kuota_pagi: number; kuota_siang: number; captain_id: string | null; arcon_id: string | null; group_wa_id: string | null }
 export type Rider = { id: string; kode_mtr: string | null; nama: string; no_hp: string | null; ds_id: string | null; status: 'aktif' | 'nonaktif'; peran: Peran; email: string | null }

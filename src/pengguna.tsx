@@ -1,15 +1,17 @@
 // Pengguna: semua orang di sistem dikelompokkan menurut peran (Super-admin, Arcon, Captain, Rider). Hanya Super-admin.
 import { useState } from 'react'
-import { Network, ShieldCheck, UserCog, Users } from 'lucide-react'
+import { Network, ShieldCheck, UserCog, UserPlus, Users } from 'lucide-react'
+import { DialogBerhenti } from './berhenti'
 import { sb, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, usePage, Pagination, type Ds, type Peran, type Rider } from './lib'
 
 const PERAN: Record<Peran, { label: string; gaya: string; ket: string }> = {
   super_admin: { label: 'Super-admin', gaya: 'bg-primary text-primary-foreground', ket: 'Akses penuh ke semua DS' },
   arcon: { label: 'Arcon', gaya: 'bg-primary-soft text-primary-soft-foreground', ket: 'Memantau beberapa DS (hanya lihat)' },
   captain: { label: 'Captain', gaya: 'bg-warning-soft text-warning', ket: 'Mengelola satu DS' },
+  recruiter: { label: 'Recruiter', gaya: 'bg-success-soft text-success', ket: 'Merekrut rider baru untuk semua DS' },
   rider: { label: 'Rider', gaya: 'bg-muted text-foreground/80', ket: 'Masuk dengan Kode MTR' },
 }
-const URUT: Peran[] = ['super_admin', 'arcon', 'captain', 'rider']
+const URUT: Peran[] = ['super_admin', 'arcon', 'captain', 'recruiter', 'rider']
 
 export function Pengguna() {
   const rs = useRows<Rider>(() => sb.from('riders').select('*').order('nama').limit(1000), [])
@@ -30,7 +32,9 @@ export function Pengguna() {
     .sort((a, b) => URUT.indexOf(a.peran) - URUT.indexOf(b.peran) || a.nama.localeCompare(b.nama))
   const pg = usePage(tampil, [f, q])
 
+  const [berhenti, setBerhenti] = useState<Rider | null>(null) // rider yang dinonaktifkan wajib beralasan (angka turnover)
   const ubahStatus = async (r: Rider) => {
+    if (r.status === 'aktif' && r.peran === 'rider') return setBerhenti(r)
     const ke = r.status === 'aktif' ? 'nonaktif' : 'aktif'
     const nonaktif = ke === 'nonaktif'
     const yakin = await konfirmasi(
@@ -60,10 +64,12 @@ export function Pengguna() {
   return (
     <div>
       <Err msg={rs.err || dsl.err} />
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {berhenti && <DialogBerhenti rider={berhenti} tutup={() => setBerhenti(null)} selesai={() => { setBerhenti(null); rs.reload() }} />}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat icon={ShieldCheck} label="Super-admin" value={jml('super_admin')} />
         <Stat icon={Network} label="Arcon" value={jml('arcon')} />
         <Stat icon={UserCog} label="Captain" value={jml('captain')} />
+        <Stat icon={UserPlus} label="Recruiter" value={jml('recruiter')} />
         <Stat icon={Users} label="Rider" value={jml('rider')} tone="zinc" />
       </div>
 
@@ -92,7 +98,7 @@ export function Pengguna() {
                     <td><span className={`badge ${PERAN[r.peran].gaya}`} title={PERAN[r.peran].ket}>{PERAN[r.peran].label}</span></td>
                     <td className={r.email ? 'text-muted-foreground' : 'font-mono text-xs text-muted-foreground'}>{r.email ?? r.kode_mtr ?? '—'}</td>
                     <td>
-                      {r.peran === 'super_admin' ? <span className="text-muted-foreground">Semua DS</span>
+                      {r.peran === 'super_admin' || r.peran === 'recruiter' ? <span className="text-muted-foreground">{r.peran === 'recruiter' ? 'Rekrutmen (semua DS)' : 'Semua DS'}</span>
                         : ds.length ? <div className="flex flex-wrap gap-1">{ds.map((n) => <span key={n} className="badge bg-muted text-foreground/80">{n}</span>)}</div>
                         : <span className="text-muted-foreground">Belum memegang DS</span>}
                     </td>
