@@ -6,7 +6,7 @@
     "dev": "vite --port 5174",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test test/db.test.mjs test/arcon.test.mjs test/armada.test.mjs test/otomatis.test.mjs test/impor.test.mjs test/hapus-jadwal.test.mjs test/laporan-shift.test.mjs test/fulfillment.test.mjs test/riwayat.test.mjs test/rekrutmen.test.mjs"
+    "test": "node --test test/db.test.mjs test/arcon.test.mjs test/armada.test.mjs test/otomatis.test.mjs test/impor.test.mjs test/hapus-jadwal.test.mjs test/laporan-shift.test.mjs test/fulfillment.test.mjs test/riwayat.test.mjs test/rekrutmen.test.mjs test/kpi-rekrutmen.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

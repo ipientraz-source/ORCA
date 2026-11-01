@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react'
 import { Clock, Plus, Search, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { Err, Field, Kosong, Pagination, Select, Stat, ok, sb, toast, usePage, useRows, type Me } from './lib'
 import { tgl } from './armada-lib'
+import { AngkaRekrutmen } from './rekrutmen-angka'
 
 type Status = 'baru' | 'dihubungi' | 'interview' | 'training' | 'diterima' | 'ditolak'
 type Perujuk = { id: string; nama: string; kode_mtr: string | null; ds_nama: string | null }
@@ -19,7 +20,7 @@ const GAYA: Record<Status, string> = {
 const SUMBER = ['Referral rider', 'Walk-in', 'Grup WhatsApp', 'Media sosial', 'Job board', 'Lainnya']
 const hari = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 864e5
 
-export function Rekrutmen({ me }: { me: Me }) {
+function DaftarKandidat({ me }: { me: Me }) {
   const bisaUbah = me.peran === 'super_admin' || me.peran === 'recruiter'
   const kb = useRows<KebutuhanDs>(() => sb.rpc('ds_rekrut'), [])
   const kd = useRows<Kandidat>(() => sb.from('kandidat').select('*').order('dibuat', { ascending: false }).limit(2000), [])
@@ -281,6 +282,21 @@ export function Rekrutmen({ me }: { me: Me }) {
         </div>
       )}
       {sumberTerbaik && <p className="text-xs text-muted-foreground">Sumber yang paling banyak jadi rider: <b className="text-foreground">{sumberTerbaik[0]}</b> ({sumberTerbaik[1]} orang).</p>}
+    </div>
+  )
+}
+
+// Dua bagian: daftar kandidat, dan ringkasan angka (direkrut, betul-betul aktif, turnover, retensi, kualitas sumber)
+export function Rekrutmen({ me }: { me: Me }) {
+  const [bagian, setBagian] = useState<'kandidat' | 'ringkasan'>('kandidat')
+  return (
+    <div>
+      <div className="mb-4 flex gap-1.5">
+        {([['kandidat', 'Kandidat'], ['ringkasan', 'Ringkasan']] as const).map(([k, l]) => (
+          <button key={k} type="button" className={`tab ${bagian === k ? 'tab-on' : ''}`} onClick={() => setBagian(k)}>{l}</button>
+        ))}
+      </div>
+      {bagian === 'kandidat' ? <DaftarKandidat me={me} /> : <AngkaRekrutmen me={me} />}
     </div>
   )
 }

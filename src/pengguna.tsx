@@ -1,6 +1,7 @@
 // Pengguna: semua orang di sistem dikelompokkan menurut peran (Super-admin, Arcon, Captain, Rider). Hanya Super-admin.
 import { useState } from 'react'
 import { Network, ShieldCheck, UserCog, UserPlus, Users } from 'lucide-react'
+import { DialogBerhenti } from './berhenti'
 import { sb, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, usePage, Pagination, type Ds, type Peran, type Rider } from './lib'
 
 const PERAN: Record<Peran, { label: string; gaya: string; ket: string }> = {
@@ -31,7 +32,9 @@ export function Pengguna() {
     .sort((a, b) => URUT.indexOf(a.peran) - URUT.indexOf(b.peran) || a.nama.localeCompare(b.nama))
   const pg = usePage(tampil, [f, q])
 
+  const [berhenti, setBerhenti] = useState<Rider | null>(null) // rider yang dinonaktifkan wajib beralasan (angka turnover)
   const ubahStatus = async (r: Rider) => {
+    if (r.status === 'aktif' && r.peran === 'rider') return setBerhenti(r)
     const ke = r.status === 'aktif' ? 'nonaktif' : 'aktif'
     const nonaktif = ke === 'nonaktif'
     const yakin = await konfirmasi(
@@ -61,6 +64,7 @@ export function Pengguna() {
   return (
     <div>
       <Err msg={rs.err || dsl.err} />
+      {berhenti && <DialogBerhenti rider={berhenti} tutup={() => setBerhenti(null)} selesai={() => { setBerhenti(null); rs.reload() }} />}
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat icon={ShieldCheck} label="Super-admin" value={jml('super_admin')} />
         <Stat icon={Network} label="Arcon" value={jml('arcon')} />
