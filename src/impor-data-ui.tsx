@@ -115,7 +115,7 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Unggah CSV dari templat Excel (Save As → CSV UTF-8, satu sheet per berkas). Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
+        Unggah berkas CSV (UTF-8, satu jenis data per berkas) sesuai templat di atas. Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
         Baris yang dobel dengan data lama atau dengan baris lain di berkas <b>dilewati, bukan ditambahkan lagi</b>; data lama tidak diubah.
       </p>
       <input key={berkas + (laporan ? 'x' : '')} type="file" accept=".csv,text/csv" aria-label={`Berkas CSV ${NAMA[jenis]}`} className="block max-w-full text-sm text-muted-foreground" onChange={(e) => baca(e.target.files?.[0])} />
@@ -207,6 +207,52 @@ function Manual({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () =
   )
 }
 
+// Panduan isi kolom: dibangun dari KOLOM (sumber yang sama dengan pemeriksa), jadi tidak bisa menyimpang dari aturan sistem
+function Panduan({ jenis, ctx }: { jenis: Jenis; ctx: Ctx | null }) {
+  const isi = (k: (typeof KOLOM)[Jenis][number]) => {
+    if (k.opsi) return k.opsi.join(' / ')
+    if (jenis === 'servis' && k.kunci === 'jenis') return JENIS_SERVIS.join(' / ')
+    if (jenis === 'kerusakan' && k.kunci === 'jenis') return JENIS_RUSAK.join(' / ')
+    if (k.tipe === 'tanggal') return 'Tanggal: 2026-10-28 atau 28/10/2026'
+    if (k.tipe === 'angka') return 'Angka bulat, tanpa Rp'
+    return 'Teks bebas'
+  }
+  const daftarDs = ctx?.ds.map((d) => d.nama).join(', ')
+  return (
+    <details open className="rounded-lg border border-border bg-muted/30 text-sm">
+      <summary className="cursor-pointer select-none px-3 py-2 font-semibold">Panduan: cara mengisi {NAMA[jenis].toLowerCase()}</summary>
+      <div className="space-y-3 border-t border-border px-3 py-3">
+        <ol className="list-decimal space-y-0.5 pl-5 text-muted-foreground">
+          <li>Klik <b className="text-foreground">Unduh templat CSV</b>, buka di Excel atau Google Sheets.</li>
+          <li>Isi mulai baris ke-2 dan <b className="text-foreground">hapus baris contoh</b>. Jangan ubah nama kolom di baris pertama.</li>
+          <li>Simpan sebagai CSV, lalu unggah di bawah. Cek pratinjau, baru klik Tambahkan.</li>
+        </ol>
+        <div className="overflow-x-auto">
+          <table className="tbl">
+            <thead><tr><th>Kolom</th><th>Wajib?</th><th>Isi yang diterima</th><th>Contoh</th><th>Catatan</th></tr></thead>
+            <tbody>
+              {KOLOM[jenis].map((k) => (
+                <tr key={k.kunci}>
+                  <td className="whitespace-nowrap font-semibold">{k.judul}</td>
+                  <td>{k.wajib ? <span className="badge bg-danger/10 text-danger">Wajib</span> : <span className="text-muted-foreground">Opsional</span>}</td>
+                  <td>{isi(k)}</td>
+                  <td className="font-mono text-xs">{k.contoh || '—'}</td>
+                  <td className="text-muted-foreground">{k.bantuan ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+          <li>Nomor HP: di Excel, ubah format kolom ke <b className="text-foreground">Text</b> sebelum mengetik, supaya angka 0 di depan tidak hilang.</li>
+          <li>Nama DS harus persis seperti di Kelola DS{daftarDs ? <>. DS yang ada: <span className="text-foreground">{daftarDs}</span></> : ''}.</li>
+          <li>Baris yang dobel dilewati dan dilaporkan; data lama tidak pernah diubah.</li>
+        </ul>
+      </div>
+    </details>
+  )
+}
+
 function Panel({ jenis, batas }: { jenis: Jenis; batas?: Ds[] }) {
   const { ctx, galat, muatUlang } = useCtx(jenis, batas)
   const [jalur, setJalur] = useState<'csv' | 'manual'>('csv')
@@ -218,6 +264,7 @@ function Panel({ jenis, batas }: { jenis: Jenis; batas?: Ds[] }) {
         <button type="button" className={`tab ${jalur === 'manual' ? 'tab-on' : ''}`} onClick={() => setJalur('manual')}><PencilLine size={14} className="mr-1 inline" />Input manual</button>
         <button className="btn2 ml-auto" onClick={() => download(`templat-${jenis}.csv`, toCsv([Object.fromEntries(judul.map((h, i) => [h, contoh[i]]))]))}><Download size={14} />Unduh templat CSV</button>
       </div>
+      <Panduan jenis={jenis} ctx={ctx} />
       {galat ? <p className="text-sm text-danger">Gagal memuat data yang sudah ada: {galat}</p>
         : !ctx ? <p className="text-sm text-muted-foreground">Memuat data yang sudah ada untuk cek dobel…</p>
         : jalur === 'csv' ? <Csv jenis={jenis} ctx={ctx} selesai={muatUlang} /> : <Manual jenis={jenis} ctx={ctx} selesai={muatUlang} />}

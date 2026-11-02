@@ -117,3 +117,9 @@ test('impor ulang berkas yang sama: semua baris yang tadi siap menjadi duplikat 
   c.riders.push(...h1.map((x) => ({ id: x.data.kode_mtr, kode_mtr: x.data.kode_mtr, nama: x.data.nama, no_hp: null, peran: 'rider', status: 'aktif' })))
   assert.deepEqual(st(jalan('rider', tabel, c)), ['duplikat', 'duplikat'])
 })
+
+test('baris contoh bawaan templat ditolak, tidak masuk sebagai data', () => {
+  const t = templatCsv('rider')
+  const h = jalan('rider', [t[0], t[1], ['MTR50', 'Asli']])
+  assert.deepEqual(st(h), ['salah', 'siap'])
+})

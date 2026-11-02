@@ -130,7 +130,7 @@ export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: nu
     if (i >= 0) idx.set(k.kunci, i)
   }
   const hilang = kolom.filter((k) => k.wajib && !idx.has(k.kunci)).map((k) => k.judul)
-  if (hilang.length) return { baris: [], galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat Excel dan jangan ubah nama kolomnya.` }
+  if (hilang.length) return { baris: [], galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat CSV dari tombol "Unduh templat CSV" dan jangan ubah nama kolomnya.` }
   const baris = isi
     .map((c, i) => ({ baris: i + 2, nilai: Object.fromEntries(kolom.map((k) => [k.kunci, rapi(c[idx.get(k.kunci) ?? -1] ?? '')])) as Row }))
     .filter((b) => Object.values(b.nilai).some(Boolean))
@@ -292,10 +292,13 @@ function cekRusak(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
 const PEMERIKSA: Record<Jenis, (v: Row, ctx: Ctx, pakai: Set<string>) => Cek> = { rider: cekRider, motor: cekMotor, kandidat: cekKandidat, ds: cekDs, servis: cekServis, kerusakan: cekRusak }
 
 // Periksa banyak baris sekaligus. Baris yang dobel di dalam file ditandai mulai kemunculan kedua; kemunculan pertama tetap siap.
+// Baris contoh bawaan templat yang lupa dihapus: jangan sampai masuk sebagai data sungguhan
+export const barisContoh = (jenis: Jenis, v: Row) => KOLOM[jenis].every((k) => !k.contoh || (v[k.kunci] ?? '').trim() === k.contoh)
+
 export function periksa(jenis: Jenis, baris: { baris: number; nilai: Row }[], ctx: Ctx): Hasil[] {
   const pakai = new Set<string>()
   return baris.map((b) => {
-    const c = PEMERIKSA[jenis](b.nilai, ctx, pakai)
+    const c = barisContoh(jenis, b.nilai) ? salah('Ini baris contoh dari templat. Hapus baris ini atau ganti dengan data asli') : PEMERIKSA[jenis](b.nilai, ctx, pakai)
     return { baris: b.baris, nilai: b.nilai, status: c.status, alasan: c.alasan, data: c.data ?? null }
   })
 }
