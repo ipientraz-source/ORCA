@@ -6,6 +6,7 @@ import { Download, FileUp, PencilLine } from 'lucide-react'
 import { sb, ok, toast, Field, Select, usePage, Pagination, parseCsv, toCsv, download } from './lib'
 import { JENIS_SERVIS, JENIS_RUSAK } from './armada-lib'
 import { ImporRiwayat } from './rekrutmen-angka'
+import type { Ds } from './lib'
 import { KOLOM, NAMA, TABEL, bacaTabel, ctxKosong, periksa, templatCsv, type Ctx, type Hasil, type Jenis, type Row } from './impor-data.ts'
 
 const URUT: Jenis[] = ['ds', 'rider', 'motor', 'kandidat', 'servis', 'kerusakan']
@@ -21,7 +22,7 @@ async function semua<T>(tabel: string, kolom: string): Promise<T[]> {
   }
 }
 
-function useCtx(jenis: Jenis) {
+function useCtx(jenis: Jenis, batas?: Ds[]) {
   const [ctx, setCtx] = useState<Ctx | null>(null)
   const [galat, setGalat] = useState('')
   const [n, setN] = useState(0)
@@ -40,13 +41,18 @@ function useCtx(jenis: Jenis) {
         if (perlu('kandidat')) c.kandidat = await semua('kandidat', 'nama,no_hp')
         if (perlu('servis')) c.servis = await semua('servis_motor', 'motor_id,tanggal,jenis,jenis_lain')
         if (perlu('kerusakan')) c.rusak = await semua('kerusakan_motor', 'motor_id,tanggal,jenis,deskripsi')
+        if (batas) {
+          const boleh = new Set(batas.map((d) => d.id))
+          c.ds = c.ds.filter((d) => boleh.has(d.id))
+          c.wajibDs = true
+        }
         if (!batal) { setCtx(c); setGalat('') }
       } catch (e) {
         if (!batal) setGalat((e as Error).message)
       }
     })()
     return () => { batal = true }
-  }, [jenis, n])
+  }, [jenis, n, batas?.map((d) => d.id).join()]) // eslint-disable-line react-hooks/exhaustive-deps
   return { ctx, galat, muatUlang: useCallback(() => setN((x) => x + 1), []) }
 }
 
@@ -201,8 +207,8 @@ function Manual({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () =
   )
 }
 
-function Panel({ jenis }: { jenis: Jenis }) {
-  const { ctx, galat, muatUlang } = useCtx(jenis)
+function Panel({ jenis, batas }: { jenis: Jenis; batas?: Ds[] }) {
+  const { ctx, galat, muatUlang } = useCtx(jenis, batas)
   const [jalur, setJalur] = useState<'csv' | 'manual'>('csv')
   const [judul, contoh] = templatCsv(jenis)
   return (
@@ -219,8 +225,10 @@ function Panel({ jenis }: { jenis: Jenis }) {
   )
 }
 
-export function ImporData() {
-  const [tab, setTab] = useState<Jenis | 'riwayat'>('ds')
+// terbatas = tampilan Arcon: hanya DS yang dipegang; DS baru, kandidat, dan riwayat rider khusus Super-admin/Recruiter
+export function ImporData({ terbatas }: { terbatas?: Ds[] }) {
+  const tersedia = terbatas ? URUT.filter((j) => ['rider', 'motor', 'servis', 'kerusakan'].includes(j)) : URUT
+  const [tab, setTab] = useState<Jenis | 'riwayat'>(tersedia[0])
   return (
     <div className="space-y-4">
       <div className="card text-sm text-muted-foreground">
@@ -228,15 +236,15 @@ export function ImporData() {
         Urutan yang disarankan: DS → Rider → Motor → Kandidat → Servis dan Kerusakan, karena data belakangan merujuk data sebelumnya.
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {URUT.map((j) => <button key={j} type="button" className={`tab ${tab === j ? 'tab-on' : ''}`} onClick={() => setTab(j)}>{NAMA[j]}</button>)}
-        <button type="button" className={`tab ${tab === 'riwayat' ? 'tab-on' : ''}`} onClick={() => setTab('riwayat')}>Riwayat Rider</button>
+        {tersedia.map((j) => <button key={j} type="button" className={`tab ${tab === j ? 'tab-on' : ''}`} onClick={() => setTab(j)}>{NAMA[j]}</button>)}
+        {!terbatas && <button type="button" className={`tab ${tab === 'riwayat' ? 'tab-on' : ''}`} onClick={() => setTab('riwayat')}>Riwayat Rider</button>}
       </div>
       {tab === 'riwayat' ? (
         <div className="space-y-2">
           <p className="text-sm text-warning">Beda dengan sheet lain: impor riwayat rider MENIMPA riwayat bergabung/berhenti rider yang ada di berkas (ada konfirmasi sebelum jalan).</p>
           <ImporRiwayat onSelesai={() => {}} />
         </div>
-      ) : <Panel key={tab} jenis={tab} />}
+      ) : <Panel key={tab} jenis={tab} batas={terbatas} />}
     </div>
   )
 }

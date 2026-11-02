@@ -20,6 +20,7 @@ export type Ctx = {
   rusak: { motor_id: string; tanggal: string; jenis: string; deskripsi: string }[]
   jenisServis: string[]
   jenisRusak: string[]
+  wajibDs?: boolean // Arcon: rider baru harus langsung masuk ke salah satu DS yang dipegang
 }
 export const ctxKosong = (): Ctx => ({ ds: [], riders: [], kandidat: [], motors: [], servis: [], rusak: [], jenisServis: [], jenisRusak: [] })
 
@@ -152,9 +153,10 @@ function cekRider(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   if (!kode || !v.nama) return salah('Kode MTR dan Nama wajib diisi')
   if (v.status && !sama(v.status, 'aktif')) return salah('Status hanya boleh aktif. Rider berhenti dicatat lewat Data Rider.')
   let ds: string | null = null
+  if (ctx.wajibDs && !v.ds) return salah('DS wajib diisi (rider baru langsung masuk ke DS yang Anda pegang)')
   if (v.ds) {
     const d = dsPersis(ctx, v.ds)
-    if (!d) return salah(`DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
+    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" bukan DS yang Anda pegang` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
     ds = d.id
   }
   if (ctx.riders.some((r) => (r.kode_mtr ?? '').toUpperCase() === kode)) return dobel('Kode MTR sudah terdaftar')

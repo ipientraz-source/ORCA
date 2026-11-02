@@ -51,6 +51,7 @@ const ARCON: Tab[] = [
   { nama: 'Armada', desc: 'Kelola motor listrik, servis rutin, dan kerusakan di DS yang Anda pegang', Icon: Bike, View: Armada },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya dan kunci absensi mingguan di DS Anda', Icon: ClipboardList, View: Rekap },
   { nama: 'Kelola DS', desc: 'Atur kebutuhan rider per shift dan tunjuk Captain untuk DS yang Anda pegang', Icon: Building2, View: ({ dsList }) => <KelolaArcon dsList={dsList} /> },
+  { nama: 'Impor Data', desc: 'Tambah rider, motor, servis, dan kerusakan di DS yang Anda pegang lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
   { nama: 'Rekrutmen', desc: 'Lihat kandidat rider dan kebutuhan rekrut di DS yang Anda pegang', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Riwayat', desc: 'Aktivitas di DS yang Anda pegang lengkap dengan tanggal, jam, dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
