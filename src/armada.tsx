@@ -189,7 +189,7 @@ function FormMotor({ awal, dsBoleh, riders, selesai }: { awal?: Motor; dsBoleh: 
   const [f, setF] = useState({
     kode: awal?.kode_motor ?? '', ds: awal?.ds_id ?? dsBoleh[0]?.id ?? '', plat: awal?.plat_nomor ?? '', merek: awal?.merek ?? '', model: awal?.model ?? '', tahun: awal?.tahun ? String(awal.tahun) : '',
     warna: awal?.warna ?? '', rangka: awal?.no_rangka ?? '', mesin: awal?.no_mesin ?? '', beli: awal?.tanggal_beli ?? '', interval: awal?.interval_servis_hari ? String(awal.interval_servis_hari) : '',
-    berikut: awal?.servis_berikutnya ?? '', pemegang: awal?.dipegang_oleh ?? '', catatan: awal?.catatan ?? '',
+    berikut: awal?.servis_berikutnya ?? '', pemegang: awal?.dipegang_oleh ?? '', catatan: awal?.catatan ?? '', unit: awal?.status_unit ?? 'active',
   })
   const set = (k: keyof typeof f) => (v: string) => setF((s) => ({ ...s, [k]: v }))
   // Tambah motor: cukup DS, plat nomor, dan nomor rangka; sisanya disembunyikan di "data tambahan". Ubah data: semua tampil.
@@ -207,6 +207,8 @@ function FormMotor({ awal, dsBoleh, riders, selesai }: { awal?: Motor; dsBoleh: 
       kode_motor: kode, plat_nomor: f.plat.trim() || null, merek: f.merek.trim() || null, model: f.model.trim() || null, tahun: f.tahun ? angka(f.tahun) : null,
       warna: f.warna.trim() || null, no_rangka: f.rangka.trim() || null, no_mesin: f.mesin.trim() || null, tanggal_beli: f.beli || null,
       interval_servis_hari: f.interval ? angka(f.interval) : null, servis_berikutnya: f.berikut || null, dipegang_oleh: f.pemegang || null, catatan: f.catatan.trim() || null,
+      // dikirim hanya bila berubah, supaya form tetap jalan sebelum migrasi 0033 dijalankan
+      ...(f.unit !== (awal?.status_unit ?? 'active') ? { status_unit: f.unit } : {}),
     }
     const sukses = await ok(awal ? sb.from('motor').update(isi).eq('id', awal.id) : sb.from('motor').insert({ ...isi, ds_id: f.ds }))
     if (!sukses) return
@@ -231,6 +233,9 @@ function FormMotor({ awal, dsBoleh, riders, selesai }: { awal?: Motor; dsBoleh: 
         </Field>
         {input('merek', 'Merek')}
         {input('model', 'Model')}
+        <Field label="Status motor" hint="active = masih dipakai, return = sudah dikembalikan." className={awal || lengkap ? '' : 'hidden'}>
+          <Select value={f.unit} onChange={set('unit')} opsi={[{ value: 'active', label: 'active' }, { value: 'return', label: 'return' }]} />
+        </Field>
         {input('tahun', 'Tahun')}
         {input('warna', 'Warna')}
         {input('rangka', 'Nomor rangka (VIN)')}

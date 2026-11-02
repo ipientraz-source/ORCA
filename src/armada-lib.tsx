@@ -8,6 +8,7 @@ export type Motor = {
   status: 'dipakai' | 'di gudang' | 'perbaikan'; plat_nomor: string | null; merek: string | null; model: string | null
   tahun: number | null; warna: string | null; no_rangka: string | null; no_mesin: string | null; tanggal_beli: string | null
   interval_servis_hari: number | null; servis_terakhir: string | null; servis_berikutnya: string | null; catatan: string | null
+  status_unit?: 'active' | 'return'
 }
 export type Servis = {
   id: string; motor_id: string; tanggal: string; jenis: string; jenis_lain: string | null; bengkel: string | null; kilometer: number | null
