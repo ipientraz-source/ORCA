@@ -211,7 +211,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
 }
 
 // Impor riwayat rider lama (sekali jalan, Super-admin): melengkapi tanggal bergabung dan berhenti supaya turnover bisa dihitung mundur.
-function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
+export function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
   const [baris, setBaris] = useState<Record<string, string | null>[]>([])
   const [hasil, setHasil] = useState<{ diproses: number; tidak_ditemukan: string[]; konflik: string[] } | null>(null)
   const [proses, setProses] = useState(false)

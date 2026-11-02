@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, History, LayoutDashboard, ListChecks, LogOut, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
 import { RiderApp, JadwalSaya } from './rider'
 import { AbsensiSemua, Daily } from './daily'
@@ -13,6 +13,7 @@ import { Armada } from './armada'
 import { Riwayat } from './riwayat'
 import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
+import { ImporData } from './impor-data-ui'
 
 type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = semua DS yang dipegang Arcon
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
@@ -27,6 +28,7 @@ const SUPER: Tab[] = [
   { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur kuota rider, pilih Captain, dan tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
   { nama: 'Armada', desc: 'Data motor listrik, servis rutin, dan laporan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut tiap DS, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
+  { nama: 'Impor Data', desc: 'Tambah DS, rider, motor, kandidat, servis, dan kerusakan lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: () => <ImporData /> },
   { nama: 'Pengguna', desc: 'Semua pengguna menurut peran: Super-admin, Arcon, Captain, Recruiter, dan rider. Hanya Super-admin yang bisa mengubah status Arcon dan Captain.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Riwayat', desc: 'Semua aktivitas di sistem lengkap dengan tanggal, jam, dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
