@@ -364,8 +364,8 @@ function AdminApp({ email }: { email: string }) {
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="hidden md:flex w-64 shrink-0 flex-col sidebar-bg text-sidebar-foreground p-4 sticky top-0 h-screen overflow-hidden">
-        <div className="flex items-center gap-3 px-2 mb-8 mt-1">
+      <aside className="hidden md:flex w-60 shrink-0 flex-col sidebar-bg text-sidebar-foreground p-3 sticky top-0 h-screen overflow-hidden">
+        <div className="flex items-center gap-3 px-2 mb-4 mt-1">
           <Logo small />
           <div>
             <div className="font-brand text-lg leading-none text-white"><span className="font-medium">DASH </span><span className="font-extrabold">ORCA</span></div>
@@ -408,15 +408,15 @@ function AdminApp({ email }: { email: string }) {
           ))}
         </nav>
 
-        <header className="px-4 md:px-8 pt-4 pb-4 md:pt-6 md:pb-5 flex flex-wrap items-center gap-3 md:gap-4 border-b border-border bg-card/80 backdrop-blur md:sticky md:top-0 z-10"><div className="size-12 rounded-2xl bg-primary-soft text-primary flex items-center justify-center"><cur.Icon size={24} /></div>
+        <header className="px-4 md:px-5 py-2.5 flex flex-wrap items-center gap-3 border-b border-border bg-card/80 backdrop-blur md:sticky md:top-0 z-10"><div className="size-9 rounded-xl bg-primary-soft text-primary flex items-center justify-center"><cur.Icon size={18} /></div>
           <div className="flex-1 min-w-60">
-            <h2 className="text-xl md:text-2xl font-bold">{cur.nama}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{cur.desc}</p>
+            <h2 className="text-base md:text-lg font-bold leading-tight">{cur.nama}</h2>
+            <p className="text-xs text-muted-foreground leading-snug">{cur.desc}</p>
           </div>
           <span className="hidden lg:inline font-mono text-xs text-muted-foreground bg-muted rounded-full px-3 py-1.5">{tgl}</span>
           <div className="hidden md:block"><TemaSwitch /></div>
         </header>
-        <main className="px-4 md:px-8 py-6 max-w-6xl">
+        <main className="px-4 md:px-5 py-4">
           {me.peran === 'captain' && <Notif me={me} />}
           <div key={tab} className="rise"><cur.View me={me} ds={ds} dsList={dsList} /></div>
         </main>
