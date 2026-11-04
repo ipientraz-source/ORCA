@@ -231,7 +231,11 @@ function ImportCsv({ done, dsl }: { done: () => void; dsl: Ds[] }) {
           Unduh template
         </button>
       </p>
-      <input type="file" accept=".csv,text/csv" disabled={busy} className="block max-w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-card file:px-3.5 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:border-foreground/50" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
+      <label className={`flex max-w-full items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40 ${busy ? 'opacity-50' : 'cursor-pointer'}`}>
+        <span className="btn2 shrink-0">Pilih file CSV</span>
+        {file || 'Belum ada file dipilih — klik di sini untuk unggah'}
+        <input type="file" accept=".csv,text/csv" disabled={busy} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
+      </label>
       {rows.length > 0 && (
         <div className="mt-4">
           {absensi && (

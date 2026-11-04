@@ -69,7 +69,11 @@ export function ImporMotor({ dsBoleh, motors, bisaBuatDs, selesai, tutup }: { ds
         Kolom yang dibaca: <b>DS Location</b> (atau Lokasi), <b>License Plate</b> (atau Plat), dan <b>VIN</b> (nomor rangka, opsional). Kode motor memakai plat nomor, tahun diambil dari VIN, dan baris "Grand Total" diabaikan.
         Lokasi dicocokkan ke DS yang sudah ada (mis. "Dark Store Alfagift - Galaxy" ke DS GALAXY).
       </p>
-      <input type="file" accept=".csv,text/csv" className="block max-w-full text-sm text-muted-foreground" onChange={(e) => baca(e.target.files?.[0])} />
+      <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
+        <span className="btn2 shrink-0">Pilih file CSV</span>
+        {berkas || 'Belum ada file dipilih — klik di sini untuk unggah'}
+        <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
+      </label>
       {galat && <p className="mt-3 text-sm text-danger">{galat}</p>}
 
       {baris.length > 0 && (

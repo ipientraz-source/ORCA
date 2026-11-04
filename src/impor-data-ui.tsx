@@ -118,7 +118,11 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
         Unggah berkas CSV (UTF-8, satu jenis data per berkas) sesuai templat di atas. Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
         Baris yang dobel dengan data lama atau dengan baris lain di berkas <b>dilewati, bukan ditambahkan lagi</b>; data lama tidak diubah.
       </p>
-      <input key={berkas + (laporan ? 'x' : '')} type="file" accept=".csv,text/csv" aria-label={`Berkas CSV ${NAMA[jenis]}`} className="block max-w-full text-sm text-muted-foreground" onChange={(e) => baca(e.target.files?.[0])} />
+      <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
+        <span className="btn2 shrink-0">Pilih file CSV</span>
+        {berkas || 'Belum ada file dipilih — klik di sini untuk unggah'}
+        <input key={berkas + (laporan ? 'x' : '')} type="file" accept=".csv,text/csv" aria-label={`Berkas CSV ${NAMA[jenis]}`} className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
+      </label>
       {galat && <p className="text-sm text-danger">{galat}</p>}
 
       {laporan && (
