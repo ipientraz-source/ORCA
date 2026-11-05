@@ -28,7 +28,7 @@ const SUPER: Tab[] = [
   { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur kuota rider, pilih Captain, dan tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
   { nama: 'Armada', desc: 'Data motor listrik, servis rutin, dan laporan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut tiap DS, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
-  { nama: 'Impor Data', desc: 'Tambah DS, rider, motor, kandidat, servis, dan kerusakan lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: () => <ImporData /> },
+  { nama: 'Impor Data', desc: 'Tambah data lewat CSV atau input manual', Icon: FileUp, View: () => <ImporData /> },
   { nama: 'Pengguna', desc: 'Semua pengguna menurut peran: Super-admin, Arcon, Captain, Recruiter, dan rider. Hanya Super-admin yang bisa mengubah status Arcon dan Captain.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Riwayat', desc: 'Semua aktivitas di sistem lengkap dengan tanggal, jam, dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
@@ -51,7 +51,7 @@ const ARCON: Tab[] = [
   { nama: 'Armada', desc: 'Kelola motor listrik, servis rutin, dan kerusakan di DS yang Anda pegang', Icon: Bike, View: Armada },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya dan kunci absensi mingguan di DS Anda', Icon: ClipboardList, View: Rekap },
   { nama: 'Kelola DS', desc: 'Atur kebutuhan rider per shift dan tunjuk Captain untuk DS yang Anda pegang', Icon: Building2, View: ({ dsList }) => <KelolaArcon dsList={dsList} /> },
-  { nama: 'Impor Data', desc: 'Tambah rider, motor, servis, dan kerusakan di DS yang Anda pegang lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
+  { nama: 'Impor Data', desc: 'Tambah data DS yang Anda pegang lewat CSV atau input manual', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
   { nama: 'Rekrutmen', desc: 'Lihat kandidat rider dan kebutuhan rekrut di DS yang Anda pegang', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Riwayat', desc: 'Aktivitas di DS yang Anda pegang lengkap dengan tanggal, jam, dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
