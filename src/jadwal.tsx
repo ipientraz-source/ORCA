@@ -149,13 +149,10 @@ function MenuUnduh({ sibuk, kosong, pilih }: { sibuk: string | null; kosong: boo
 // Satu langkah di panel atas: nomor, judul + penjelasan di kiri, kontrol di kanan
 function Langkah({ no, judul, ket, children }: { no: number; judul: string; ket: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
-      <div className="flex items-start gap-3 md:w-64 md:shrink-0">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{no}</span>
-        <div>
-          <div className="text-sm font-semibold leading-6">{judul}</div>
-          <div className="text-xs text-muted-foreground">{ket}</div>
-        </div>
+    <div className="flex flex-col gap-2 px-3 py-2 md:flex-row md:items-center">
+      <div className="flex items-center gap-2 md:w-36 md:shrink-0" title={ket}>
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{no}</span>
+        <div className="text-sm font-semibold">{judul}</div>
       </div>
       <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
     </div>
@@ -420,7 +417,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
 
   return (
     <div>
-      <div className="mb-4 divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
+      <div className="mb-3 divide-y divide-border rounded-xl border border-border bg-card shadow-sm">
         <Langkah no={1} judul="Pilih periode" ket="Rentang tanggal yang mau dijadwalkan.">
           <Select className="w-44" value={mode} onChange={gantiMode} opsi={[{ value: 'minggu', label: 'Per minggu' }, { value: 'dua', label: 'Per 2 minggu' }, { value: 'bulan', label: 'Per bulan' }, { value: 'bebas', label: 'Rentang sendiri' }]} />
           <button className="btn2" onClick={() => pasang(...periodeDi(mode, today(), days.length))}>Hari ini</button>
