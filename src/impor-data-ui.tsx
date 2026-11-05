@@ -82,6 +82,7 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
   const [berkas, setBerkas] = useState('')
   const [baris, setBaris] = useState<{ baris: number; nilai: Row }[]>([])
   const [galat, setGalat] = useState('')
+  const [diabaikan, setDiabaikan] = useState<string[]>([])
   const [sibuk, setSibuk] = useState(false)
   const [laporan, setLaporan] = useState<{ tambah: number; dilewati: Hasil[] } | null>(null)
   const hasil = periksa(jenis, baris, ctx)
@@ -91,7 +92,8 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
   async function baca(f: File | undefined) {
     if (!f) return
     setLaporan(null)
-    const { baris: b, galat: g } = bacaTabel(parseCsv((await f.text()).replace(/^﻿/, '')), jenis)
+    const { baris: b, galat: g, diabaikan: d } = bacaTabel(parseCsv((await f.text()).replace(/^﻿/, '')), jenis)
+    setDiabaikan(d)
     setBerkas(f.name)
     setBaris(b)
     setGalat(g || (b.length ? '' : 'Tidak ada baris data di berkas ini.'))
@@ -129,6 +131,7 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
         <input key={berkas + (laporan ? 'x' : '')} type="file" accept=".csv,text/csv" aria-label={`Berkas CSV ${NAMA[jenis]}`} className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
       </label>
       {galat && <p className="text-sm text-danger">{galat}</p>}
+      {!galat && diabaikan.length > 0 && <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">Kolom ini tidak dikenali dan <b>diabaikan</b>: {diabaikan.join(', ')}. Samakan judul kolom dengan templat bila datanya perlu ikut diimpor.</p>}
 
       {laporan && (
         <div className="space-y-1 rounded-xl border border-border p-3 text-sm">

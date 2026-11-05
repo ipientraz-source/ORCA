@@ -121,7 +121,7 @@ export const TABEL: Record<Jenis, string> = { rider: 'riders', motor: 'motor', k
 export const NAMA: Record<Jenis, string> = { rider: 'Rider', motor: 'Motor', kandidat: 'Kandidat', ds: 'DS', servis: 'Servis Motor', kerusakan: 'Kerusakan Motor' }
 
 // Tabel CSV → baris bernama kunci. Baris yang seluruhnya kosong dibuang. Nomor baris = nomor baris di Excel (judul = 1).
-export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: number; nilai: Row }[]; galat: string } {
+export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: number; nilai: Row }[]; galat: string; diabaikan: string[] } {
   const [h = [], ...isi] = tabel
   const kolom = KOLOM[jenis]
   const idx = new Map<string, number>()
@@ -130,11 +130,12 @@ export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: nu
     if (i >= 0) idx.set(k.kunci, i)
   }
   const hilang = kolom.filter((k) => k.wajib && !idx.has(k.kunci)).map((k) => k.judul)
-  if (hilang.length) return { baris: [], galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat CSV dari tombol "Unduh templat CSV" dan jangan ubah nama kolomnya.` }
+  const diabaikan = h.filter((x, i) => x.trim() && ![...idx.values()].includes(i)).map((x) => x.trim())
+  if (hilang.length) return { baris: [], diabaikan, galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat CSV dari tombol "Unduh templat CSV" dan jangan ubah nama kolomnya.` }
   const baris = isi
     .map((c, i) => ({ baris: i + 2, nilai: Object.fromEntries(kolom.map((k) => [k.kunci, rapi(c[idx.get(k.kunci) ?? -1] ?? '')])) as Row }))
     .filter((b) => Object.values(b.nilai).some(Boolean))
-  return { baris, galat: '' }
+  return { baris, galat: '', diabaikan }
 }
 
 // ───────── pemeriksa per jenis ─────────
@@ -153,11 +154,8 @@ function cekRider(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   if (!kode || !v.nama) return salah('Kode MTR dan Nama wajib diisi')
   if (v.status && !sama(v.status, 'aktif')) return salah('Status hanya boleh aktif. Rider berhenti dicatat lewat Data Rider.')
   let ds: string | null = null
-  if (ctx.wajibDs && !v.ds) {
-    // Arcon yang hanya memegang satu DS: kolom DS kosong = DS itu
-    if (ctx.ds.length !== 1) return salah(`DS wajib diisi, pilih salah satu: ${ctx.ds.map((d) => d.nama).join(', ')}`)
-    ds = ctx.ds[0].id
-  } else if (v.ds) {
+  if (ctx.wajibDs && !v.ds) return salah(`DS wajib diisi (kolom bernama "DS"), pilih salah satu: ${ctx.ds.map((d) => d.nama).join(', ')}`)
+  if (v.ds) {
     const d = dsPersis(ctx, v.ds)
     if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" tidak ada di DS yang Anda pegang (${ctx.ds.map((d) => d.nama).join(', ')}). Bila ini DS baru, minta Super-admin membuatnya dulu di Kelola DS` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
     ds = d.id

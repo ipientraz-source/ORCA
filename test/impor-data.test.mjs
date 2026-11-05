@@ -124,14 +124,12 @@ test('baris contoh bawaan templat ditolak, tidak masuk sebagai data', () => {
   assert.deepEqual(st(h), ['salah', 'siap'])
 })
 
-test('arcon (wajibDs): DS kosong dipakai bila hanya pegang satu DS; bila lebih, ditolak dengan daftar DS', () => {
-  const tabel = [['Kode MTR', 'Nama', 'DS'], ['MTR60', 'A', ''], ['MTR61', 'B', 'DS LAIN']]
-  const satu = { ...ctx(), wajibDs: true, ds: [{ id: 'd1', nama: 'DS GALAXY' }] }
-  const h = jalan('rider', tabel, satu)
-  assert.deepEqual(st(h), ['siap', 'salah'])
-  assert.equal(h[0].data.ds_id, 'd1')
-  const dua = { ...satu, ds: [...satu.ds, { id: 'd2', nama: 'DS GOWA' }] }
-  const h2 = jalan('rider', [tabel[0], tabel[1]], dua)
-  assert.equal(h2[0].status, 'salah')
-  assert.match(h2[0].alasan, /DS GALAXY, DS GOWA/)
+test('arcon (wajibDs): DS kosong atau tak terdaftar ditolak (tidak diisi diam-diam), kolom tak dikenali dilaporkan', () => {
+  const c = { ...ctx(), wajibDs: true, ds: [{ id: 'd1', nama: 'DS GALAXY' }] }
+  const h = jalan('rider', [['Kode MTR', 'Nama', 'DS'], ['MTR60', 'A', ''], ['MTR61', 'B', 'DS BARU XYZ'], ['MTR62', 'C', 'DS GALAXY']], c)
+  assert.deepEqual(st(h), ['salah', 'salah', 'siap'])
+  assert.match(h[0].alasan, /DS GALAXY/)
+  assert.match(h[1].alasan, /Super-admin/)
+  const { diabaikan } = bacaTabel([['Kode MTR', 'Nama', 'Lokasi Dark Store'], ['MTR1', 'A', 'X']], 'rider')
+  assert.deepEqual(diabaikan, ['Lokasi Dark Store'])
 })
