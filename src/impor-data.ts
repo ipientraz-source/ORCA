@@ -159,7 +159,7 @@ function cekRider(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
     ds = ctx.ds[0].id
   } else if (v.ds) {
     const d = dsPersis(ctx, v.ds)
-    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" bukan DS yang Anda pegang` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
+    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" tidak ada di DS yang Anda pegang (${ctx.ds.map((d) => d.nama).join(', ')}). Bila ini DS baru, minta Super-admin membuatnya dulu di Kelola DS` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
     ds = d.id
   }
   if (ctx.riders.some((r) => (r.kode_mtr ?? '').toUpperCase() === kode)) return dobel('Kode MTR sudah terdaftar')
