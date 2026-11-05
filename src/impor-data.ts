@@ -121,7 +121,7 @@ export const TABEL: Record<Jenis, string> = { rider: 'riders', motor: 'motor', k
 export const NAMA: Record<Jenis, string> = { rider: 'Rider', motor: 'Motor', kandidat: 'Kandidat', ds: 'DS', servis: 'Servis Motor', kerusakan: 'Kerusakan Motor' }
 
 // Tabel CSV → baris bernama kunci. Baris yang seluruhnya kosong dibuang. Nomor baris = nomor baris di Excel (judul = 1).
-export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: number; nilai: Row }[]; galat: string } {
+export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: number; nilai: Row }[]; galat: string; diabaikan: string[] } {
   const [h = [], ...isi] = tabel
   const kolom = KOLOM[jenis]
   const idx = new Map<string, number>()
@@ -130,11 +130,12 @@ export function bacaTabel(tabel: string[][], jenis: Jenis): { baris: { baris: nu
     if (i >= 0) idx.set(k.kunci, i)
   }
   const hilang = kolom.filter((k) => k.wajib && !idx.has(k.kunci)).map((k) => k.judul)
-  if (hilang.length) return { baris: [], galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat Excel dan jangan ubah nama kolomnya.` }
+  const diabaikan = h.filter((x, i) => x.trim() && ![...idx.values()].includes(i)).map((x) => x.trim())
+  if (hilang.length) return { baris: [], diabaikan, galat: `Kolom wajib tidak ditemukan di baris judul: ${hilang.join(', ')}. Pakai templat CSV dari tombol "Unduh templat CSV" dan jangan ubah nama kolomnya.` }
   const baris = isi
     .map((c, i) => ({ baris: i + 2, nilai: Object.fromEntries(kolom.map((k) => [k.kunci, rapi(c[idx.get(k.kunci) ?? -1] ?? '')])) as Row }))
     .filter((b) => Object.values(b.nilai).some(Boolean))
-  return { baris, galat: '' }
+  return { baris, galat: '', diabaikan }
 }
 
 // ───────── pemeriksa per jenis ─────────
@@ -153,10 +154,10 @@ function cekRider(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   if (!kode || !v.nama) return salah('Kode MTR dan Nama wajib diisi')
   if (v.status && !sama(v.status, 'aktif')) return salah('Status hanya boleh aktif. Rider berhenti dicatat lewat Data Rider.')
   let ds: string | null = null
-  if (ctx.wajibDs && !v.ds) return salah('DS wajib diisi (rider baru langsung masuk ke DS yang Anda pegang)')
+  if (ctx.wajibDs && !v.ds) return salah(`DS wajib diisi (kolom bernama "DS"), pilih salah satu: ${ctx.ds.map((d) => d.nama).join(', ')}`)
   if (v.ds) {
     const d = dsPersis(ctx, v.ds)
-    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" bukan DS yang Anda pegang` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
+    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" tidak ada di DS yang Anda pegang (${ctx.ds.map((d) => d.nama).join(', ')}). Bila ini DS baru, minta Super-admin membuatnya dulu di Kelola DS` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
     ds = d.id
   }
   if (ctx.riders.some((r) => (r.kode_mtr ?? '').toUpperCase() === kode)) return dobel('Kode MTR sudah terdaftar')
@@ -292,10 +293,13 @@ function cekRusak(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
 const PEMERIKSA: Record<Jenis, (v: Row, ctx: Ctx, pakai: Set<string>) => Cek> = { rider: cekRider, motor: cekMotor, kandidat: cekKandidat, ds: cekDs, servis: cekServis, kerusakan: cekRusak }
 
 // Periksa banyak baris sekaligus. Baris yang dobel di dalam file ditandai mulai kemunculan kedua; kemunculan pertama tetap siap.
+// Baris contoh bawaan templat yang lupa dihapus: jangan sampai masuk sebagai data sungguhan
+export const barisContoh = (jenis: Jenis, v: Row) => KOLOM[jenis].every((k) => !k.contoh || (v[k.kunci] ?? '').trim() === k.contoh)
+
 export function periksa(jenis: Jenis, baris: { baris: number; nilai: Row }[], ctx: Ctx): Hasil[] {
   const pakai = new Set<string>()
   return baris.map((b) => {
-    const c = PEMERIKSA[jenis](b.nilai, ctx, pakai)
+    const c = barisContoh(jenis, b.nilai) ? salah('Ini baris contoh dari templat. Hapus baris ini atau ganti dengan data asli') : PEMERIKSA[jenis](b.nilai, ctx, pakai)
     return { baris: b.baris, nilai: b.nilai, status: c.status, alasan: c.alasan, data: c.data ?? null }
   })
 }

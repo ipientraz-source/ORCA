@@ -117,3 +117,19 @@ test('impor ulang berkas yang sama: semua baris yang tadi siap menjadi duplikat 
   c.riders.push(...h1.map((x) => ({ id: x.data.kode_mtr, kode_mtr: x.data.kode_mtr, nama: x.data.nama, no_hp: null, peran: 'rider', status: 'aktif' })))
   assert.deepEqual(st(jalan('rider', tabel, c)), ['duplikat', 'duplikat'])
 })
+
+test('baris contoh bawaan templat ditolak, tidak masuk sebagai data', () => {
+  const t = templatCsv('rider')
+  const h = jalan('rider', [t[0], t[1], ['MTR50', 'Asli']])
+  assert.deepEqual(st(h), ['salah', 'siap'])
+})
+
+test('arcon (wajibDs): DS kosong atau tak terdaftar ditolak (tidak diisi diam-diam), kolom tak dikenali dilaporkan', () => {
+  const c = { ...ctx(), wajibDs: true, ds: [{ id: 'd1', nama: 'DS GALAXY' }] }
+  const h = jalan('rider', [['Kode MTR', 'Nama', 'DS'], ['MTR60', 'A', ''], ['MTR61', 'B', 'DS BARU XYZ'], ['MTR62', 'C', 'DS GALAXY']], c)
+  assert.deepEqual(st(h), ['salah', 'salah', 'siap'])
+  assert.match(h[0].alasan, /DS GALAXY/)
+  assert.match(h[1].alasan, /Super-admin/)
+  const { diabaikan } = bacaTabel([['Kode MTR', 'Nama', 'Lokasi Dark Store'], ['MTR1', 'A', 'X']], 'rider')
+  assert.deepEqual(diabaikan, ['Lokasi Dark Store'])
+})

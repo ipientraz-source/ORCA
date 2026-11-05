@@ -213,6 +213,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
 // Impor riwayat rider lama (sekali jalan, Super-admin): melengkapi tanggal bergabung dan berhenti supaya turnover bisa dihitung mundur.
 export function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
   const [baris, setBaris] = useState<Record<string, string | null>[]>([])
+  const [berkas, setBerkas] = useState('')
   const [hasil, setHasil] = useState<{ diproses: number; tidak_ditemukan: string[]; konflik: string[] } | null>(null)
   const [proses, setProses] = useState(false)
 
@@ -228,6 +229,7 @@ export function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
   }
   const baca = async (f: File) => {
     setHasil(null)
+    setBerkas(f.name)
     try {
       const [kop, ...isi] = parseCsv(await f.text()).filter((b) => b.some((c) => c.trim()))
       const h = kop.map((x) => x.trim().toLowerCase())
@@ -258,7 +260,11 @@ export function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
         Supaya turnover bisa dihitung mundur, unggah berkas CSV dengan kolom: <b>Kode MTR</b>, <b>Tanggal bergabung</b>, <b>Tanggal berhenti</b> (kosongkan bila masih aktif), <b>Kategori</b> (mundur / diberhentikan / kontrak), dan <b>Alasan</b>.
         Tanggal berformat YYYY-MM-DD atau DD/MM/YYYY. Tanggal berhenti hanya untuk rider yang sekarang nonaktif. Datanya bisa diambil dari Pulse (join date) atau Excel.
       </p>
-      <input type="file" accept=".csv,text/csv" aria-label="Berkas riwayat rider" onChange={(e) => e.target.files?.[0] && baca(e.target.files[0])} />
+      <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
+        <span className="btn2 shrink-0">Pilih file CSV</span>
+        {berkas || 'Belum ada file dipilih — klik di sini untuk unggah'}
+        <input type="file" accept=".csv,text/csv" aria-label="Berkas riwayat rider" className="hidden" onChange={(e) => e.target.files?.[0] && baca(e.target.files[0])} />
+      </label>
       {baris.length > 0 && (
         <div className="mt-3 flex items-center gap-3">
           <span className="text-sm">{baris.length} baris siap diimpor.</span>
