@@ -176,9 +176,9 @@ h1, h2, h3 { font-family: var(--font-display); }
   .btn-lg { @apply min-h-11 px-5 text-base; }
   .inp { @apply border border-input bg-card text-foreground px-2.5 py-1.5 text-sm placeholder:text-muted-foreground/70 transition-colors focus:outline-none focus:border-primary focus:ring-[length:var(--ring-width)] focus:ring-ring/25 disabled:opacity-50; border-radius: var(--control-radius); }
   .card { @apply bg-card border border-border p-4 mb-3; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
-  .stat { @apply bg-card border border-border p-4 transition duration-200 hover:-translate-y-0.5 hover:border-primary/30; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+  .stat { @apply bg-card border border-border p-3 transition duration-200 hover:-translate-y-0.5 hover:border-primary/30; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
   .stat:hover { box-shadow: var(--card-shadow-hover); }
-  .stat b { @apply block font-mono text-2xl font-bold text-foreground; }
+  .stat b { @apply block font-mono text-xl font-bold leading-tight text-foreground; }
   .stat span { @apply text-xs text-muted-foreground; }
   .lbl { @apply block font-mono text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1; }
   .tbl { @apply w-full text-sm border-collapse bg-card; }

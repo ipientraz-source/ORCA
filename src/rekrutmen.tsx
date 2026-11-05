@@ -123,7 +123,7 @@ function DaftarKandidat({ me }: { me: Me }) {
       <div className="card !p-0 overflow-hidden">
         <div className="p-4 pb-2">
           <div className="lbl !mb-0">Kebutuhan rekrut per DS</div>
-          <p className="text-xs text-muted-foreground">Dibutuhkan = kuota harian × 7/6, karena tiap rider minimal 1 hari libur per minggu. "Perlu dicari" = kekurangan yang belum tertutup kandidat yang sedang diproses.</p>
+          <p className="text-xs text-muted-foreground">Dibutuhkan = kuota harian × 7/6 (rider libur min. 1 hari/minggu). Perlu dicari = kurang yang belum tertutup kandidat.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="tbl">

@@ -226,7 +226,7 @@ function ImportCsv({ done, dsl }: { done: () => void; dsl: Ds[] }) {
     <div className="card">
       <b className="block mb-1">Import CSV rider</b>
       <p className="text-xs text-muted-foreground mb-3">
-        Wajib: kode MTR dan nama. Opsional: no_hp, ds, status (aktif / nonaktif). Nama kolom fleksibel (mis. <i>employee_id</i>, <i>full_name</i>, <i>kode mitra</i> juga dikenali). Nama DS harus persis sama dengan DS yang sudah dibuat. Rider yang sudah ada di-update, yang baru ditambah, yang tidak ada di file dibiarkan. File absensi dari sistem (ada kolom Kode Mitra dan Pitstop Name) juga bisa langsung diunggah: rider diambil otomatis tanpa NIK, selfie, dan GPS.{' '}
+        Wajib: kode MTR, nama. Opsional: no_hp, ds, status. Rider lama di-update, yang baru ditambah. Nama DS harus persis seperti di Kelola DS. File absensi sistem juga dikenali.{' '}
         <button className="underline" onClick={() => download('template-rider.csv', 'kode_mtr,nama,no_hp,ds,status\r\nMTR001,Budi,0812xxxx,Galaxy,aktif')}>
           Unduh template
         </button>
