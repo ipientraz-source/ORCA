@@ -118,9 +118,14 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
         Unggah berkas CSV (UTF-8, satu jenis data per berkas) sesuai templat di atas. Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
         Baris yang dobel dengan data lama atau dengan baris lain di berkas <b>dilewati, bukan ditambahkan lagi</b>; data lama tidak diubah.
       </p>
-      <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
-        <span className="btn2 shrink-0">Pilih file CSV</span>
-        {berkas || 'Belum ada file dipilih — klik di sini untuk unggah'}
+      <label
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => { e.preventDefault(); baca(e.dataTransfer.files?.[0]) }}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors hover:bg-primary-soft/60 ${berkas ? 'border-success/60 bg-success/5' : 'border-primary/60 bg-primary-soft/30'}`}
+      >
+        <FileUp size={28} className={berkas ? 'text-success' : 'text-primary'} />
+        <span className="text-sm font-semibold text-foreground">{berkas ? `Terpilih: ${berkas}` : `UNGGAH CSV ${NAMA[jenis].toUpperCase()} DI SINI`}</span>
+        <span className="text-xs text-muted-foreground">{berkas ? 'Klik untuk mengganti berkas' : 'Klik area ini atau seret berkas .csv ke sini'}</span>
         <input key={berkas + (laporan ? 'x' : '')} type="file" accept=".csv,text/csv" aria-label={`Berkas CSV ${NAMA[jenis]}`} className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
       </label>
       {galat && <p className="text-sm text-danger">{galat}</p>}
@@ -223,8 +228,8 @@ function Panduan({ jenis, ctx }: { jenis: Jenis; ctx: Ctx | null }) {
   }
   const daftarDs = ctx?.ds.map((d) => d.nama).join(', ')
   return (
-    <details open className="rounded-lg border border-border bg-muted/30 text-sm">
-      <summary className="cursor-pointer select-none px-3 py-2 font-semibold">Panduan: cara mengisi {NAMA[jenis].toLowerCase()}</summary>
+    <details className="rounded-lg border border-border bg-muted/30 text-sm">
+      <summary className="cursor-pointer select-none px-3 py-2 font-semibold">Panduan: cara mengisi {NAMA[jenis].toLowerCase()} <span className="font-normal text-muted-foreground">(klik untuk buka)</span></summary>
       <div className="space-y-3 border-t border-border px-3 py-3">
         <ol className="list-decimal space-y-0.5 pl-5 text-muted-foreground">
           <li>Klik <b className="text-foreground">Unduh templat CSV</b>, buka di Excel atau Google Sheets.</li>
