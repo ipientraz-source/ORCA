@@ -123,3 +123,15 @@ test('baris contoh bawaan templat ditolak, tidak masuk sebagai data', () => {
   const h = jalan('rider', [t[0], t[1], ['MTR50', 'Asli']])
   assert.deepEqual(st(h), ['salah', 'siap'])
 })
+
+test('arcon (wajibDs): DS kosong dipakai bila hanya pegang satu DS; bila lebih, ditolak dengan daftar DS', () => {
+  const tabel = [['Kode MTR', 'Nama', 'DS'], ['MTR60', 'A', ''], ['MTR61', 'B', 'DS LAIN']]
+  const satu = { ...ctx(), wajibDs: true, ds: [{ id: 'd1', nama: 'DS GALAXY' }] }
+  const h = jalan('rider', tabel, satu)
+  assert.deepEqual(st(h), ['siap', 'salah'])
+  assert.equal(h[0].data.ds_id, 'd1')
+  const dua = { ...satu, ds: [...satu.ds, { id: 'd2', nama: 'DS GOWA' }] }
+  const h2 = jalan('rider', [tabel[0], tabel[1]], dua)
+  assert.equal(h2[0].status, 'salah')
+  assert.match(h2[0].alasan, /DS GALAXY, DS GOWA/)
+})
