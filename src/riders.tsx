@@ -37,6 +37,12 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
   const setDs = async (r: Rider, ds_id: string) => {
     if (await ok(sb.from('riders').update({ ds_id: ds_id || null }).eq('id', r.id))) rs.reload()
   }
+  // Arcon: pindah antar DS yang dipegang lewat fungsi database (ubah isian langsung ditolak penjaga)
+  const pindah = async (r: Rider, ke: string) => {
+    if (!ke || ke === r.ds_id) return
+    if (!(await konfirmasi(`${r.nama} dipindah ke ${dsNama(ke)}. Jadwal ke depan di DS lama dihapus dan motor yang dipegang dikembalikan ke gudang.`, { judul: 'Pindahkan rider?', ya: 'Pindahkan' }))) return
+    if (await ok(sb.rpc('pindah_rider', { p_rider: r.id, p_ds: ke }))) rs.reload()
+  }
 
   return (
     <div>
@@ -76,6 +82,8 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
                 <td>
                   {sup ? (
                     <Select className="w-52" value={r.ds_id ?? ''} onChange={(v) => setDs(r, v)} opsi={[{ value: '', label: '— belum punya DS —' }, ...dsl.rows.map((d) => ({ value: d.id, label: d.nama }))]} />
+                  ) : me.peran === 'arcon' && r.peran === 'rider' && r.ds_id && dsList.length > 1 ? (
+                    <Select className="w-52" value={r.ds_id} onChange={(v) => pindah(r, v)} opsi={dsList.map((d) => ({ value: d.id, label: d.nama }))} />
                   ) : (
                     dsNama(r.ds_id)
                   )}

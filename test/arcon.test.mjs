@@ -451,3 +451,36 @@ test('Melepas Arcon dari semua DS menutup aksesnya tapi orangnya tetap Arcon; an
     await assert.rejects(q('select pilih_arcon($1::uuid, $2::uuid)', [GOWA, R_AA]), /permission denied/)
   })
 })
+
+test('Arcon memindahkan rider antar DS yang dipegang: jadwal ke depan dihapus, motor dilepas, tercatat; DS di luar pegangan, Captain, dan non-rider ditolak', async () => {
+  const [D1, D2, D3, AP, RP, CP, MP] = [id(190), id(191), id(192), id(193), id(194), id(195), id(196)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang) values ('${D1}', 'DS Pindah 1', 1, 1), ('${D2}', 'DS Pindah 2', 1, 1), ('${D3}', 'DS Pindah 3', 1, 1);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${AP}', null, 'Arcon Pindah', null, 'arcon', 'arcon-pindah@test.local', 'aktif'),
+      ('${RP}', 'MTR-RP', 'Rider Pindah', '${D1}', 'rider', null, 'aktif'),
+      ('${CP}', 'MTR-CP', 'Captain Pindah', '${D1}', 'captain', 'cap-pindah@test.local', 'aktif');
+    update ds set arcon_id = '${AP}' where id in ('${D1}', '${D2}');
+    update ds set captain_id = '${CP}' where id = '${D1}';
+    insert into jadwal (tanggal, rider_id, shift, ds_id) values
+      (today_wib() - 2, '${RP}', 'pagi', '${D1}'), (today_wib() + 1, '${RP}', 'pagi', '${D1}');
+    insert into motor (id, kode_motor, ds_id, dipegang_oleh) values ('${MP}', 'EV-UJI-PINDAH', '${D1}', '${RP}');`)
+  await as('cap-pindah@test.local', async () => await assert.rejects(q('select pindah_rider($1, $2)', [RP, D2]), /Arcon hanya bisa/)) // Captain tidak
+  await as('arcon-pindah@test.local', async () => {
+    await assert.rejects(q('select pindah_rider($1, $2)', [RP, D3]), /Arcon hanya bisa/) // DS tujuan tidak dipegang
+    await assert.rejects(q('select pindah_rider($1, null)', [RP]), /Arcon hanya bisa/) // tanpa DS tujuan
+    await assert.rejects(q('select pindah_rider($1, $2)', [CP, D2]), /Hanya rider/) // Captain bukan rider
+    await assert.rejects(q('select pindah_rider($1, $2)', [RP, D1]), /sudah ada di DS itu/)
+    await assert.rejects(q('update riders set ds_id = $2 where id = $1', [RP, D2]), /hanya boleh mengubah status/) // ubah langsung tetap dilarang
+    await q('select pindah_rider($1, $2)', [RP, D2])
+  })
+  assert.equal((await q('select ds_id from riders where id = $1', [RP]))[0].ds_id, D2)
+  assert.equal((await q('select count(*)::int n from jadwal where rider_id = $1', [RP]))[0].n, 1) // yang lampau tetap
+  assert.equal((await q('select dipegang_oleh from motor where id = $1', [MP]))[0].dipegang_oleh, null)
+  assert.equal((await q('select count(*)::int n from perpindahan_rider where rider_id = $1 and dari_ds = $2 and ke_ds = $3', [RP, D1, D2]))[0].n, 1)
+  assert.equal((await q("select detail from log_aktivitas where aksi = 'pindah rider' and captain_id = $1", [AP]))[0].detail, 'Rider Pindah: DS Pindah 1 -> DS Pindah 2, 1 jadwal ke depan dihapus, 1 motor dilepas')
+  assert.equal((await q('select count(*)::int n from notifikasi where penerima_id = $1', [CP]))[0].n, 1) // Captain lama diberi tahu
+  await as('arcon-pindah@test.local', async () => await assert.rejects(q('select pindah_rider($1, $2)', [RP, D3]), /Arcon hanya bisa/))
+  await as(S, async () => await q('select pindah_rider($1, $2)', [RP, D3])) // Super-admin: DS mana pun
+  assert.equal((await q('select ds_id from riders where id = $1', [RP]))[0].ds_id, D3)
+})
