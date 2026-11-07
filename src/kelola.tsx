@@ -39,7 +39,7 @@ export function Kelola() {
 
       <div className="mb-3 flex flex-wrap items-start gap-3">
         <p className="min-w-60 flex-1 text-sm text-muted-foreground">
-          Urutan menyiapkan DS: <b className="text-foreground">1.</b> buat DS, <b className="text-foreground">2.</b> isi kuota rider per shift, <b className="text-foreground">3.</b> pilih Captain. Buat DS lebih dulu sebelum import rider supaya nama DS di file CSV cocok.
+          Urutan: buat DS → isi kuota → pilih Captain. Buat DS sebelum impor rider.
         </p>
         <button type="button" className={tambah ? 'btn2' : 'btn'} onClick={() => setTambah(!tambah)}>{tambah ? <X size={16} /> : <Plus size={16} />}{tambah ? 'Batal' : 'Buat DS'}</button>
       </div>

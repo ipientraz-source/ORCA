@@ -41,8 +41,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Persen kebutuhan client yang benar-benar terpenuhi: rider hadir, tukar, dan pengganti dibagi kebutuhan hari itu. Kelebihan rider tidak menaikkan angka (maksimal 100% per shift).
-        Shift yang belum dilaporkan Captain tidak dihitung 0%, tetapi ditandai.
+        Kebutuhan client yang terpenuhi: (hadir + tukar + pengganti) ÷ kebutuhan, maks. 100% per shift. Shift yang belum dilaporkan ditandai, bukan 0%.
       </p>
       <Err msg={f.err} />
       {!harian.length ? (

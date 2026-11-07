@@ -228,8 +228,8 @@ export function TemaSwitch() {
 export function Stat({ icon: Icon, label, value, tone = 'brand' }: { icon: LucideIcon; label: string; value: ReactNode; tone?: 'brand' | 'red' | 'zinc' }) {
   const warna = { brand: 'bg-primary-soft text-primary', red: 'bg-danger-soft text-danger', zinc: 'bg-muted text-muted-foreground' }[tone]
   return (
-    <div className="stat flex items-center gap-3 !p-3 sm:gap-4 sm:!p-4">
-      <div className={`size-10 shrink-0 rounded-xl flex items-center justify-center sm:size-12 ${warna}`}><Icon size={22} /></div>
+    <div className="stat flex items-center gap-3 !p-2.5 sm:!px-3">
+      <div className={`size-9 shrink-0 rounded-lg flex items-center justify-center ${warna}`}><Icon size={18} /></div>
       <div className="min-w-0">
         <b className={tone === 'red' ? '!text-danger' : ''}>{value}</b>
         <span>{label}</span>
