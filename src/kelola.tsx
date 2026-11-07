@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, Plus, Search, X } from 'lucide-react'
-import { sb, useRows, ok, toast, konfirmasi, Err, Field, RiderPick, Select, type Ds, type Rider } from './lib'
+import { sb, useRows, ok, toast, konfirmasi, Err, Field, RiderPick, Select, type Ds, type Me, type Rider } from './lib'
+import { AntreanPengajuan, PengajuanArcon } from './pengajuan'
 
 // Buat / ganti password akun login lewat edge function (service role ada di server, bukan di browser)
 async function buatAkun(email: string, password: string) {
@@ -36,6 +37,7 @@ export function Kelola() {
   return (
     <div>
       <Err msg={dsl.err || rs.err} />
+      <AntreanPengajuan onSelesai={() => { dsl.reload(); rs.reload() }} />
 
       <div className="mb-3 flex flex-wrap items-start gap-3">
         <p className="min-w-60 flex-1 text-sm text-muted-foreground">
@@ -266,7 +268,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
 }
 
 // Tampilan Arcon: hanya DS yang dipegang; mengatur kebutuhan rider per shift dan menunjuk Captain dari rider DS itu
-export function KelolaArcon({ dsList }: { dsList: Ds[] }) {
+export function KelolaArcon({ me, dsList }: { me: Me; dsList: Ds[] }) {
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
   const rs = useRows<Rider>(() => sb.from('riders').select('*').order('nama').limit(1000), [])
   const milik = dsl.rows.filter((d) => dsList.some((x) => x.id === d.id))
@@ -277,9 +279,10 @@ export function KelolaArcon({ dsList }: { dsList: Ds[] }) {
       <div className="card !bg-primary-soft !border-primary/20">
         <b className="block mb-1">Yang bisa Anda atur di sini</b>
         <p className="text-sm text-muted-foreground">
-          Untuk DS yang Anda pegang: berapa rider yang harus masuk tiap shift setiap hari, dan siapa Captain-nya. Membuat DS baru, mengganti nama DS, dan memilih Arcon dilakukan Super-admin.
+          Untuk DS yang Anda pegang: berapa rider yang harus masuk tiap shift setiap hari, dan siapa Captain-nya. DS baru dan memegang DS lain diajukan ke Super-admin; mengganti nama DS dilakukan Super-admin.
         </p>
       </div>
+      <PengajuanArcon me={me} onSelesai={() => { dsl.reload(); rs.reload() }} />
       {milik.map((d) => (
         <DsCard key={d.id} d={d} terbatas awalBuka={milik.length <= 2} riders={rs.rows} candidates={calon.filter((r) => r.ds_id === d.id)} arcons={[]} semuaDs={milik} reload={() => { dsl.reload(); rs.reload() }} />
       ))}

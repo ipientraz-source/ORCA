@@ -14,6 +14,7 @@ import { Riwayat } from './riwayat'
 import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
 import { ImporData } from './impor-data-ui'
+import { LencanaPengajuan } from './pengajuan'
 
 type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = semua DS yang dipegang Arcon
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
@@ -50,7 +51,7 @@ const ARCON: Tab[] = [
   { nama: 'Daftar Jadwal', desc: 'Jadwal tersimpan semua DS yang Anda pegang, per minggu', Icon: ListChecks, View: () => <DaftarJadwal /> },
   { nama: 'Armada', desc: 'Kelola motor listrik, servis rutin, dan kerusakan di DS yang Anda pegang', Icon: Bike, View: Armada },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya dan kunci absensi mingguan di DS Anda', Icon: ClipboardList, View: Rekap },
-  { nama: 'Kelola DS', desc: 'Atur kebutuhan rider per shift dan tunjuk Captain untuk DS yang Anda pegang', Icon: Building2, View: ({ dsList }) => <KelolaArcon dsList={dsList} /> },
+  { nama: 'Kelola DS', desc: 'Atur kebutuhan rider per shift dan tunjuk Captain untuk DS yang Anda pegang', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },
   { nama: 'Impor Data', desc: 'Tambah rider, motor, servis, dan kerusakan di DS yang Anda pegang lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
   { nama: 'Rekrutmen', desc: 'Lihat kandidat rider dan kebutuhan rekrut di DS yang Anda pegang', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Riwayat', desc: 'Aktivitas di DS yang Anda pegang lengkap dengan tanggal, jam, dan pelakunya', Icon: History, View: () => <Riwayat /> },
@@ -378,6 +379,7 @@ function AdminApp({ email }: { email: string }) {
             <button key={t.nama} onClick={() => setTab(i)} className={`nav ${i === tab ? 'nav-on' : ''}`}>
               <t.Icon size={18} />
               {t.nama}
+              {t.nama === 'Kelola DS & Captain' && me.peran === 'super_admin' && <LencanaPengajuan />}
             </button>
           ))}
         </nav>
