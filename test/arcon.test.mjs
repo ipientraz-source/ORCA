@@ -484,3 +484,81 @@ test('Arcon memindahkan rider antar DS yang dipegang: jadwal ke depan dihapus, m
   await as(S, async () => await q('select pindah_rider($1, $2)', [RP, D3])) // Super-admin: DS mana pun
   assert.equal((await q('select ds_id from riders where id = $1', [RP]))[0].ds_id, D3)
 })
+
+test('Pengajuan DS baru: hanya Arcon yang bisa mengajukan, tabel tidak bisa ditulis langsung, hanya Super-admin yang memutuskan; setuju = DS terbentuk dan pemohon jadi Arcon-nya', async () => {
+  const [A1, A2] = [id(200), id(201)]
+  const E1 = 'aju1@test.local', E2 = 'aju2@test.local'
+  await db.exec(`insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+    ('${A1}', null, 'Arcon Aju Satu', null, 'arcon', '${E1}', 'aktif'), ('${A2}', null, 'Arcon Aju Dua', null, 'arcon', '${E2}', 'aktif');`)
+  let idDs, idTolak, idBatal
+  await as(E1, async () => {
+    await assert.rejects(q("select ajukan_ds_baru('galaxy', 1, 1, 'x')"), /sudah ada/) // nama dirapikan: Galaxy sudah ada
+    await assert.rejects(q("select ajukan_ds_baru('   ', 1, 1, 'x')"), /Nama DS wajib/)
+    await assert.rejects(q("select ajukan_ds_baru('DS Uji', -1, 1, 'x')"), /wajib diisi/)
+    await assert.rejects(q("select ajukan_ds_baru('DS Uji', 1, 1, ' ')"), /Alasan pengajuan/)
+    idDs = (await q("select ajukan_ds_baru('DS Baru  Uji', 2, 3, 'Area baru') id"))[0].id
+    await assert.rejects(q("insert into pengajuan_arcon (jenis, pemohon_id, pemohon_nama, nama_ds, kuota_pagi, kuota_siang, alasan) values ('ds_baru', $1, 'x', 'DS Curang', 1, 1, 'x')", [A1]), /row-level security/)
+    assert.equal((await q("update pengajuan_arcon set status = 'disetujui' returning id")).length, 0) // tidak bisa menyetujui sendiri
+    await assert.rejects(q('select putuskan_pengajuan($1, true, null)', [idDs]), /Hanya Super-admin/)
+    assert.equal((await q('select * from pengajuan_arcon')).length, 1)
+  })
+  await as(E2, async () => {
+    await assert.rejects(q("select ajukan_ds_baru('ds baru uji', 1, 1, 'x')"), /menunggu persetujuan/) // nama sama sedang diajukan
+    assert.equal((await q('select * from pengajuan_arcon')).length, 0) // pengajuan orang lain tak terlihat
+  })
+  await as(CG, async () => {
+    await assert.rejects(q("select ajukan_ds_baru('DS Captain', 1, 1, 'x')"), /Hanya Arcon/)
+    assert.equal((await q('select * from pengajuan_arcon')).length, 0)
+  })
+  await as(S, async () => {
+    await assert.rejects(q("select ajukan_ds_baru('DS Super', 1, 1, 'x')"), /Hanya Arcon/) // Super-admin membuat DS langsung, bukan mengajukan
+    assert.equal((await q('select * from pengajuan_arcon')).length, 1)
+    await assert.rejects(q('select putuskan_pengajuan($1, false, null)', [idDs]), /Alasan penolakan/)
+    await q('select putuskan_pengajuan($1, true, null)', [idDs])
+    await assert.rejects(q('select putuskan_pengajuan($1, true, null)', [idDs]), /sudah diputuskan/)
+  })
+  const [ds] = await q("select id, kuota_pagi, kuota_siang, arcon_id, captain_id from ds where nama = 'DS Baru Uji'")
+  assert.deepEqual({ p: ds.kuota_pagi, s: ds.kuota_siang, a: ds.arcon_id, c: ds.captain_id }, { p: 2, s: 3, a: A1, c: null })
+  const [p] = await q('select status, diputuskan_nama, ds_id from pengajuan_arcon where id = $1', [idDs])
+  assert.deepEqual({ ...p }, { status: 'disetujui', diputuskan_nama: 'Super', ds_id: ds.id })
+  await as(E1, async () => assert.ok((await q('select my_ds_ids() ids'))[0].ids.includes(ds.id))) // kini memegang DS-nya
+  assert.equal((await q("select count(*)::int n from log_aktivitas where aksi = 'setujui pengajuan'"))[0].n, 1)
+
+  await as(E1, async () => {
+    idTolak = (await q("select ajukan_ds_baru('DS Tolak Uji', 1, 1, 'Coba') id"))[0].id
+    idBatal = (await q("select ajukan_ds_baru('DS Batal Uji', 1, 1, 'Coba') id"))[0].id
+  })
+  await as(E2, async () => await assert.rejects(q('select batalkan_pengajuan($1)', [idBatal]), /tidak ditemukan/)) // bukan miliknya
+  await as(E1, async () => await q('select batalkan_pengajuan($1)', [idBatal]))
+  await as(S, async () => {
+    await assert.rejects(q('select putuskan_pengajuan($1, true, null)', [idBatal]), /sudah diputuskan/)
+    await q("select putuskan_pengajuan($1, false, 'Belum perlu')", [idTolak])
+  })
+  assert.deepEqual((await q("select status, catatan from pengajuan_arcon where id = $1", [idTolak]))[0], { status: 'ditolak', catatan: 'Belum perlu' })
+  assert.equal((await q("select count(*)::int n from ds where nama in ('DS Tolak Uji', 'DS Batal Uji')"))[0].n, 0) // ditolak/dibatalkan: DS tidak terbentuk
+})
+
+test('Pengajuan jadi Arcon di DS: butuh persetujuan; tidak bisa ke DS sendiri, DS tak ada, atau dobel; pemohon yang sudah nonaktif tidak bisa disetujui', async () => {
+  const [A1, A2, A3, D] = [id(200), id(201), id(202), id(210)]
+  const E2 = 'aju2@test.local', E3 = 'aju3@test.local'
+  await db.exec(`insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values ('${A3}', null, 'Arcon Aju Tiga', null, 'arcon', '${E3}', 'aktif');
+    insert into ds (id, nama, kuota_pagi, kuota_siang, arcon_id) values ('${D}', 'DS Rebutan', 1, 1, '${A1}');`)
+  let idA
+  await as('aju1@test.local', async () => await assert.rejects(q("select ajukan_jadi_arcon($1, 'x')", [D]), /sudah memegang/))
+  await as(E2, async () => {
+    await assert.rejects(q("select ajukan_jadi_arcon($1, 'x')", [id(999)]), /DS tidak ditemukan/)
+    await assert.rejects(q("select ajukan_jadi_arcon($1, '')", [D]), /Alasan pengajuan/)
+    idA = (await q("select ajukan_jadi_arcon($1, 'Menggantikan') id", [D]))[0].id
+    await assert.rejects(q("select ajukan_jadi_arcon($1, 'lagi')", [D]), /masih menunggu/)
+    assert.equal((await q('select arcon_id from ds where id = $1', [D]))[0].arcon_id, A1) // belum berubah sebelum disetujui
+  })
+  const idC = (await as(E3, async () => (await q("select ajukan_jadi_arcon($1, 'Saya juga') id", [D]))[0].id))
+  await db.exec(`update riders set status = 'nonaktif' where id = '${A3}'`)
+  await as(S, async () => {
+    await assert.rejects(q('select putuskan_pengajuan($1, true, null)', [idC]), /bukan Arcon aktif/)
+    await q("select putuskan_pengajuan($1, false, 'Pemohon nonaktif')", [idC])
+    await q('select putuskan_pengajuan($1, true, null)', [idA])
+  })
+  assert.equal((await q('select arcon_id from ds where id = $1', [D]))[0].arcon_id, A2) // A2 kini Arcon DS itu
+  assert.match((await q("select detail from log_aktivitas where aksi = 'setujui pengajuan' order by waktu desc limit 1"))[0].detail, /Arcon Aju Dua: jadi Arcon di DS Rebutan \(menggantikan Arcon sebelumnya\)/)
+})
