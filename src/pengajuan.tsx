@@ -1,7 +1,9 @@
 // Pengajuan Arcon: Arcon mengajukan DS baru atau menjadi Arcon di sebuah DS; Super-admin menyetujui atau menolak.
 // Menulis hanya lewat fungsi database (ajukan_*, batalkan_pengajuan, putuskan_pengajuan); tabelnya tidak bisa ditulis langsung.
+// Tidak punya menu sendiri: Arcon memakainya di Kelola DS, Super-admin di Kelola DS & Captain (lihat kelola.tsx).
 import { useEffect, useState, type FormEvent } from 'react'
-import { sb, useRows, ok, toast, konfirmasi, Err, Field, Kosong, Select, usePage, Pagination, type Ds, type Me } from './lib'
+import { Plus, X } from 'lucide-react'
+import { sb, useRows, ok, toast, konfirmasi, Err, Field, Select, usePage, Pagination, type Ds, type Me } from './lib'
 
 type Aju = {
   id: string; jenis: 'ds_baru' | 'jadi_arcon'; pemohon_id: string | null; pemohon_nama: string; ds_id: string | null; nama_ds: string
@@ -19,6 +21,7 @@ const tgl = (s: string) => new Date(s).toLocaleDateString('id-ID', { day: 'numer
 const rincian = (a: Aju) => (a.jenis === 'ds_baru' ? `DS baru ${a.nama_ds} (pagi ${a.kuota_pagi}, siang ${a.kuota_siang})` : `Jadi Arcon di ${a.nama_ds}`)
 const BERUBAH = 'pengajuan-berubah'
 const kabarkan = () => window.dispatchEvent(new Event(BERUBAH))
+const muatPengajuan = () => sb.from('pengajuan_arcon').select('*').order('dibuat', { ascending: false }).limit(1000)
 
 const Lencana = ({ s }: { s: Aju['status'] }) => <span className={`badge ${STATUS[s][1]}`}>{STATUS[s][0]}</span>
 
@@ -33,62 +36,71 @@ export function LencanaPengajuan() {
   return q.rows.length ? <span className="ml-auto rounded-full bg-warning px-1.5 text-[10px] font-bold text-white">{q.rows.length}</span> : null
 }
 
-export function Pengajuan({ me }: { me: Me }) {
-  const sup = me.peran === 'super_admin'
-  const aju = useRows<Aju>(() => sb.from('pengajuan_arcon').select('*').order('dibuat', { ascending: false }).limit(1000), [])
+// Super-admin (di Kelola DS & Captain): antrean persetujuan + riwayat keputusan. Tidak tampil bila belum pernah ada pengajuan.
+export function AntreanPengajuan({ onSelesai }: { onSelesai?: () => void }) {
+  const aju = useRows<Aju>(muatPengajuan, [])
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
-  const arcon = useRows<{ id: string; nama: string }>(() => (sup ? sb.from('riders').select('id,nama').eq('peran', 'arcon') : sb.from('riders').select('id,nama').eq('id', me.id)), [])
-  const muat = () => { aju.reload(); dsl.reload(); kabarkan() }
+  const arcon = useRows<{ id: string; nama: string }>(() => sb.from('riders').select('id,nama').eq('peran', 'arcon'), [])
+  const muat = () => { aju.reload(); dsl.reload(); kabarkan(); onSelesai?.() }
   const menunggu = aju.rows.filter((a) => a.status === 'menunggu')
   const selesai = aju.rows.filter((a) => a.status !== 'menunggu')
-  const pgSelesai = usePage(selesai, [])
-  const pgSaya = usePage(aju.rows, [])
-
-  if (sup) {
-    return (
-      <div className="space-y-3">
-        <Err msg={aju.err} />
-        <h3 className="text-sm font-semibold">Menunggu keputusan <span className="text-muted-foreground">({menunggu.length})</span></h3>
-        {!menunggu.length && <div className="card"><Kosong teks="Tidak ada pengajuan yang menunggu" hint="Pengajuan Arcon muncul di sini." /></div>}
-        {menunggu.map((a) => <Menunggu key={a.id} a={a} dsl={dsl.rows} arcon={arcon.rows} selesai={muat} />)}
-        <h3 className="pt-2 text-sm font-semibold">Riwayat keputusan</h3>
-        {!selesai.length ? <div className="card"><Kosong teks="Belum ada keputusan" /></div> : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <div className="overflow-x-auto">
-              <table className="tbl">
-                <thead><tr><th>Tanggal</th><th>Pemohon</th><th>Pengajuan</th><th>Status</th><th>Diputuskan oleh</th><th>Catatan</th></tr></thead>
-                <tbody>
-                  {pgSelesai.rows.map((a) => (
-                    <tr key={a.id}>
-                      <td className="whitespace-nowrap">{tgl(a.dibuat)}</td><td>{a.pemohon_nama}</td><td>{rincian(a)}</td>
-                      <td><Lencana s={a.status} /></td><td>{a.diputuskan_nama ?? '—'}</td><td className="text-muted-foreground">{a.catatan ?? ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <Pagination {...pgSelesai} />
-          </div>
-        )}
-      </div>
-    )
-  }
-
+  const pg = usePage(selesai, [])
+  if (!aju.rows.length) return aju.err ? <Err msg={aju.err} /> : null
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-2">
-        <FormDsBaru selesai={muat} />
-        <FormJadiArcon dsl={dsl.rows.filter((d) => d.arcon_id !== me.id)} selesai={muat} />
-      </div>
+    <div className="mb-4 space-y-2">
       <Err msg={aju.err} />
-      <h3 className="text-sm font-semibold">Pengajuan saya</h3>
-      {!aju.rows.length ? <div className="card"><Kosong teks="Belum ada pengajuan" hint="Semua pengajuan menunggu persetujuan Super-admin." /></div> : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="overflow-x-auto">
+      <h3 className="text-sm font-semibold">Pengajuan Arcon <span className="text-muted-foreground">({menunggu.length} menunggu)</span></h3>
+      {menunggu.map((a) => <Menunggu key={a.id} a={a} dsl={dsl.rows} arcon={arcon.rows} selesai={muat} />)}
+      {!!selesai.length && (
+        <details className="rounded-xl border border-border bg-card">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold">Riwayat keputusan ({selesai.length})</summary>
+          <div className="overflow-x-auto border-t border-border">
+            <table className="tbl">
+              <thead><tr><th>Tanggal</th><th>Pemohon</th><th>Pengajuan</th><th>Status</th><th>Diputuskan oleh</th><th>Catatan</th></tr></thead>
+              <tbody>
+                {pg.rows.map((a) => (
+                  <tr key={a.id}>
+                    <td className="whitespace-nowrap">{tgl(a.dibuat)}</td><td>{a.pemohon_nama}</td><td>{rincian(a)}</td>
+                    <td><Lencana s={a.status} /></td><td>{a.diputuskan_nama ?? '—'}</td><td className="text-muted-foreground">{a.catatan ?? ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination {...pg} />
+        </details>
+      )}
+    </div>
+  )
+}
+
+// Arcon (di Kelola DS): dua tombol pengajuan + daftar "Pengajuan saya"
+export function PengajuanArcon({ me, onSelesai }: { me: Me; onSelesai?: () => void }) {
+  const aju = useRows<Aju>(muatPengajuan, [])
+  const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
+  const [buka, setBuka] = useState<'' | 'ds' | 'arcon'>('')
+  const muat = () => { aju.reload(); dsl.reload(); kabarkan(); onSelesai?.() }
+  const menunggu = aju.rows.filter((a) => a.status === 'menunggu').length
+  const pg = usePage(aju.rows, [])
+  const ganti = (k: 'ds' | 'arcon') => setBuka(buka === k ? '' : k)
+  return (
+    <div className="mb-3 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="min-w-60 flex-1 text-sm text-muted-foreground">DS baru dan memegang DS lain butuh persetujuan Super-admin.</p>
+        <button type="button" className={buka === 'ds' ? 'btn2' : 'btn'} onClick={() => ganti('ds')}>{buka === 'ds' ? <X size={16} /> : <Plus size={16} />}{buka === 'ds' ? 'Batal' : 'Ajukan DS baru'}</button>
+        <button type="button" className="btn2" onClick={() => ganti('arcon')}>{buka === 'arcon' ? <X size={16} /> : <Plus size={16} />}{buka === 'arcon' ? 'Batal' : 'Ajukan jadi Arcon di DS lain'}</button>
+      </div>
+      {buka === 'ds' && <FormDsBaru selesai={() => { setBuka(''); muat() }} />}
+      {buka === 'arcon' && <FormJadiArcon dsl={dsl.rows.filter((d) => d.arcon_id !== me.id)} selesai={() => { setBuka(''); muat() }} />}
+      <Err msg={aju.err} />
+      {!!aju.rows.length && (
+        <details open={menunggu > 0} className="rounded-xl border border-border bg-card">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold">Pengajuan saya ({aju.rows.length}{menunggu ? `, ${menunggu} menunggu` : ''})</summary>
+          <div className="overflow-x-auto border-t border-border">
             <table className="tbl">
               <thead><tr><th>Tanggal</th><th>Pengajuan</th><th>Alasan</th><th>Status</th><th>Catatan Super-admin</th><th></th></tr></thead>
               <tbody>
-                {pgSaya.rows.map((a) => (
+                {pg.rows.map((a) => (
                   <tr key={a.id}>
                     <td className="whitespace-nowrap">{tgl(a.dibuat)}</td><td>{rincian(a)}</td><td className="text-muted-foreground">{a.alasan}</td>
                     <td><Lencana s={a.status} /></td><td className="text-muted-foreground">{a.catatan ?? ''}</td>
@@ -102,8 +114,8 @@ export function Pengajuan({ me }: { me: Me }) {
               </tbody>
             </table>
           </div>
-          <Pagination {...pgSaya} />
-        </div>
+          <Pagination {...pg} />
+        </details>
       )}
     </div>
   )
@@ -118,21 +130,20 @@ function FormDsBaru({ selesai }: { selesai: () => void }) {
     setSibuk(true)
     if (await ok(sb.rpc('ajukan_ds_baru', { p_nama: f.nama, p_pagi: Number(f.pagi), p_siang: Number(f.siang), p_alasan: f.alasan }))) {
       toast.ok('Pengajuan DS baru terkirim, menunggu Super-admin')
-      setF({ nama: '', pagi: '', siang: '', alasan: '' })
       selesai()
     }
     setSibuk(false)
   }
   return (
-    <form onSubmit={kirim} className="card space-y-2">
+    <form onSubmit={kirim} className="card !mb-0 space-y-2">
       <b className="block">Ajukan DS baru</b>
       <p className="text-xs text-muted-foreground">Jika disetujui, DS dibuat dan Anda menjadi Arcon-nya.</p>
-      <Field label="Nama DS"><input className="inp w-full" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} placeholder="mis. DS CIBUBUR" /></Field>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Nama DS"><input autoFocus className="inp w-full" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} placeholder="mis. DS CIBUBUR" /></Field>
         <Field label="Rider per shift pagi"><input className="inp w-full" type="number" min={0} inputMode="numeric" value={f.pagi} onChange={(e) => setF({ ...f, pagi: e.target.value })} /></Field>
         <Field label="Rider per shift siang"><input className="inp w-full" type="number" min={0} inputMode="numeric" value={f.siang} onChange={(e) => setF({ ...f, siang: e.target.value })} /></Field>
+        <Field label="Alasan"><input className="inp w-full" value={f.alasan} onChange={(e) => setF({ ...f, alasan: e.target.value })} placeholder="Kenapa DS ini perlu dibuka" /></Field>
       </div>
-      <Field label="Alasan"><input className="inp w-full" value={f.alasan} onChange={(e) => setF({ ...f, alasan: e.target.value })} placeholder="Kenapa DS ini perlu dibuka" /></Field>
       <button className="btn" disabled={sibuk}>{sibuk ? 'Mengirim…' : 'Kirim pengajuan'}</button>
     </form>
   )
@@ -147,20 +158,20 @@ function FormJadiArcon({ dsl, selesai }: { dsl: Ds[]; selesai: () => void }) {
     setSibuk(true)
     if (await ok(sb.rpc('ajukan_jadi_arcon', { p_ds: ds, p_alasan: alasan }))) {
       toast.ok('Pengajuan terkirim, menunggu Super-admin')
-      setDs('')
-      setAlasan('')
       selesai()
     }
     setSibuk(false)
   }
   return (
-    <form onSubmit={kirim} className="card space-y-2">
-      <b className="block">Ajukan jadi Arcon di DS</b>
-      <p className="text-xs text-muted-foreground">Untuk DS yang belum Anda pegang. Berlaku setelah Super-admin menyetujui.</p>
-      <Field label="DS">
-        <Select value={ds} onChange={setDs} placeholder="Pilih DS" opsi={dsl.map((d) => ({ value: d.id, label: d.nama + (d.arcon_id ? ' (sudah ada Arcon)' : ' (belum ada Arcon)') }))} />
-      </Field>
-      <Field label="Alasan"><input className="inp w-full" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Kenapa Anda perlu memegang DS ini" /></Field>
+    <form onSubmit={kirim} className="card !mb-0 space-y-2">
+      <b className="block">Ajukan jadi Arcon di DS lain</b>
+      <p className="text-xs text-muted-foreground">Berlaku setelah Super-admin menyetujui.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Field label="DS">
+          <Select value={ds} onChange={setDs} placeholder="Pilih DS" opsi={dsl.map((d) => ({ value: d.id, label: d.nama + (d.arcon_id ? ' (sudah ada Arcon)' : ' (belum ada Arcon)') }))} />
+        </Field>
+        <Field label="Alasan"><input className="inp w-full" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Kenapa Anda perlu memegang DS ini" /></Field>
+      </div>
       <button className="btn" disabled={sibuk || !ds}>{sibuk ? 'Mengirim…' : 'Kirim pengajuan'}</button>
     </form>
   )
@@ -181,7 +192,7 @@ function Menunggu({ a, dsl, arcon, selesai }: { a: Aju; dsl: Ds[]; arcon: { id: 
     setSibuk(false)
   }
   return (
-    <div className="card !mb-0 space-y-2">
+    <div className="card !mb-0 space-y-2 !border-warning/40">
       <div className="flex flex-wrap items-center gap-2">
         <span className="badge bg-primary-soft text-primary">{a.jenis === 'ds_baru' ? 'DS baru' : 'Jadi Arcon'}</span>
         <b>{rincian(a)}</b>
