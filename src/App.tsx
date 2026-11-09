@@ -117,9 +117,8 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
       <div className="hidden md:flex flex-col justify-between p-12 text-white bg-gradient-to-br from-primary via-primary to-primary-deep relative overflow-hidden">
         <div className="absolute -right-24 -bottom-24 size-96 rounded-full bg-white/10" />
         <div className="absolute -right-4 top-32 size-40 rounded-full bg-white/5" />
-        <div className="flex items-center gap-3 relative">
-          <div className="size-10 rounded-xl bg-card text-primary font-display font-bold text-lg flex items-center justify-center">D</div>
-          <div className="font-display font-bold text-lg">Dash Electric</div>
+        <div className="relative">
+          <img src="/dash-logo.png" alt="Dash Electric" className="h-9 w-auto" />
         </div>
         <div className="relative">
           <h2 className="text-4xl font-bold leading-tight mb-4">Jadwal rapi.<br />Kehadiran terpantau.</h2>
