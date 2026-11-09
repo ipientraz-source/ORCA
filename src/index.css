@@ -311,3 +311,18 @@ header > span.font-mono { border: 2px solid var(--border); background: var(--kun
 .border { border-width: 2px; }
 table thead th { background: var(--kuning); color: #0c0c0f; border-bottom: 3px solid var(--border); font-weight: 900; }
 .tbl td, table tbody td { border-bottom: 2px solid var(--border); }
+
+/* Kontras: teks samar dipertegas (diukur dengan rasio WCAG, batas 4,5 untuk teks biasa) */
+:root:not(.dark) {
+  --muted-foreground: #52525b;
+  --danger: #a11616;
+  --warning: #8a4300;
+  --success: #0f6b34;
+}
+[class*="text-muted-foreground/"] { color: var(--muted-foreground); }
+:root:not(.dark) .text-primary { color: #5b21b6; }
+.dark .text-primary { color: #c4b5fd; }
+.dark .bg-warning.text-white { color: #0c0c0f; }
+table thead th :is(div, span) { color: inherit; }
+.tab-on, .tab-on:hover { color: var(--primary-foreground); }
+.dark table thead th .text-primary { color: #0c0c0f; }
