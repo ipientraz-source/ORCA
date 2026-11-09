@@ -77,11 +77,11 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
               return (
                 <div
                   key={h.tanggal}
-                  className="flex h-full min-w-6 flex-1 flex-col justify-end"
+                  className="flex h-full min-w-6 max-w-20 flex-1 flex-col justify-end"
                   title={`${hari(h.tanggal)}: ${persen(h.rate)} (${h.terpenuhi}/${h.kebutuhan})${h.belumLapor.length ? ', belum dilaporkan: ' + h.belumLapor.join(' dan ') : ''}`}
                 >
                   <div className="mb-0.5 text-center font-mono text-[9px] text-muted-foreground">{h.rate === null ? '' : Math.round(h.rate * 100)}</div>
-                  <div className={`w-full rounded-t ${WARNA_BAR[t]} ${h.belumLapor.length ? 'opacity-60' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
+                  <div className={`w-full rounded-t border-2 border-b-0 border-border ${WARNA_BAR[t]} ${h.belumLapor.length ? 'opacity-60' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
                 </div>
               )
             })}

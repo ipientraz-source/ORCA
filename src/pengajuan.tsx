@@ -33,7 +33,8 @@ export function LencanaPengajuan() {
     window.addEventListener(BERUBAH, q.reload)
     return () => { clearInterval(t); window.removeEventListener(BERUBAH, q.reload) }
   })
-  return q.rows.length ? <span className="ml-auto rounded-full bg-warning px-1.5 text-[10px] font-bold text-white">{q.rows.length}</span> : null
+  const n = q.rows.length
+  return n ? <span className="ml-auto rounded-full bg-warning px-1.5 text-[10px] font-bold text-white" title={`${n} pengajuan Arcon menunggu keputusan Anda`} aria-label={`${n} pengajuan menunggu`}>{n}</span> : null
 }
 
 // Super-admin (di Kelola DS & Captain): antrean persetujuan + riwayat keputusan. Tidak tampil bila belum pernah ada pengajuan.
