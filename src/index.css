@@ -307,7 +307,15 @@ header > span.font-mono { border: 2px solid var(--border); background: var(--kun
 :root:not(.dark) .stat .text-muted-foreground, :root:not(.dark) .stat span { color: #2a2740; }
 
 /* Latar abu perak; tabel dan garis lebih tebal di semua halaman */
-:root:not(.dark) { --background: #d6d8de; }
+:root:not(.dark) { --background: #4a4d55; }
 .border { border-width: 2px; }
 table thead th { background: var(--kuning); color: #0c0c0f; border-bottom: 3px solid var(--border); font-weight: 900; }
 .tbl td, table tbody td { border-bottom: 2px solid var(--border); }
+
+/* Latar abu gelap (mode terang): teks di luar kartu jadi terang, isi kartu tetap gelap */
+:root:not(.dark) main { --foreground: #ffffff; --muted-foreground: #e4e4e7; color: #ffffff; }
+:root:not(.dark) main :is(.card, .stat, .tbl, table, [class*="bg-card"], .inp, .btn2, .panel, select, textarea, .bg-primary-soft, .bg-muted, .bg-warning-soft, .bg-success-soft, .bg-danger-soft) {
+  --foreground: #0c0c0f; --muted-foreground: #52525b; color: #0c0c0f;
+}
+:root:not(.dark) .tab:hover { color: #0c0c0f; }
+:root:not(.dark) .tab-on, :root:not(.dark) .tab-on:hover { color: var(--primary-foreground); }
