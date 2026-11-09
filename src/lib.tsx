@@ -18,6 +18,8 @@ export const addDays = (d: string, n: number) => {
   return t.toISOString().slice(0, 10)
 }
 export const monday = (d: string) => addDays(d, -((new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7))
+export const tanggal = (d: string) =>
+  new Date(d + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 export const hari = (d: string) =>
   new Date(d + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 

@@ -202,3 +202,63 @@ h1, h2, h3 { font-family: var(--font-display); }
   .tab { @apply px-3.5 py-1.5 text-sm font-semibold rounded-md text-muted-foreground transition-colors hover:bg-muted whitespace-nowrap; }
   .tab-on { @apply bg-primary text-primary-foreground hover:bg-primary; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   NEOBRUTALISM — lapisan penimpa. Border tebal, bayangan keras tanpa blur, sudut kecil, latar datar.
+   Tanpa @layer sehingga menang atas utilitas komponen di atas. Untuk kembali ke gaya lama, hapus blok ini.
+   Lembar cetak (.cetak) tidak terpengaruh karena token-nya diatur sendiri.
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #ece6ff;
+  --border: var(--gray-950);
+  --input: var(--gray-950);
+  --edge: var(--gray-950);
+  --edge-primary: var(--gray-950);
+  --primary-soft: #ddd0ff;
+  --card-radius: 0.5rem;
+  --control-radius: 0.375rem;
+  --card-shadow: 4px 4px 0 var(--edge);
+  --card-shadow-hover: 6px 6px 0 var(--edge);
+}
+.dark {
+  --background: #0d0d10;
+  --border: #e4e4e7;
+  --input: #a1a1aa;
+  --edge: var(--purple-600);
+  --edge-primary: var(--purple-300);
+  --primary-soft: #2a2050;
+}
+.cetak { --border: var(--gray-200); --edge: var(--gray-200); }
+
+body { background-image: none; }
+h1, h2, h3 { font-weight: 800; letter-spacing: -0.01em; }
+
+.card, .stat { border: 2px solid var(--border); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+.stat:hover { transform: translate(-2px, -2px); box-shadow: var(--card-shadow-hover); border-color: var(--border); }
+.stat b { font-weight: 800; }
+
+.btn, .btn2 { border: 2px solid var(--border); font-weight: 700; box-shadow: 3px 3px 0 var(--edge); }
+.btn:hover:not(:disabled), .btn2:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--edge); border-color: var(--border); }
+.btn:active:not(:disabled), .btn2:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--edge); }
+.btn:disabled, .btn2:disabled { box-shadow: none; }
+
+.inp { border: 2px solid var(--input); }
+.inp:focus { border-color: var(--border); box-shadow: 3px 3px 0 var(--primary); }
+
+.lbl { font-weight: 800; color: var(--foreground); }
+.tbl th { background: var(--primary-soft); color: var(--foreground); border-bottom: 2px solid var(--border); font-weight: 800; }
+.tbl td { border-bottom: 1px solid color-mix(in srgb, var(--border) 22%, transparent); }
+.tbl tbody tr:hover { background: var(--primary-soft); }
+
+.badge { border: 2px solid var(--border); border-radius: 0.375rem; font-weight: 700; }
+
+.tab { border: 2px solid transparent; border-radius: 0.375rem; font-weight: 700; color: var(--foreground); }
+.tab:hover { border-color: var(--border); background: var(--card); }
+.tab-on, .tab-on:hover { border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
+
+.sidebar-bg { background: var(--sidebar); }
+.nav { border: 2px solid transparent; border-radius: 0.375rem; font-weight: 600; }
+.nav:hover { background: rgb(255 255 255 / 0.1); transform: none; }
+.nav-on, .nav-on:hover { background: var(--primary); border-color: #fff; box-shadow: 3px 3px 0 #fff; transform: none; }
+.nav-on::before { display: none; }
+.nav-on svg { color: #fff; }

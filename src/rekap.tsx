@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { sb, today, monday, addDays, hari, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
+import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
 import { CalendarDays, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
@@ -51,7 +51,7 @@ function useRange() {
         </label>
       )}
       <span className="text-sm text-muted-foreground">
-        {from} s/d {to}
+        {tanggal(from)} s/d {tanggal(to)}
       </span>
     </div>
   )
