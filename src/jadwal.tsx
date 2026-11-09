@@ -75,9 +75,9 @@ async function ambilAbsensi(dsId: string, dari: string, sampai: string) {
 // Satu sel jadwal berbentuk pil: Pagi (kuning), Siang (ungu), libur terkunci (abu + gembok), kosong = libur biasa (garis putus-putus).
 function Pil({ v, klik, title, ringkas }: { v: string; klik?: () => void; title?: string; ringkas?: boolean }) {
   const gaya =
-    v === 'pagi' ? 'border-transparent bg-[var(--amber-400)] text-[#451a03] shadow-[0_2px_0_#d97706]'
-    : v === 'siang' ? 'border-transparent bg-primary text-primary-foreground shadow-[0_2px_0_var(--edge-primary)]'
-    : v === 'off' ? 'border-input bg-muted text-foreground/70 shadow-[0_2px_0_var(--edge)]'
+    v === 'pagi' ? 'border-border bg-[#ffdd00] text-black shadow-[2px_2px_0_var(--edge)]'
+    : v === 'siang' ? 'border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--edge)]'
+    : v === 'off' ? 'border-border bg-card text-foreground shadow-[2px_2px_0_var(--edge)]'
     : 'border-dashed border-input text-muted-foreground/70'
   const isi = ringkas
     ? v === 'pagi' ? 'P' : v === 'siang' ? 'S' : v === 'off' ? <Lock size={12} /> : '–'
