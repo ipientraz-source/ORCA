@@ -305,3 +305,9 @@ header > span.font-mono { border: 2px solid var(--border); background: var(--kun
 :root:not(.dark) .stat:nth-child(4n+3) { background: #ffb3d9; }
 :root:not(.dark) .stat:nth-child(4n+4) { background: #ffffff; }
 :root:not(.dark) .stat .text-muted-foreground, :root:not(.dark) .stat span { color: #2a2740; }
+
+/* Latar abu perak; tabel dan garis lebih tebal di semua halaman */
+:root:not(.dark) { --background: #d6d8de; }
+.border { border-width: 2px; }
+table thead th { background: var(--kuning); color: #0c0c0f; border-bottom: 3px solid var(--border); font-weight: 900; }
+.tbl td, table tbody td { border-bottom: 2px solid var(--border); }
