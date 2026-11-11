@@ -8,6 +8,17 @@ const WARNA_BAR = { baik: 'bg-success', perhatian: 'bg-warning', kurang: 'bg-dan
 const WARNA_TEKS = { baik: 'text-success', perhatian: 'text-warning', kurang: 'text-danger', kosong: 'text-muted-foreground' }
 const WARNA_LENCANA = { baik: 'bg-success-soft text-success', perhatian: 'bg-warning-soft text-warning', kurang: 'bg-danger-soft text-danger', kosong: 'bg-muted text-muted-foreground' }
 
+// Persen + keterangan. Bila masih ada shift yang belum dilaporkan, angka belum mewakili sehari penuh: badge abu dengan tulisan "baru pagi" dst.
+function Lencana({ rate, ket }: { rate: number | null; ket: string | null }) {
+  if (!ket || rate === null) return <span className={`badge ${WARNA_LENCANA[tingkatFulfillment(rate)]}`}>{persen(rate)}</span>
+  return (
+    <span className="badge bg-muted text-muted-foreground" title="Angka ini belum final: ada shift yang belum dilaporkan Captain">
+      {persen(rate)} ({ket})
+    </span>
+  )
+}
+const ketHari = (belum: ('pagi' | 'siang')[]) => (belum.length === 2 ? 'belum lengkap' : belum[0] === 'siang' ? 'baru pagi' : belum[0] === 'pagi' ? 'baru siang' : null)
+
 export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId?: string }) {
   const f = useRows<BarisFulfillment>(() => sb.rpc('laporan_fulfillment', { p_dari: from, p_sampai: to }), [from, to])
   const rows = f.rows.filter((r) => !dsId || r.ds_id === dsId)
@@ -41,8 +52,8 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Persen kebutuhan client yang benar-benar terpenuhi: rider hadir, tukar, dan pengganti dibagi kebutuhan hari itu. Kelebihan rider tidak menaikkan angka (maksimal 100% per shift).
-        Shift yang belum dilaporkan Captain tidak dihitung 0%, tetapi ditandai.
+        Seberapa banyak rider yang diminta client benar-benar datang bekerja. Contoh: client minta 10 rider, yang bekerja 9, maka 90%.
+        Rider yang lebih dari permintaan tidak menaikkan angka. Shift yang belum dilaporkan Captain tidak ikut dihitung; angkanya diberi tulisan abu-abu "baru pagi", "baru siang", atau "belum lengkap" sampai laporannya masuk.
       </p>
       <Err msg={f.err} />
       {!harian.length ? (
@@ -52,22 +63,22 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="rounded-xl border border-border p-3">
               <div className={`font-mono text-2xl font-bold ${WARNA_TEKS[tingkat]}`}>{persen(total.rate)}</div>
-              <div className="text-xs text-muted-foreground">Fulfillment rate periode</div>
+              <div className="text-xs text-muted-foreground">Persen rider terpenuhi (seluruh periode)</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">
                 {total.terpenuhi}
                 <span className="text-base text-muted-foreground">/{total.kebutuhan}</span>
               </div>
-              <div className="text-xs text-muted-foreground">Rider terpenuhi / kebutuhan client</div>
+              <div className="text-xs text-muted-foreground">Rider yang bekerja / rider diminta client</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">{total.kelebihan}</div>
-              <div className="text-xs text-muted-foreground">Rider kelebihan (tidak dihitung)</div>
+              <div className="text-xs text-muted-foreground">Rider lebih dari permintaan (tidak dihitung)</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className={`font-mono text-2xl font-bold ${belum ? 'text-danger' : ''}`}>{belum}</div>
-              <div className="text-xs text-muted-foreground">Hari ada shift belum dilaporkan</div>
+              <div className="text-xs text-muted-foreground">Hari yang laporan shiftnya belum lengkap</div>
             </div>
           </div>
 
@@ -101,7 +112,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             <div className="mb-4 overflow-x-auto rounded-xl border border-border">
               <table className="tbl">
                 <thead>
-                  <tr><th>DS</th><th>Terpenuhi</th><th>Kebutuhan</th><th>Kelebihan</th><th>Fulfillment rate</th><th>Hari belum dilaporkan</th></tr>
+                  <tr><th>DS</th><th>Rider bekerja</th><th>Rider diminta</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Hari laporan belum lengkap</th></tr>
                 </thead>
                 <tbody>
                   {perDs.map((d) => (
@@ -110,7 +121,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
                       <td className="font-mono">{d.terpenuhi}</td>
                       <td className="font-mono">{d.kebutuhan}</td>
                       <td className="font-mono">{d.kelebihan}</td>
-                      <td><span className={`badge ${WARNA_LENCANA[tingkatFulfillment(d.rate)]}`}>{persen(d.rate)}</span></td>
+                      <td><Lencana rate={d.rate} ket={d.hariBelumLapor ? 'belum lengkap' : null} /></td>
                       <td className={d.hariBelumLapor ? 'font-medium text-danger' : 'text-muted-foreground'}>{d.hariBelumLapor || '–'}</td>
                     </tr>
                   ))}
@@ -123,7 +134,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             <div className="overflow-x-auto">
               <table className="tbl">
                 <thead>
-                  <tr><th>Tanggal</th><th>Kebutuhan</th><th>Terpenuhi</th><th>Kelebihan</th><th>Fulfillment rate</th><th>Catatan</th></tr>
+                  <tr><th>Tanggal</th><th>Rider diminta</th><th>Rider bekerja</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Catatan</th></tr>
                 </thead>
                 <tbody>
                   {pg.rows.map((h) => (
@@ -132,8 +143,8 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
                       <td className="font-mono">{h.kebutuhan}</td>
                       <td className="font-mono">{h.terpenuhi}</td>
                       <td className="font-mono text-muted-foreground">{h.kelebihan || '–'}</td>
-                      <td><span className={`badge ${WARNA_LENCANA[tingkatFulfillment(h.rate)]}`}>{persen(h.rate)}</span></td>
-                      <td className="text-xs text-danger">{h.belumDs.length ? 'Belum dilaporkan: ' + h.belumDs.join(', ') : ''}</td>
+                      <td><Lencana rate={h.rate} ket={ketHari(h.belumLapor)} /></td>
+                      <td className="text-xs text-danger">{h.belumDs.length ? 'Laporan belum masuk: ' + h.belumDs.join(', ') : ''}</td>
                     </tr>
                   ))}
                 </tbody>
