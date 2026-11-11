@@ -474,20 +474,20 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
         <table className="w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 w-32 min-w-32 border-b border-border bg-card px-2 py-3 text-left md:w-auto md:min-w-60 md:px-4 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rider</th>
+              <th className="sticky left-0 z-10 w-32 min-w-32 border-b border-border bg-card px-2 py-3 text-left md:w-auto md:min-w-60 md:px-4 font-mono text-xs font-bold uppercase tracking-wider text-foreground">Rider</th>
               {days.map((d, i) => {
                 const hariIni = d === today()
                 const akhirPekan = ['Sab', 'Min'].includes(namaHari(d))
                 const tandaBulan = i === 0 || d.slice(8) === '01'
                 return (
                   <th key={d} className={`border-b border-border py-2 text-center ${padat ? 'px-0.5' : 'px-2'} ${hariIni ? 'bg-primary-soft' : akhirPekan ? 'bg-muted/50' : 'bg-card'}`}>
-                    <div className="h-3 text-[9px] font-semibold uppercase text-primary">{tandaBulan ? NAMA_BULAN[+d.slice(5, 7) - 1] : ''}</div>
-                    <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{namaHari(d)}</div>
-                    <div className={`mx-auto mt-0.5 flex items-center justify-center rounded-full font-bold ${padat ? 'size-7 text-xs' : 'size-8 text-sm'} ${hariIni ? 'bg-primary text-primary-foreground' : ''}`}>{d.slice(8)}</div>
+                    <div className="h-4 text-xs font-bold uppercase text-primary">{tandaBulan ? NAMA_BULAN[+d.slice(5, 7) - 1] : ''}</div>
+                    <div className="font-mono text-[13px] font-bold uppercase tracking-wider text-foreground">{namaHari(d)}</div>
+                    <div className={`mx-auto mt-0.5 flex items-center justify-center rounded-full font-bold ${padat ? 'size-8 text-sm' : 'size-10 text-lg'} ${hariIni ? 'bg-primary text-primary-foreground' : ''}`}>{d.slice(8)}</div>
                   </th>
                 )
               })}
-              <th className="border-b border-border bg-card px-3 py-3 text-center font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Hari kerja</th>
+              <th className="border-b border-border bg-card px-3 py-3 text-center font-mono text-xs font-bold uppercase tracking-wider text-foreground">Hari kerja</th>
             </tr>
           </thead>
           <tbody>
