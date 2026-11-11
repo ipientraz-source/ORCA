@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Inbox, Moon, Search, Sun, X, type LucideIcon } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Inbox, Moon, Search, Sun, X, Zap, type LucideIcon } from 'lucide-react'
 
 export const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 
@@ -203,25 +203,52 @@ function useTema() {
   return { gelap, pilih }
 }
 
-// Versi ikon (untuk bar gelap yang sempit)
+// Gaya tampilan: Neobrutalism (bawaan) atau Cyberpunk. Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya="cyber" di <html>.
+function useGaya() {
+  const [cyber, setCyber] = useState(() => document.documentElement.dataset.gaya === 'cyber')
+  const pilih = (c: boolean) => {
+    if (c) document.documentElement.dataset.gaya = 'cyber'
+    else delete document.documentElement.dataset.gaya
+    store.set('gaya', c ? 'cyber' : 'neo')
+    setCyber(c)
+  }
+  return { cyber, pilih }
+}
+
+// Versi ikon (untuk bar gelap yang sempit): tombol gaya (petir) + tombol terang/gelap
 export function TemaToggle({ className = '' }: { className?: string }) {
   const { gelap, pilih } = useTema()
+  const gaya = useGaya()
   return (
-    <button onClick={() => pilih(!gelap)} title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'} aria-label="Ganti tema" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
-      {gelap ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
+    <>
+      <button onClick={() => gaya.pilih(!gaya.cyber)} title={gaya.cyber ? 'Ganti ke gaya Neobrutalism' : 'Ganti ke gaya Cyberpunk'} aria-label="Ganti gaya tampilan" aria-pressed={gaya.cyber} className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
+        <Zap size={16} />
+      </button>
+      <button onClick={() => pilih(!gelap)} title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'} aria-label="Ganti tema" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
+        {gelap ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
+    </>
   )
 }
 
-// Dua ikon (matahari / bulan), tanpa teks supaya hemat ruang; tooltip menjelaskan
+// Peralihan gaya (Neo / Cyber) + dua ikon terang/gelap, hemat ruang; tooltip menjelaskan
 export function TemaSwitch() {
   const { gelap, pilih } = useTema()
+  const gaya = useGaya()
   const item = (aktif: boolean) =>
     `inline-flex size-7 items-center justify-center rounded-md transition-colors ${aktif ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
+  const teks = (aktif: boolean) =>
+    `inline-flex h-7 items-center justify-center rounded-md px-2 font-mono text-[11px] font-bold uppercase transition-colors ${aktif ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
   return (
-    <div role="group" aria-label="Pilih tema" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
-      <button onClick={() => pilih(false)} aria-pressed={!gelap} aria-label="Tema terang" title="Tema terang" className={item(!gelap)}><Sun size={15} /></button>
-      <button onClick={() => pilih(true)} aria-pressed={gelap} aria-label="Tema gelap" title="Tema gelap" className={item(gelap)}><Moon size={15} /></button>
+    <div className="inline-flex items-center gap-2">
+      <div role="group" aria-label="Pilih gaya tampilan" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
+        <button onClick={() => gaya.pilih(false)} aria-pressed={!gaya.cyber} title="Gaya Neobrutalism" className={teks(!gaya.cyber)}>Neo</button>
+        <button onClick={() => gaya.pilih(true)} aria-pressed={gaya.cyber} title="Gaya Cyberpunk" className={teks(gaya.cyber)}>Cyber</button>
+      </div>
+      <div role="group" aria-label="Pilih tema" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
+        <button onClick={() => pilih(false)} aria-pressed={!gelap} aria-label="Tema terang" title="Tema terang" className={item(!gelap)}><Sun size={15} /></button>
+        <button onClick={() => pilih(true)} aria-pressed={gelap} aria-label="Tema gelap" title="Tema gelap" className={item(gelap)}><Moon size={15} /></button>
+      </div>
     </div>
   )
 }
@@ -516,3 +543,27 @@ export const Kosong = ({ teks, hint }: { teks: string; hint?: string }) => (
     {hint && <p className="text-sm mt-1 max-w-xs">{hint}</p>}
   </div>
 )
+
+// Gaya Cyber: kartu kecil miring 3D mengikuti kursor. Hanya aktif bila gaya Cyber menyala, perangkat berkursor, dan pengguna tidak memilih "kurangi gerakan".
+// Atribut data-tilt dipasang hanya saat kursor di atas kartu (CSS-nya memakai transform), supaya kartu tidak jadi "containing block" saat diam.
+if (typeof document !== 'undefined' && matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) {
+  const kartu = (t: EventTarget | null) => (t as HTMLElement | null)?.closest?.('.stat, .card') as HTMLElement | null
+  document.addEventListener('pointermove', (e) => {
+    if (document.documentElement.dataset.gaya !== 'cyber') return
+    const el = kartu(e.target)
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.width > 700 || r.height > 420) return
+    el.dataset.tilt = ''
+    el.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 9}deg`)
+    el.style.setProperty('--rx', `${-((e.clientY - r.top) / r.height - 0.5) * 9}deg`)
+  })
+  document.addEventListener('pointerout', (e) => {
+    const el = kartu(e.target)
+    if (el && !el.contains(e.relatedTarget as Node | null)) {
+      delete el.dataset.tilt
+      el.style.removeProperty('--rx')
+      el.style.removeProperty('--ry')
+    }
+  })
+}

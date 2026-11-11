@@ -363,7 +363,7 @@ function AdminApp({ email }: { email: string }) {
   const tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
 
   return (
-    <div className="min-h-screen md:flex">
+    <div className="app-shell min-h-screen md:flex">
       <aside className="hidden md:flex w-60 shrink-0 flex-col sidebar-bg text-sidebar-foreground p-3 sticky top-0 h-screen overflow-hidden">
         <div className="flex items-center gap-3 px-2 mb-4 mt-1">
           <Logo small />
