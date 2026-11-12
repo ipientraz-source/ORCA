@@ -287,7 +287,7 @@ function DetailMotor({ m, me, kelola, dsBoleh, dsNama, riders, riderNama, servis
           {tombol('lapor', 'Lapor kerusakan')}
           {tombol('mendesak', 'Ajukan servis mendesak')}
           {kelola && tombol('pindah', 'Pindah DS')}
-          {me.peran === 'super_admin' && <button className={mode === 'hapus' ? 'btn' : 'btn2 text-danger'} onClick={() => setMode(mode === 'hapus' ? null : 'hapus')}>Hapus motor</button>}
+          {kelola && <button className={mode === 'hapus' ? 'btn' : 'btn2 text-danger'} onClick={() => setMode(mode === 'hapus' ? null : 'hapus')}>Hapus motor</button>}
           <button className="btn2" onClick={tutup}><X size={14} />Tutup</button>
         </div>
       </div>
@@ -353,7 +353,7 @@ function FormMendesak({ m, selesai }: { m: Motor; selesai: () => void }) {
   )
 }
 
-// Hanya Super-admin: motor yang salah input (mis. salah plat). Alasan wajib dan tercatat di Riwayat motor dihapus; riwayat servis motor ikut hilang, fotonya dibersihkan dari Storage.
+// Super-admin (semua motor) dan Arcon (hanya motor di DS yang dipegang; dijaga di fungsi database): motor yang salah input (mis. salah plat). Alasan wajib dan tercatat di Riwayat motor dihapus; riwayat servis motor ikut hilang, fotonya dibersihkan dari Storage.
 function FormHapus({ m, servis, rusak, pindah, selesai }: { m: Motor; servis: Servis[]; rusak: Rusak[]; pindah: Pindah[]; selesai: () => void }) {
   const [alasan, setAlasan] = useState('')
   async function hapus() {
