@@ -34,6 +34,14 @@ function Penempatan({ p }: { p: { kelas: string; mulai_aktif: string | null } })
 function DaftarKandidat({ me }: { me: Me }) {
   const bisaUbah = me.peran === 'super_admin' || me.peran === 'recruiter'
   const kb = useRows<KebutuhanDs>(() => sb.rpc('ds_rekrut'), [])
+  const pr = useRows<{ porsi_enam_hk: number }>(() => sb.from('pengaturan_rekrut').select('porsi_enam_hk'), [])
+  const porsi = pr.rows[0]?.porsi_enam_hk ?? 50
+  const [isiPorsi, setIsiPorsi] = useState<string | null>(null)
+  const simpanPorsi = async () => {
+    const n = Math.round(Number(isiPorsi))
+    if (isiPorsi === '' || !(n >= 0 && n <= 100)) return toast('Isi angka 0 sampai 100')
+    if (await ok(sb.from('pengaturan_rekrut').update({ porsi_enam_hk: n }).eq('id', true))) { toast.ok(`Porsi rider 6 HK jadi ${n}%`); setIsiPorsi(null); pr.reload(); kb.reload() }
+  }
   const kd = useRows<Kandidat>(() => sb.from('kandidat').select('*').order('dibuat', { ascending: false }).limit(2000), [])
   const [tahap, setTahap] = useState<'semua' | Status>('semua')
   const [fds, setFds] = useState('')
@@ -123,7 +131,16 @@ function DaftarKandidat({ me }: { me: Me }) {
       <div className="card !p-0 overflow-hidden">
         <div className="p-4 pb-2">
           <div className="lbl !mb-0">Kebutuhan rekrut per DS</div>
-          <p className="text-xs text-muted-foreground">Dibutuhkan = kuota harian × 7/6, karena tiap rider minimal 1 hari libur per minggu. "Perlu dicari" = kekurangan yang belum tertutup kandidat yang sedang diproses.</p>
+          <p className="text-xs text-muted-foreground">
+            Dibutuhkan = kuota harian × 7 ÷ rata-rata hari kerja (HK) per rider. Dengan {porsi}% rider 6 HK dan {100 - porsi}% rider 5 HK, rata-rata {(5 + porsi / 100).toLocaleString('id-ID')} HK, jadi kuota × {(7 / (5 + porsi / 100)).toFixed(2).replace('.', ',')}. "Perlu dicari" = kekurangan yang belum tertutup kandidat yang sedang diproses.
+          </p>
+          {me.peran === 'super_admin' && (
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <label htmlFor="porsi6" className="text-muted-foreground">Porsi rider 6 HK (%)</label>
+              <input id="porsi6" type="number" min={0} max={100} className="inp !w-20" value={isiPorsi ?? porsi} onChange={(e) => setIsiPorsi(e.target.value)} />
+              {isiPorsi !== null && <button className="btn" onClick={simpanPorsi}>Simpan</button>}
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="tbl">
