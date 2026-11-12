@@ -30,6 +30,23 @@ const jmlBelum = (d: DsRow) => (lama(d) ? d.hari_belum_isi : d.pagi_belum_isi + 
 const shiftBelum = (d: DsRow) => lama(d) ? (d.hari_belum_isi ? `${d.hari_belum_isi} hari` : '') : [d.pagi_belum_isi && `pagi ${d.pagi_belum_isi} hari`, d.siang_belum_isi && `siang ${d.siang_belum_isi} hari`].filter(Boolean).join(', ')
 const jam = (s: string | null) => (s ? new Date(s).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'short', timeStyle: 'short' }) : 'belum pernah')
 
+// Waktu tampil dua baris (tanggal, jam WIB) di tabel aktivitas
+const Waktu = ({ s }: { s: string }) => (
+  <td className="whitespace-nowrap">
+    <div className="font-medium">{new Date(s).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short' })}</div>
+    <div className="font-mono text-xs text-muted-foreground">{new Date(s).toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })}</div>
+  </td>
+)
+const GAYA_JENIS: Record<string, string> = { tambah: 'bg-success-soft text-success', ubah: 'bg-primary-soft text-primary-soft-foreground', hapus: 'bg-danger-soft text-danger' }
+// Aktivitas identik yang beruntun (mis. jadwal yang sama disimpan berulang) digabung jadi satu baris dengan penanda ×n
+const kelompokkan = (rows: Any[]) =>
+  rows.reduce<Any[]>((a, l) => {
+    const kunci = `${l.captain?.nama ?? l.pelaku_nama}|${l.aksi}|${l.detail}`
+    const akhir = a[a.length - 1]
+    if (akhir && akhir.kunci === kunci) { akhir.n++; return a }
+    return [...a, { ...l, kunci, n: 1 }]
+  }, [])
+
 function useRange() {
   const [mode, setMode] = useState<'harian' | 'mingguan' | 'bulanan' | 'rentang'>('mingguan')
   const [ref, setRef] = useState(today())
@@ -123,9 +140,10 @@ export function Dashboard() {
     [],
   )
   const log = useRows<Any>(
-    () => sb.from('log_aktivitas').select('waktu,aksi,detail,pelaku_nama,captain:riders!log_aktivitas_captain_id_fkey(nama)').order('waktu', { ascending: false }).limit(10),
+    () => sb.from('log_aktivitas').select('waktu,aksi,detail,jenis,pelaku_nama,captain:riders!log_aktivitas_captain_id_fkey(nama)').order('waktu', { ascending: false }).limit(40),
     [],
   )
+  const aktivitas = kelompokkan(log.rows).slice(0, 10)
   const kosong = d.rows.filter((x) => jmlBelum(x) > 0)
   const sum = (k: 'dijadwalkan' | 'terisi' | 'patuh' | 'alpha') => d.rows.reduce((a, x) => a + x[k], 0)
   const kepatuhan = sum('terisi') > 0 ? Math.round((100 * sum('patuh')) / sum('terisi')) + '%' : '–'
@@ -210,27 +228,47 @@ export function Dashboard() {
         <Top title="Sering tidak hadir (Alpha)" rows={r.rows} k="alpha" />
         <Top title="Sering jadi pengganti" rows={r.rows} k="pengganti" />
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="card">
-          <b>Perpindahan rider terbaru</b>
-          <ul className="text-sm mt-1 space-y-1">
-            {pindah.rows.map((p: Any, i: number) => (
-              <li key={i}>
-                {p.rider?.nama}: {p.dari?.nama ?? 'belum punya DS'} → {p.ke?.nama ?? 'belum punya DS'} <span className="text-muted-foreground/70">oleh {p.oleh?.nama ?? '-'} · {jam(p.waktu)}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="card !p-0 overflow-hidden">
+        <div className="p-4 pb-2">
+          <b>Aktivitas terbaru</b>
+          <p className="text-xs text-muted-foreground">10 terakhir; yang identik dan beruntun digabung (×n). Semua aktivitas dengan filter ada di menu <b>Riwayat</b>.</p>
         </div>
-        <div className="card">
-          <b>Aktivitas Captain</b>
-          <ul className="text-sm mt-1 space-y-1">
-            {log.rows.map((l: Any, i: number) => (
-              <li key={i}>
-                {l.captain?.nama ?? l.pelaku_nama}: {l.aksi} <span className="text-muted-foreground/70">{l.detail} · {jam(l.waktu)}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="overflow-x-auto">
+          <table className="tbl">
+            <thead><tr><th>Waktu</th><th>Pelaku</th><th>Aktivitas</th><th>Detail</th></tr></thead>
+            <tbody>
+              {aktivitas.map((l: Any, i: number) => (
+                <tr key={i} className="align-top">
+                  <Waktu s={l.waktu} />
+                  <td className="whitespace-nowrap">{l.captain?.nama ?? l.pelaku_nama ?? <span className="text-muted-foreground">Sistem</span>}</td>
+                  <td className="whitespace-nowrap"><span className={`badge ${GAYA_JENIS[l.jenis] ?? 'bg-muted text-foreground/80'}`}>{l.aksi}</span></td>
+                  <td className="min-w-64">{l.detail ?? '–'}{l.n > 1 && <span className="badge ml-2 bg-muted text-muted-foreground">×{l.n}</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        {!aktivitas.length && <Kosong teks="Belum ada aktivitas" />}
+      </div>
+      <div className="card !p-0 overflow-hidden">
+        <div className="p-4 pb-2"><b>Perpindahan rider terbaru</b></div>
+        <div className="overflow-x-auto">
+          <table className="tbl">
+            <thead><tr><th>Waktu</th><th>Rider</th><th>Dari</th><th>Ke</th><th>Oleh</th></tr></thead>
+            <tbody>
+              {pindah.rows.map((p: Any, i: number) => (
+                <tr key={i} className="align-top">
+                  <Waktu s={p.waktu} />
+                  <td className="font-medium">{p.rider?.nama}</td>
+                  <td className={p.dari?.nama ? '' : 'text-muted-foreground'}>{p.dari?.nama ?? 'belum punya DS'}</td>
+                  <td className={p.ke?.nama ? '' : 'text-muted-foreground'}>{p.ke?.nama ?? 'belum punya DS'}</td>
+                  <td className="text-muted-foreground">{p.oleh?.nama ?? '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!pindah.rows.length && <Kosong teks="Belum ada perpindahan rider" />}
       </div>
     </div>
   )
