@@ -1021,3 +1021,72 @@ table thead th :is(div, span) { color: inherit; }
   @keyframes sapu { from { transform: translateY(-6px); } to { transform: translateY(100vh); } }
   :root[data-gaya="cyber"].dark::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 2px; z-index: 62; pointer-events: none; opacity: 0.28; background: linear-gradient(90deg, transparent, var(--cy), transparent); animation: sapu 9s linear infinite; }
 }
+
+/* ════════ Cyber: halaman Rider dan halaman login ════════ */
+:root[data-gaya="cyber"] {
+  --m-globe: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='0.9'%3E%3Ccircle cx='12' cy='12' r='10.5'/%3E%3Cellipse cx='12' cy='12' rx='4.5' ry='10.5'/%3E%3Cpath d='M1.5 12h21M3.5 7h17M3.5 17h17M12 1.5v21'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- Rider: bar atas dengan strip bahaya, kartu jadwal bertepi neon menurut shift, penanda HARI INI --- */
+:root[data-gaya="cyber"] .rider-bar { position: relative; padding-bottom: 2.25rem; }
+:root[data-gaya="cyber"] .rider-bar::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; pointer-events: none; background: repeating-linear-gradient(135deg, #fff200 0 8px, #05070f 8px 16px); }
+:root[data-gaya="cyber"] .rider-bar .font-display::before { content: '// '; color: var(--cy); }
+:root[data-gaya="cyber"] .rider-isi { margin-top: 0.875rem; }
+:root[data-gaya="cyber"] .rider-isi::after { content: 'DASH ORCA  //  RIDER  //  V2'; letter-spacing: 0.12em; padding-right: 8rem; }
+:root[data-gaya="cyber"] li.card[data-shift="pagi"] { --neon: #fff200; }
+:root[data-gaya="cyber"] li.card[data-shift="siang"] { --neon: #ff4fd8; }
+:root[data-gaya="cyber"] li.card[data-shift="off"] { --neon: #22e8ff; }
+:root[data-gaya="cyber"] li.card[data-shift] {
+  background:
+    linear-gradient(var(--neon), var(--neon)) left / 4px 100% no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--neon) 14%, var(--card)), var(--card) 65%);
+  padding-left: 1.25rem;
+}
+:root[data-gaya="cyber"] li.card .size-12 { border-radius: 0; border: 1px solid var(--neon, var(--cy)); background: color-mix(in srgb, var(--neon, var(--cy)) 14%, transparent); color: var(--foreground); }
+:root[data-gaya="cyber"] li.card[data-hari-ini] { outline: 2px solid var(--cy); outline-offset: -2px; }
+:root[data-gaya="cyber"] li.card[data-hari-ini] .badge { background: var(--cy); color: #0c0c0f; border-color: var(--cy); }
+:root[data-gaya="cyber"] li.card .badge.bg-warning-soft { background: #fff200; color: #0c0c0f; border-color: transparent; }
+:root[data-gaya="cyber"] li.card .badge.bg-primary { background: #ff4fd8; color: #0c0c0f; }
+
+/* --- Login: panel kiri gelap dengan globe dan radar, form berbingkai siku --- */
+:root[data-gaya="cyber"] .login-kiri {
+  background:
+    repeating-linear-gradient(135deg, #fff200 0 8px, #05070f 8px 16px) right / 8px 100% no-repeat,
+    linear-gradient(rgb(34 232 255 / 0.07) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgb(34 232 255 / 0.07) 1px, transparent 1px) 0 0 / 28px 28px,
+    radial-gradient(50rem 30rem at 0% 0%, rgb(255 79 216 / 0.2), transparent),
+    #070a1a;
+}
+:root[data-gaya="cyber"] .login-kiri > .rounded-full { display: none; }
+:root[data-gaya="cyber"] .login-kiri > .relative { z-index: 1; }
+:root[data-gaya="cyber"] .login-kiri::before { content: ''; position: absolute; right: -70px; bottom: -70px; width: 360px; height: 360px; opacity: 0.4; background: var(--cy); -webkit-mask: var(--m-globe) center / contain no-repeat; mask: var(--m-globe) center / contain no-repeat; }
+:root[data-gaya="cyber"] .login-kiri::after { content: ''; position: absolute; right: -70px; bottom: -70px; width: 360px; height: 360px; border-radius: 50%; pointer-events: none; background: conic-gradient(from 0deg, transparent 0 300deg, rgb(34 232 255 / 0.4) 358deg, transparent 360deg); }
+:root[data-gaya="cyber"] .login-kiri h2 { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.03em; }
+:root[data-gaya="cyber"] .login-kiri h2::before { content: '// '; color: var(--cy); }
+:root[data-gaya="cyber"] .login-kiri li > span { border-radius: 0; background: transparent; border: 1px solid var(--cy); color: var(--cy); }
+:root[data-gaya="cyber"] .login-form {
+  padding: 1.75rem; border: 1px solid var(--border);
+  background:
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat, linear-gradient(var(--cy), var(--cy)) top left / var(--brk) var(--bl) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat, linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    var(--card);
+}
+:root[data-gaya="cyber"] .login-form h1 { font-size: 1.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+:root[data-gaya="cyber"] .login-form h1::before { content: '// '; color: var(--cy); }
+:root[data-gaya="cyber"] .login-form h1::after { content: '\258C'; margin-left: 0.2em; color: var(--mg); }
+:root[data-gaya="cyber"] .login-form .grid.rounded-lg { border-radius: 0; background: color-mix(in srgb, var(--cy) 6%, transparent); border: 1px solid var(--border); }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-gaya="cyber"] .rider-bar::after { background-size: 22.627px 4px; animation: jalan-bahaya 1.4s linear infinite; }
+  @keyframes masuk-rider { from { opacity: 0; transform: translateX(-14px); } }
+  :root[data-gaya="cyber"] li.card[data-shift] { animation: masuk-rider 0.45s ease-out backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+  @keyframes batas-hari-ini { 50% { outline-color: var(--mg); } }
+  :root[data-gaya="cyber"] li.card[data-hari-ini] { animation: masuk-rider 0.45s ease-out backwards, batas-hari-ini 1.4s steps(2, jump-none) infinite; animation-delay: calc(var(--i, 0) * 70ms), 0s; }
+  @keyframes radar { to { transform: rotate(360deg); } }
+  :root[data-gaya="cyber"] .login-kiri::after { animation: radar 6s linear infinite; }
+  @keyframes kursor { 50% { opacity: 0; } }
+  :root[data-gaya="cyber"] .login-form h1::after { animation: kursor 1s steps(1) infinite; }
+}
