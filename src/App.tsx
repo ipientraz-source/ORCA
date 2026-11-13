@@ -15,6 +15,7 @@ import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
 import { ImporData } from './impor-data-ui'
 import { LencanaPengajuan } from './pengajuan'
+import { HudOrbit } from './hud-orbit'
 
 type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = semua DS yang dipegang Arcon
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
@@ -117,6 +118,7 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
       <div className="login-kiri hidden md:flex flex-col justify-between p-12 text-white bg-gradient-to-br from-primary via-primary to-primary-deep relative overflow-hidden">
         <div className="absolute -right-24 -bottom-24 size-96 rounded-full bg-white/10" />
         <div className="absolute -right-4 top-32 size-40 rounded-full bg-white/5" />
+        <HudOrbit />
         <div className="relative">
           <img src="/dash-logo.png" alt="Dash Electric" className="h-9 w-auto" />
         </div>

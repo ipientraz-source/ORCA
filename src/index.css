@@ -1062,8 +1062,6 @@ table thead th :is(div, span) { color: inherit; }
 }
 :root[data-gaya="cyber"] .login-kiri > .rounded-full { display: none; }
 :root[data-gaya="cyber"] .login-kiri > .relative { z-index: 1; }
-:root[data-gaya="cyber"] .login-kiri::before { content: ''; position: absolute; right: -70px; bottom: -70px; width: 360px; height: 360px; opacity: 0.4; background: var(--cy); -webkit-mask: var(--m-globe) center / contain no-repeat; mask: var(--m-globe) center / contain no-repeat; }
-:root[data-gaya="cyber"] .login-kiri::after { content: ''; position: absolute; right: -70px; bottom: -70px; width: 360px; height: 360px; border-radius: 50%; pointer-events: none; background: conic-gradient(from 0deg, transparent 0 300deg, rgb(34 232 255 / 0.4) 358deg, transparent 360deg); }
 :root[data-gaya="cyber"] .login-kiri h2 { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.03em; }
 :root[data-gaya="cyber"] .login-kiri h2::before { content: '// '; color: var(--cy); }
 :root[data-gaya="cyber"] .login-kiri li > span { border-radius: 0; background: transparent; border: 1px solid var(--cy); color: var(--cy); }
@@ -1085,8 +1083,30 @@ table thead th :is(div, span) { color: inherit; }
   :root[data-gaya="cyber"] li.card[data-shift] { animation: masuk-rider 0.45s ease-out backwards; animation-delay: calc(var(--i, 0) * 70ms); }
   @keyframes batas-hari-ini { 50% { outline-color: var(--mg); } }
   :root[data-gaya="cyber"] li.card[data-hari-ini] { animation: masuk-rider 0.45s ease-out backwards, batas-hari-ini 1.4s steps(2, jump-none) infinite; animation-delay: calc(var(--i, 0) * 70ms), 0s; }
-  @keyframes radar { to { transform: rotate(360deg); } }
-  :root[data-gaya="cyber"] .login-kiri::after { animation: radar 6s linear infinite; }
   @keyframes kursor { 50% { opacity: 0; } }
   :root[data-gaya="cyber"] .login-form h1::after { animation: kursor 1s steps(1) infinite; }
+}
+
+/* --- Login: inti HUD orbit (SVG) menggantikan globe --- */
+.hud-orbit { display: none; }
+:root[data-gaya="cyber"] .hud-orbit { display: block; position: absolute; right: -130px; bottom: -100px; width: 560px; height: 560px; z-index: 0; pointer-events: none; color: var(--cy); opacity: 0.8; }
+:root[data-gaya="cyber"] .hud-teks { font: 700 9px 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.12em; opacity: 0.85; }
+:root[data-gaya="cyber"] .hud-simpul { fill: var(--mg); }
+:root[data-gaya="cyber"] .hud-nucleo { stroke: var(--mg); }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hud-putar { to { transform: rotate(360deg); } }
+  .hud-orbit :is(.hud-dial, .hud-balik, .hud-radar, .hud-putar) { transform-origin: 200px 200px; }
+  .hud-orbit .hud-putar { transform-origin: 0 0; }
+  .hud-orbit .hud-dial { animation: hud-putar 80s linear infinite; }
+  .hud-orbit .hud-balik { animation: hud-putar 38s linear infinite reverse; }
+  .hud-orbit .hud-putar { animation: hud-putar 9s linear infinite; }
+  .hud-orbit .hud-putar.hud-lambat { animation-duration: 15s; animation-direction: reverse; }
+  .hud-orbit .hud-radar { animation: hud-putar 5s linear infinite; }
+  @keyframes hud-denyut { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.4; } }
+  .hud-orbit .hud-nucleo { transform-origin: 200px 200px; animation: hud-denyut 2s ease-in-out infinite; }
+  @keyframes hud-sasar { 0%, 100% { opacity: 0.1; } 20% { opacity: 1; } 60% { opacity: 0.35; } }
+  .hud-orbit .hud-blip rect { animation: hud-sasar 5s linear infinite; }
+  .hud-orbit .hud-blip rect:nth-child(2) { animation-delay: 1.2s; }
+  .hud-orbit .hud-blip rect:nth-child(3) { animation-delay: 2.5s; }
+  .hud-orbit .hud-blip rect:nth-child(4) { animation-delay: 3.7s; }
 }
