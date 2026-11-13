@@ -6,14 +6,17 @@ function List({ rows }: { rows: { tanggal: string; shift: string; ds?: string | 
   if (!rows.length) return <Kosong teks="Belum ada jadwal" hint="Jadwal akan muncul di sini setelah Captain menyusunnya." />
   return (
     <ul className="space-y-3">
-      {rows.map((r) => (
-        <li key={r.tanggal} className="card !mb-0 !p-3 flex items-center gap-4">
+      {rows.map((r, i) => (
+        <li key={r.tanggal} data-shift={r.shift} data-hari-ini={r.tanggal === today() ? '' : undefined} style={{ ['--i' as string]: i }} className="card !mb-0 !p-3 flex items-center gap-4">
           <div className="size-12 rounded-lg bg-primary-soft text-primary-soft-foreground flex flex-col items-center justify-center leading-none">
             <span className="font-mono text-lg font-bold">{r.tanggal.slice(8)}</span>
             <span className="text-[10px] uppercase font-semibold mt-0.5">{hari(r.tanggal).split(',')[0]}</span>
           </div>
           <div className="flex-1">
-            <div className="font-semibold">{SHIFT[r.shift] ?? r.shift}</div>
+            <div className="font-semibold">
+              {SHIFT[r.shift] ?? r.shift}
+              {r.tanggal === today() && <span className="badge ml-2 bg-primary-soft text-primary-soft-foreground">Hari ini</span>}
+            </div>
             {r.ds && <div className="text-xs text-muted-foreground">{r.ds}</div>}
           </div>
           <span className={`badge ${r.shift === 'pagi' ? 'bg-warning-soft text-warning' : r.shift === 'siang' ? 'bg-primary text-white' : 'bg-border text-muted-foreground'}`}>{SHIFT[r.shift]}</span>
@@ -31,7 +34,7 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
   )
   return (
     <div className="min-h-screen">
-      <div className="bg-sidebar text-white px-4 pt-5 pb-8">
+      <div className="rider-bar bg-sidebar text-white px-4 pt-5 pb-8">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Logo small />
           <div className="flex-1 leading-tight min-w-0">
@@ -42,10 +45,10 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
           <button className="btn2 !bg-transparent !text-white !border-white/30 hover:!border-white" onClick={out}>Keluar</button>
         </div>
       </div>
-      <div className="max-w-md mx-auto px-4 -mt-4 pb-10">
+      <main className="rider-isi max-w-md mx-auto px-4 -mt-4 pb-10">
         <Err msg={err} />
         <List rows={rows.filter((r) => r.tanggal).map((r) => ({ tanggal: r.tanggal!, shift: r.shift, ds: r.ds_nama }))} />
-      </div>
+      </main>
     </div>
   )
 }

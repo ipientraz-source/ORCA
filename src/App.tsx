@@ -114,7 +114,7 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-2">
-      <div className="hidden md:flex flex-col justify-between p-12 text-white bg-gradient-to-br from-primary via-primary to-primary-deep relative overflow-hidden">
+      <div className="login-kiri hidden md:flex flex-col justify-between p-12 text-white bg-gradient-to-br from-primary via-primary to-primary-deep relative overflow-hidden">
         <div className="absolute -right-24 -bottom-24 size-96 rounded-full bg-white/10" />
         <div className="absolute -right-4 top-32 size-40 rounded-full bg-white/5" />
         <div className="relative">
@@ -145,7 +145,7 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
       <div className="relative flex items-center justify-center p-6 min-h-screen md:min-h-0">
         <div className="absolute top-4 right-4"><TemaSwitch /></div>
         {lupa ? <LupaPassword emailAwal={a} balik={() => setLupa(false)} /> : (
-        <form onSubmit={submit} className="w-full max-w-sm">
+        <form onSubmit={submit} className="login-form w-full max-w-sm">
           <div className="md:hidden flex items-center gap-3 mb-8">
             <Logo />
             <div className="font-brand text-xl leading-none"><span className="font-medium">DASH </span><span className="font-extrabold text-primary">ORCA</span></div>
