@@ -140,7 +140,7 @@
 
   --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-display: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace; /* punya bobot tebal asli (700/800), jadi tidak ditebalkan palsu oleh browser */
   --font-brand: 'Unbounded', 'Bricolage Grotesque', system-ui, sans-serif;
 }
 
@@ -223,16 +223,24 @@ h1, h2, h3 { font-family: var(--font-display); }
   --card-shadow: 5px 5px 0 var(--edge);
   --card-shadow-hover: 8px 8px 0 var(--edge);
 }
-.dark {
-  --background: #0d0d10;
-  --border: #f4f4f5;
-  --input: #a1a1aa;
-  --edge: var(--purple-600);
-  --edge-primary: var(--purple-300);
-  --primary-soft: #2a2050;
-  --kuning: #b8921a;
-  --sidebar: #090a17;
+/* Neo gelap: indigo-ungu senada dengan mode terang (bukan hitam netral); kuning cerah, bayangan keras ungu terang.
+   Dikunci :not(cyber) supaya palet Cyber tidak ikut berubah. */
+:root.dark:not([data-gaya="cyber"]) {
+  --background: #0f0b24;
+  --card: #1a1438;
+  --muted: #251d4d;
+  --border: #9086be;
+  --input: #a99bd9;
+  --edge: #8b5cf6;
+  --edge-primary: #c4b5fd;
+  --primary-soft: #2e2160;
+  --primary-soft-foreground: #d9ccff;
+  --kuning: #ffc933;
+  --sidebar: #2b1466;
   --sidebar-foreground: #ffffff;
+  --danger-soft: #431636;
+  --warning-soft: #3d2c08;
+  --success-soft: #0f3524;
 }
 .cetak { --border: var(--gray-200); --edge: var(--gray-200); --kuning: #ffd23f; }
 
@@ -261,10 +269,12 @@ h1, h2, h3 { font-weight: 900; letter-spacing: -0.01em; }
 /* tabel */
 .tbl th { background: var(--kuning); color: #0c0c0f; border-bottom: 3px solid var(--border); font-weight: 900; }
 .tbl td { border-bottom: 1px solid color-mix(in srgb, var(--border) 22%, transparent); }
+.tbl td, table tbody td { font-variant-numeric: tabular-nums; } /* lebar angka sama, jadi kolom angka lurus */
 .tbl tbody tr:hover { background: var(--primary-soft); }
 
 /* lencana dan tab */
 .badge { border: 2px solid var(--border); border-radius: 0.375rem; font-weight: 800; }
+.tbl .badge, table .badge { white-space: nowrap; } /* badge di tabel tidak patah dua baris */
 .tab { border: 2px solid transparent; border-radius: 0.375rem; font-weight: 800; color: var(--foreground); }
 .tab:hover { border-color: var(--border); background: var(--card); }
 .tab-on, .tab-on:hover { border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
@@ -274,6 +284,7 @@ h1, h2, h3 { font-weight: 900; letter-spacing: -0.01em; }
 .dark .sidebar-bg { border-right-color: var(--border); }
 .sidebar-bg .text-white\/50, .sidebar-bg .text-white\/30 { color: rgb(255 255 255 / 0.85); }
 .sidebar-bg .ring-1 { background: #0c0c0f; box-shadow: none; border: 2px solid #fff; border-radius: 0.5rem; }
+:root.dark:not([data-gaya="cyber"]) .sidebar-bg .ring-1 { border-color: var(--border); }
 .nav { border: 2px solid transparent; border-radius: 0.375rem; font-weight: 700; color: #fff; }
 .nav:hover { background: #fff; color: #0c0c0f; border-color: #0c0c0f; transform: none; }
 .nav-on, .nav-on:hover { background: var(--kuning); color: #0c0c0f; border-color: #0c0c0f; box-shadow: 4px 4px 0 #0c0c0f; transform: none; font-weight: 900; }
@@ -305,6 +316,12 @@ header > span.font-mono { border: 2px solid var(--border); background: var(--kun
 :root:not(.dark) .stat:nth-child(4n+3) { background: #ffb3d9; }
 :root:not(.dark) .stat:nth-child(4n+4) { background: #ffffff; }
 :root:not(.dark) .stat .text-muted-foreground, :root:not(.dark) .stat span { color: #2a2740; }
+/* Kartu angka berwarna juga di Neo gelap (versi tua dari empat warna mode terang) */
+:root.dark:not([data-gaya="cyber"]) .stat:nth-child(4n+1) { background: #33247a; }
+:root.dark:not([data-gaya="cyber"]) .stat:nth-child(4n+2) { background: #0f4350; }
+:root.dark:not([data-gaya="cyber"]) .stat:nth-child(4n+3) { background: #521d4a; }
+:root.dark:not([data-gaya="cyber"]) .stat:nth-child(4n+4) { background: var(--card); }
+:root.dark:not([data-gaya="cyber"]) .stat .text-muted-foreground, :root.dark:not([data-gaya="cyber"]) .stat span { color: #e6e0fb; }
 
 /* Latar abu perak; tabel dan garis lebih tebal di semua halaman */
 :root:not(.dark) { --background: #f6ecd0; }
@@ -707,4 +724,300 @@ table thead th :is(div, span) { color: inherit; }
     & .app-shell > aside > nav { background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.2); }
     & .app-shell > aside > div:last-child { border-color: rgb(255 255 255 / 0.2); }
   }
+}
+
+/* Batang grafik yang laporannya belum lengkap: garis diagonal (bukan memudar, supaya warna tetap cerah di semua tema) */
+.bar-belum { position: relative; overflow: hidden; }
+.bar-belum::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.32) 0 4px, transparent 4px 9px); }
+
+/* ---- HP (di bawah md): lebih padat dan rapi, berlaku di gaya Neo maupun Cyber ---- */
+/* Label kartu angka dulu mewarisi tinggi baris induk (24px) sehingga renggang; jadikan blok dengan baris rapat. */
+.stat span { display: block; line-height: 1.3; }
+/* Halaman Rider di Cyber: kartu kaca tidak menumpuk ke bar atas yang gelap (di Neo tumpang tindih itu disengaja) */
+:root[data-gaya="cyber"] .\-mt-4 { margin-top: 0.875rem; }
+@media (max-width: 767px) {
+  .stat b { white-space: nowrap; }
+  .stat > div:first-child { width: 2.25rem; height: 2.25rem; border-radius: 0.75rem; }
+  .stat > div:first-child svg { width: 1.125rem; height: 1.125rem; }
+  .stat b { font-size: 1.375rem; line-height: 1.2; }
+  /* tabel: kolom lebih rapat supaya lebih banyak kolom terlihat sebelum digeser */
+  .tbl th { padding: 0.4rem 0.5rem; font-size: 10px; }
+  .tbl td { padding: 0.4rem 0.5rem; font-size: 13px; }
+  /* kolom isian dan pilihan memenuhi lebar layar (kecuali di dalam tabel dan input tanggal/angka/centang) */
+  main .inp:not([type="checkbox"], [type="radio"], [type="date"], [type="month"], [type="number"], [type="time"]) { width: 100%; max-width: 100%; }
+  main .tbl .inp { width: auto; max-width: 9rem; min-height: 2.25rem; padding-block: 0.25rem; } /* font tetap 16px agar iOS tidak memperbesar layar saat fokus */
+  /* deretan tab/filter yang turun baris: isi tiap baris sampai penuh, tidak menggantung */
+  main .flex-wrap > .tab { flex: 1 1 auto; text-align: center; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CYBERPUNK SEJATI (lapisan terakhir, menimpa gaya kaca/pil di atas): sudut tajam bukan membulat, bingkai siku ala HUD di
+   sudut kartu, kartu angka dengan batang neon di kiri, tombol bersudut potong, isian bergaya terminal, garis bahaya kuning-hitam
+   di bar atas, label "//" pada judul, dan garis pemindai tipis. Semuanya tajam: tanpa blur dan tanpa bayangan neon.
+   ════════════════════════════════════════════════════════════════ */
+:root[data-gaya="cyber"] { --cy: #22e8ff; --mg: #ff4fd8; --bl: 14px; --brk: 2px; --potong: 10px; }
+:root[data-gaya="cyber"]:not(.dark) { --cy: #0a8fa8; --mg: #d11c9b; }
+
+/* bentuk: semua sudut tajam */
+:root[data-gaya="cyber"] :is(.rounded-xl, .rounded-2xl, .rounded-lg, .rounded-md, .inp, .badge, .tab, .btn2, .nav) { border-radius: 0; }
+
+/* kartu dan kartu angka: bingkai siku cyan (kiri-atas) dan magenta (kanan-bawah) */
+:root[data-gaya="cyber"] :is(.card, .stat) {
+  border-radius: 0; border: 1px solid var(--border); box-shadow: none; backdrop-filter: none;
+  background:
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top left / var(--brk) var(--bl) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    var(--card);
+}
+:root[data-gaya="cyber"] :is(.card, .stat)::before { content: none; }
+:root[data-gaya="cyber"] .stat:nth-child(4n+1) { --neon: #ff4fd8; }
+:root[data-gaya="cyber"] .stat:nth-child(4n+2) { --neon: #22e8ff; }
+:root[data-gaya="cyber"] .stat:nth-child(4n+3) { --neon: #a6ff3d; }
+:root[data-gaya="cyber"] .stat:nth-child(4n+4) { --neon: #fff200; }
+:root[data-gaya="cyber"] .stat:is(:nth-child(4n+1), :nth-child(4n+2), :nth-child(4n+3), :nth-child(4n+4)) {
+  background:
+    linear-gradient(var(--neon), var(--neon)) left / 4px 100% no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--neon) 16%, var(--card)), var(--card) 70%);
+  padding-left: 1.25rem;
+}
+:root[data-gaya="cyber"] .stat b { text-shadow: none; }
+:root[data-gaya="cyber"] .stat:hover { transform: none; border-color: var(--cy); box-shadow: none; }
+
+/* tombol: utama bersudut potong (miring di kiri-bawah dan kanan-atas), kedua bergaris tajam */
+:root[data-gaya="cyber"] .btn { border-radius: 0; box-shadow: none; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; clip-path: polygon(0 0, calc(100% - var(--potong)) 0, 100% var(--potong), 100% 100%, var(--potong) 100%, 0 calc(100% - var(--potong))); }
+:root[data-gaya="cyber"] .btn:hover:not(:disabled) { box-shadow: none; filter: brightness(1.12); }
+:root[data-gaya="cyber"] .btn2 { border: 1px solid color-mix(in srgb, var(--cy) 55%, transparent); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; background: color-mix(in srgb, var(--cy) 6%, transparent); }
+:root[data-gaya="cyber"] .btn2:hover:not(:disabled) { border-color: var(--cy); background: color-mix(in srgb, var(--cy) 14%, transparent); }
+
+/* isian bergaya terminal: garis bawah cyan tebal */
+:root[data-gaya="cyber"] .inp { border-radius: 0; background: color-mix(in srgb, var(--cy) 5%, transparent); border: 1px solid var(--input); border-bottom: 2px solid var(--cy); }
+:root[data-gaya="cyber"] .inp:focus { border-color: var(--cy); box-shadow: 0 0 0 1px var(--cy); }
+
+/* lencana dan tab */
+:root[data-gaya="cyber"] .badge { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.6875rem; font-weight: 700; }
+:root[data-gaya="cyber"] .tab { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; }
+:root[data-gaya="cyber"] .tab-on, :root[data-gaya="cyber"] .tab-on:hover { box-shadow: none; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+
+/* tabel: kepala bergaris cyan */
+:root[data-gaya="cyber"] table thead th, :root[data-gaya="cyber"] .tbl th { background: color-mix(in srgb, var(--cy) 9%, transparent); border-bottom: 2px solid var(--cy); }
+:root[data-gaya="cyber"] .cetak table thead th { border-bottom: 3px solid var(--border); }
+
+/* judul halaman: awalan "//" dan ikon persegi */
+:root[data-gaya="cyber"] header h2::before { content: '// '; color: var(--cy); }
+:root[data-gaya="cyber"] header > div:first-child, :root[data-gaya="cyber"] header > span.font-mono { border-radius: 0; }
+:root[data-gaya="cyber"] .lbl::before { content: '▸ '; color: var(--cy); }
+
+/* bar menu atas (layar lebar): sudut potong, garis bahaya kuning-hitam di tepi bawah */
+@media (min-width: 768px) {
+  :root[data-gaya="cyber"] .app-shell > aside { border-radius: 0; }
+  :root[data-gaya="cyber"] .app-shell > aside::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: repeating-linear-gradient(135deg, #fff200 0 8px, #05070f 8px 16px); pointer-events: none; }
+  :root[data-gaya="cyber"] .app-shell > aside > nav { border-radius: 0; border: 1px solid color-mix(in srgb, var(--cy) 45%, transparent); clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); }
+  :root[data-gaya="cyber"] .nav-on, :root[data-gaya="cyber"] .nav-on:hover { box-shadow: none; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  :root[data-gaya="cyber"] .app-shell > aside > div:last-child, :root[data-gaya="cyber"] .sidebar-bg .ring-1 { border-radius: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+}
+
+/* batang grafik: tajam */
+:root[data-gaya="cyber"] [role="img"] [class*="border-b-0"] { border-radius: 0; box-shadow: none; }
+:root[data-gaya="cyber"] :is(.h-full.bg-primary, .h-full.bg-success, .h-full.bg-warning, .h-full.bg-danger) { box-shadow: none; }
+
+/* garis pemindai sangat tipis (hanya mode gelap, di atas semua tanpa mengganggu klik) */
+:root[data-gaya="cyber"].dark body::after { content: ''; position: fixed; inset: 0; z-index: 60; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.1) 0 1px, transparent 1px 3px); }
+
+/* Cyber terang: aturan latar kartu di blok terang lebih spesifik, jadi bingkai siku dan batang neon diulang di sini */
+:root[data-gaya="cyber"]:not(.dark) :is(.card, .stat) {
+  border-radius: 0; border: 1px solid rgb(40 50 140 / 0.28); box-shadow: none;
+  background:
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top left / var(--brk) var(--bl) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    #fff;
+}
+:root[data-gaya="cyber"]:not(.dark) .stat:is(:nth-child(4n+1), :nth-child(4n+2), :nth-child(4n+3), :nth-child(4n+4)) {
+  background:
+    linear-gradient(var(--neon), var(--neon)) left / 4px 100% no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / var(--brk) var(--bl) no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--neon) 22%, #fff), #fff 70%);
+  padding-left: 1.25rem;
+}
+:root[data-gaya="cyber"]:not(.dark) .stat:hover { box-shadow: none; border-color: var(--cy); }
+
+/* ── Cyber: unsur dari referensi kit HUD (bar bersegmen, chevron, strip bahaya, viewfinder) ── */
+/* label huruf kapital pakai Rajdhani yang padat dan teknis */
+:root[data-gaya="cyber"] :is(.btn, .btn2, .tab, .nav, .badge, table thead th, .tbl th) { font-family: 'Rajdhani', 'Chakra Petch', system-ui, sans-serif; }
+:root[data-gaya="cyber"] :is(.btn, .btn2, .tab) { font-size: 0.9rem; font-weight: 700; }
+:root[data-gaya="cyber"] :is(.tbl th, table thead th) { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; }
+
+/* bar progres bersegmen seperti loading bar HUD */
+:root[data-gaya="cyber"] :is(.h-2\.5, .h-4).overflow-hidden { border-radius: 0; -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 11px); mask-image: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 11px); }
+:root[data-gaya="cyber"] :is(.h-2\.5, .h-4).overflow-hidden :is(div, .rounded-full) { border-radius: 0; }
+
+/* menu aktif diberi chevron »; kotak peringatan diberi strip bahaya di kiri */
+@media (min-width: 768px) {
+  :root[data-gaya="cyber"] .nav-on::before { content: '»'; display: inline-block; margin-right: 0.35em; font-weight: 700; }
+}
+:root[data-gaya="cyber"] .bg-danger-soft.border { border-radius: 0; padding-left: 1.5rem; background: repeating-linear-gradient(135deg, #fff200 0 6px, #05070f 6px 12px) left / 8px 100% no-repeat, var(--danger-soft); }
+
+/* bingkai viewfinder di empat sudut layar (tipis, tidak menghalangi klik) */
+:root[data-gaya="cyber"]::after {
+  content: ''; position: fixed; inset: 6px; z-index: 61; pointer-events: none; opacity: 0.7;
+  background:
+    linear-gradient(var(--cy), var(--cy)) top left / 20px 2px no-repeat, linear-gradient(var(--cy), var(--cy)) top left / 2px 20px no-repeat,
+    linear-gradient(var(--cy), var(--cy)) top right / 20px 2px no-repeat, linear-gradient(var(--cy), var(--cy)) top right / 2px 20px no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom left / 20px 2px no-repeat, linear-gradient(var(--mg), var(--mg)) bottom left / 2px 20px no-repeat,
+    linear-gradient(var(--mg), var(--mg)) bottom right / 20px 2px no-repeat, linear-gradient(var(--mg), var(--mg)) bottom right / 2px 20px no-repeat;
+}
+
+/* ── Cyber: simbol dari pack "shapes & lookups" dan label stiker (tanda bidik, bintang empat sudut, chevron, garis bahaya, matriks titik) ──
+   Simbol memakai mask SVG, jadi warnanya mengikuti --cy / --mg dan tetap tajam di terang maupun gelap. */
+:root[data-gaya="cyber"] {
+  --m-bidik: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Cpath d='M12 1v7M12 16v7M1 12h7M16 12h7'/%3E%3C/g%3E%3C/svg%3E");
+  --m-bintang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z'/%3E%3C/svg%3E");
+}
+/* judul kartu diawali tanda bidik */
+:root[data-gaya="cyber"] :is(.card > b:first-child, .card > div:first-child > b:first-child)::before {
+  content: ''; display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.5em; vertical-align: -0.1em; background: var(--cy);
+  -webkit-mask: var(--m-bidik) center / contain no-repeat; mask: var(--m-bidik) center / contain no-repeat;
+}
+/* judul halaman diakhiri deret chevron seperti label stiker; ikon halaman diberi bintang kecil di sudutnya */
+:root[data-gaya="cyber"] header h2::after { content: '»»»'; margin-left: 0.6rem; font-size: 0.65em; letter-spacing: 0.08em; color: var(--mg); }
+:root[data-gaya="cyber"] header > div:first-child { position: relative; overflow: visible; }
+:root[data-gaya="cyber"] header > div:first-child::after {
+  content: ''; position: absolute; top: -7px; right: -7px; width: 14px; height: 14px; background: var(--mg);
+  -webkit-mask: var(--m-bintang) center / contain no-repeat; mask: var(--m-bintang) center / contain no-repeat;
+}
+/* chip tanggal: label ber-strip bahaya di ujung kanan */
+:root[data-gaya="cyber"] header > span.font-mono::after { content: ''; display: inline-block; width: 14px; height: 0.9em; margin-left: 0.6rem; vertical-align: middle; background: repeating-linear-gradient(135deg, currentColor 0 3px, transparent 3px 6px); }
+/* kartu angka: matriks titik di pojok kanan atas */
+:root[data-gaya="cyber"] .stat { position: relative; }
+:root[data-gaya="cyber"] .stat::after { content: ''; position: absolute; top: 8px; right: 10px; width: 30px; height: 16px; pointer-events: none; opacity: 0.55; background: radial-gradient(circle, var(--neon, var(--cy)) 1.3px, transparent 1.7px) 0 0 / 6px 6px; }
+/* tombol utama berakhiran chevron; status di tabel diawali kotak kecil */
+:root[data-gaya="cyber"] .btn:not(:disabled)::after { content: '»'; margin-left: 0.35em; font-weight: 700; }
+:root[data-gaya="cyber"] :is(.tbl, table) .badge::before { content: ''; display: inline-block; width: 0.5em; height: 0.5em; margin-right: 0.45em; vertical-align: 0.05em; background: currentColor; }
+
+/* ── Cyber: cincin persen, kartu bertakik, dan label stiker di kaki halaman (dari pack stiker dan HUD) ── */
+.cincin { display: none; }
+:root[data-gaya="cyber"] .cincin {
+  display: block; position: absolute; top: 50%; right: 12px; width: 52px; height: 52px; transform: translateY(-50%); pointer-events: none;
+  background: conic-gradient(var(--cy) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--cy) 16%, transparent) 0);
+  -webkit-mask: radial-gradient(circle, transparent 20px, #000 21px, #000 25px, transparent 26px), repeating-conic-gradient(#000 0 9deg, transparent 9deg 12deg);
+  -webkit-mask-composite: source-in; mask: radial-gradient(circle, transparent 20px, #000 21px, #000 25px, transparent 26px), repeating-conic-gradient(#000 0 9deg, transparent 9deg 12deg); mask-composite: intersect;
+}
+/* kartu besar: sudut kanan-atas dan kiri-bawah dipotong miring, garis diagonalnya digambar sendiri (kartu berisi menu mengambang tidak dipotong) */
+@media (min-width: 768px) {
+  :root[data-gaya="cyber"] .card:not(:has(.absolute)) { position: relative; clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
+  :root[data-gaya="cyber"] .card:not(:has(.absolute))::after {
+    content: ''; position: absolute; top: 0; right: 0; width: 17px; height: 17px; pointer-events: none;
+    background: linear-gradient(45deg, transparent calc(50% - 1px), var(--cy) calc(50% - 1px), var(--cy) calc(50% + 1px), transparent calc(50% + 1px));
+    box-shadow: none;
+  }
+  :root[data-gaya="cyber"] .card:not(:has(.absolute))::before {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 17px; height: 17px; pointer-events: none; background: none;
+    background: linear-gradient(45deg, transparent calc(50% - 1px), var(--mg) calc(50% - 1px), var(--mg) calc(50% + 1px), transparent calc(50% + 1px));
+  }
+}
+/* kaki halaman: papan catur, teks ESTD, dan barcode, seperti label stiker */
+:root[data-gaya="cyber"] main::after {
+  content: 'ESTD 2026  //  DASH ORCA  //  ORBIT & CADENCE  //  V2'; display: block; margin-top: 2.5rem; padding: 0.55rem 8.5rem 0.55rem 3.25rem;
+  font: 700 0.75rem/1.2 'Rajdhani', 'Chakra Petch', sans-serif; letter-spacing: 0.18em; color: var(--cy); border-top: 1px solid color-mix(in srgb, var(--cy) 40%, transparent);
+  background:
+    conic-gradient(var(--cy) 25%, transparent 0 50%, var(--cy) 0 75%, transparent 0) 0 0.6rem / 12px 12px no-repeat,
+    repeating-linear-gradient(90deg, var(--mg) 0 2px, transparent 2px 5px, var(--mg) 5px 6px, transparent 6px 9px, var(--mg) 9px 12px, transparent 12px 14px) right 0 center / 120px 20px no-repeat;
+  background-size: 24px 12px, 120px 20px;
+}
+
+/* ════════ Cyber: simbol tambahan dan animasi (animasi hanya bila perangkat tidak meminta gerakan dikurangi) ════════ */
+@property --bl { syntax: '<length>'; inherits: true; initial-value: 14px; }
+@property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+:root[data-gaya="cyber"] {
+  --m-segitiga: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2L23 21H1Z M11 9h2v6h-2Z M11 16.5h2v2h-2Z'/%3E%3C/svg%3E");
+}
+/* penggaris tik di atas isi halaman (seperti alat ukur di pack HUD) */
+:root[data-gaya="cyber"] main::before {
+  content: ''; display: block; height: 9px; margin-bottom: 0.9rem; opacity: 0.55;
+  background:
+    repeating-linear-gradient(90deg, var(--cy) 0 1px, transparent 1px 10px) left bottom / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, var(--cy) 0 1px, transparent 1px 50px) left bottom / 100% 9px no-repeat;
+}
+/* segitiga peringatan di judul kotak peringatan */
+:root[data-gaya="cyber"] .bg-danger-soft.border > b:first-child::before {
+  content: ''; display: inline-block; width: 1.1em; height: 1.1em; margin-right: 0.5em; vertical-align: -0.18em; background: #fff200;
+  -webkit-mask: var(--m-segitiga) center / contain no-repeat; mask: var(--m-segitiga) center / contain no-repeat;
+}
+/* indikator "hidup" di chip tanggal: equalizer tiga batang */
+:root[data-gaya="cyber"] header > span.font-mono::before {
+  width: 13px; height: 10px; margin-right: 8px; border-radius: 0; animation: none;
+  background: linear-gradient(#a6ff3d, #a6ff3d) 0 100% / 3px 40% no-repeat, linear-gradient(#a6ff3d, #a6ff3d) 5px 100% / 3px 90% no-repeat, linear-gradient(#a6ff3d, #a6ff3d) 10px 100% / 3px 60% no-repeat;
+}
+/* barcode di kaki halaman: tambah satu lapis (sinar laser) di paling atas */
+:root[data-gaya="cyber"] main::after {
+  background:
+    linear-gradient(90deg, transparent, #fff, transparent) right 106px center / 14px 20px no-repeat,
+    conic-gradient(var(--cy) 25%, transparent 0 50%, var(--cy) 0 75%, transparent 0) 0 0.6rem / 24px 12px no-repeat,
+    repeating-linear-gradient(90deg, var(--mg) 0 2px, transparent 2px 5px, var(--mg) 5px 6px, transparent 6px 9px, var(--mg) 9px 12px, transparent 12px 14px) right 0 center / 120px 20px no-repeat;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* bingkai siku melebar seperti membidik saat kartu disentuh */
+  :root[data-gaya="cyber"] :is(.card, .stat) { transition: --bl 0.25s ease-out, border-color 0.2s; }
+  :root[data-gaya="cyber"] :is(.card, .stat):hover { --bl: 30px; }
+  /* strip bahaya di bar atas berjalan */
+  @keyframes jalan-bahaya { to { background-position: 22.627px 0; } }
+  @media (min-width: 768px) {
+    :root[data-gaya="cyber"] .app-shell > aside::after { background-size: 22.627px 4px; animation: jalan-bahaya 1.4s linear infinite; }
+    @keyframes geser { to { transform: translateX(3px); } }
+    :root[data-gaya="cyber"] .nav-on::before { animation: geser 0.8s ease-in-out infinite alternate; }
+  }
+  /* kilau berjalan pada deret chevron di judul */
+  @keyframes kilau-chevron { from { background-position: 200% 0; } to { background-position: -100% 0; } }
+  :root[data-gaya="cyber"] header h2::after {
+    background: linear-gradient(90deg, var(--mg) 35%, #fff 50%, var(--mg) 65%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent; animation: kilau-chevron 2.4s linear infinite;
+  }
+  /* judul halaman: sekali "glitch" cepat saat muncul dan saat disentuh (pemisahan warna tajam, tanpa blur) */
+  @keyframes glitch {
+    0% { transform: none; filter: none; }
+    15% { transform: translate(-3px, 1px); filter: drop-shadow(3px 0 0 var(--mg)) drop-shadow(-3px 0 0 var(--cy)); }
+    30% { transform: translate(3px, -1px); filter: drop-shadow(-3px 0 0 var(--mg)) drop-shadow(3px 0 0 var(--cy)); }
+    45% { transform: translate(-1px, 0); filter: drop-shadow(1px 0 0 var(--mg)) drop-shadow(-1px 0 0 var(--cy)); }
+    60%, 100% { transform: none; filter: none; }
+  }
+  :root[data-gaya="cyber"] header h2 { animation: glitch 0.6s steps(1) 1; }
+  :root[data-gaya="cyber"] header h2:hover { animation: glitch 0.6s steps(1) 1; }
+  /* equalizer bergerak */
+  @keyframes eq {
+    0% { background-size: 3px 35%, 3px 95%, 3px 55%; }
+    50% { background-size: 3px 100%, 3px 40%, 3px 85%; }
+    100% { background-size: 3px 55%, 3px 70%, 3px 30%; }
+  }
+  :root[data-gaya="cyber"] header > span.font-mono::before { animation: eq 1s steps(5, jump-none) infinite alternate; }
+  /* bintang di ikon halaman berkerlip */
+  @keyframes kerlip { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(0.55) rotate(45deg); } }
+  :root[data-gaya="cyber"] header > div:first-child::after { animation: kerlip 2.6s ease-in-out infinite; }
+  /* matriks titik di kartu angka berkedip bergantian */
+  @keyframes titik { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.8; } }
+  :root[data-gaya="cyber"] .stat::after { animation: titik 2.8s steps(3, jump-none) infinite; }
+  :root[data-gaya="cyber"] .stat:nth-child(2)::after { animation-delay: 0.45s; }
+  :root[data-gaya="cyber"] .stat:nth-child(3)::after { animation-delay: 0.9s; }
+  :root[data-gaya="cyber"] .stat:nth-child(4)::after { animation-delay: 1.35s; }
+  /* cincin persen terisi dari kosong saat dimuat */
+  @keyframes isi-cincin { from { --p: 0; } }
+  :root[data-gaya="cyber"] .cincin { animation: isi-cincin 1.4s ease-out both; }
+  /* sinar laser menyapu barcode */
+  @keyframes laser { from { background-position: right 106px center, 0 0.6rem, right 0 center; } to { background-position: right 0px center, 0 0.6rem, right 0 center; } }
+  :root[data-gaya="cyber"] main::after { animation: laser 2.2s linear infinite; }
+  /* segitiga peringatan dan penanda bahaya berkedip pelan */
+  @keyframes kedip { 50% { opacity: 0.25; } }
+  :root[data-gaya="cyber"] .bg-danger-soft.border > b:first-child::before { animation: kedip 1.4s steps(2, jump-none) infinite; }
+  :root[data-gaya="cyber"] :is(.tbl, table) .badge.text-danger::before { animation: kedip 1.6s steps(2, jump-none) infinite; }
+  /* garis pemindai menyapu layar sesekali (mode gelap) */
+  @keyframes sapu { from { transform: translateY(-6px); } to { transform: translateY(100vh); } }
+  :root[data-gaya="cyber"].dark::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 2px; z-index: 62; pointer-events: none; opacity: 0.28; background: linear-gradient(90deg, transparent, var(--cy), transparent); animation: sapu 9s linear infinite; }
 }

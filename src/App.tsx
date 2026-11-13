@@ -388,7 +388,6 @@ function AdminApp({ email }: { email: string }) {
             <div className="text-sm font-semibold text-white truncate">{me.nama}</div>
             <div className="font-mono text-[10px] uppercase tracking-wider truncate">{peran}{lokasi ? ` · ${lokasi}` : ''}</div>
           </div>
-          <TemaToggle className="hover:!bg-white/10 hover:text-white !p-1.5" />
           <button onClick={() => sb.auth.signOut()} title="Keluar" className="p-2 rounded-md hover:bg-white/10 hover:text-white"><LogOut size={16} /></button>
         </div>
       </aside>

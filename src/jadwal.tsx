@@ -487,7 +487,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
                   </th>
                 )
               })}
-              <th className="border-b border-border bg-card px-3 py-3 text-center font-mono text-xs font-bold uppercase tracking-wider text-foreground">Hari kerja</th>
+              <th className="sticky right-0 z-10 border-b border-l border-border bg-card px-3 py-3 text-center font-mono text-xs font-bold uppercase tracking-wider text-foreground">Hari kerja</th>
             </tr>
           </thead>
           <tbody>
@@ -513,7 +513,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
                       </td>
                     )
                   })}
-                  <td className="border-b border-border/60 px-3 py-2 text-center font-mono text-sm transition-colors group-hover:bg-primary-soft/60">
+                  <td className="sticky right-0 border-b border-l border-border/60 bg-card px-3 py-2 text-center font-mono text-sm transition-colors group-hover:bg-primary-soft">
                     <span className={lebihBatas(r.id) ? 'font-bold text-danger' : 'font-semibold'} title={lebihBatas(r.id) ? 'Ada minggu dengan lebih dari 6 hari kerja' : undefined}>{kerja}</span>
                     <span className="text-muted-foreground">/{days.length}</span>
                   </td>
@@ -541,14 +541,15 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
         </table>
         </div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {editable && (
-          <>
+      {editable && (
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-semibold text-foreground">Cara kerja jadwal dan susun otomatis</summary>
+          <p className="mt-1 leading-relaxed">
             Warna baris kebutuhan: hijau pas, kuning kurang, biru lebih tapi masih dalam jatah cadangan, merah kelebihan. Jadwal tetap bisa disimpan. Klik sel untuk mengganti: libur, pagi, siang, lalu <b>Off</b> (gembok) untuk cuti atau izin yang sudah disepakati, yang tidak akan diisi otomatis. "Susun otomatis" membagi shift sesuai kebutuhan tiap hari secara adil dan membaca jadwal 28 hari sebelumnya yang sudah tersimpan (simpan periode sebelumnya dulu). Aturannya: maksimal 6 hari kerja per minggu dan 6 hari berturut-turut, shift hanya berganti setelah libur, dan setelah libur rider melanjutkan shift sebelumnya kecuali selisih hari pagi dan siangnya sudah 4 hari atau lebih: maka ia bergantian ke shift satunya, supaya pagi dan siang terbagi adil dari minggu ke minggu. Hasilnya hanya draf: periksa dan ubah dulu, baru klik Simpan jadwal. Pindah periode sebelum menyimpan akan membuang draf.{' '}
-          </>
-        )}
-        Gambar dan PDF dibuat langsung di browser dan tidak disimpan di database.
-      </p>
+          </p>
+        </details>
+      )}
+      <p className="mt-2 text-xs text-muted-foreground">Gambar dan PDF dibuat langsung di browser dan tidak disimpan di database.</p>
       <div className="mt-4">
         <RiwayatJadwal ds={ds} aktif={dari} versi={versiRiwayat} buka={(sen) => { setMode('minggu'); pasang(sen, addDays(sen, 6)); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
       </div>

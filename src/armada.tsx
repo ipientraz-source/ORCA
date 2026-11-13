@@ -167,8 +167,10 @@ function BagianMotor({ motors, me, kelola, dsBoleh, dsNama, riders, pilih, setPi
                   <td>{dsNama(m.ds_id)}</td>
                   <td>{riderNama(m.dipegang_oleh)}</td>
                   <td>
-                    <BadgeStatus s={m.status} />
-                    {diminta.has(m.id) && <span className="badge ml-1.5 bg-warning-soft text-warning">Diminta servis</span>}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <BadgeStatus s={m.status} />
+                      {diminta.has(m.id) && <span className="badge bg-warning-soft text-warning">Diminta servis</span>}
+                    </div>
                   </td>
                   <td><ServisBerikutnya m={m} /></td>
                   <td className="text-right"><button className="btn2" onClick={() => setPilih(m.id === pilih ? null : m.id)}>{m.id === pilih ? 'Tutup' : 'Detail'}</button></td>

@@ -52,8 +52,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Seberapa banyak rider yang diminta client benar-benar datang bekerja. Contoh: client minta 10 rider, yang bekerja 9, maka 90%.
-        Rider yang lebih dari permintaan tidak menaikkan angka. Shift yang belum dilaporkan Captain tidak ikut dihitung; angkanya diberi tulisan abu-abu "baru pagi", "baru siang", atau "belum lengkap" sampai laporannya masuk.
+        Persen rider yang benar-benar bekerja dari yang diminta client. Contoh: diminta 10, bekerja 9 = 90%. Rider lebih dan shift yang belum dilaporkan tidak dihitung.
       </p>
       <Err msg={f.err} />
       {!harian.length ? (
@@ -61,24 +60,25 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-border p-3">
+            <div className="relative rounded-xl border border-border p-3">
+              <span className="cincin" style={{ ['--p' as string]: total.rate === null ? 0 : Math.round(total.rate * 100) }} aria-hidden />
               <div className={`font-mono text-2xl font-bold ${WARNA_TEKS[tingkat]}`}>{persen(total.rate)}</div>
-              <div className="text-xs text-muted-foreground">Persen rider terpenuhi (seluruh periode)</div>
+              <div className="text-xs text-muted-foreground">Terpenuhi</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">
                 {total.terpenuhi}
                 <span className="text-base text-muted-foreground">/{total.kebutuhan}</span>
               </div>
-              <div className="text-xs text-muted-foreground">Rider yang bekerja / rider diminta client</div>
+              <div className="text-xs text-muted-foreground">Bekerja / diminta</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">{total.kelebihan}</div>
-              <div className="text-xs text-muted-foreground">Rider lebih dari permintaan (tidak dihitung)</div>
+              <div className="text-xs text-muted-foreground">Rider lebih (tak dihitung)</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className={`font-mono text-2xl font-bold ${belum ? 'text-danger' : ''}`}>{belum}</div>
-              <div className="text-xs text-muted-foreground">Hari yang laporan shiftnya belum lengkap</div>
+              <div className="text-xs text-muted-foreground">Hari laporan belum lengkap</div>
             </div>
           </div>
 
@@ -92,7 +92,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
                   title={`${hari(h.tanggal)}: ${persen(h.rate)} (${h.terpenuhi}/${h.kebutuhan})${h.belumLapor.length ? ', belum dilaporkan: ' + h.belumLapor.join(' dan ') : ''}`}
                 >
                   <div className="mb-0.5 text-center font-mono text-[9px] text-muted-foreground">{h.rate === null ? '' : Math.round(h.rate * 100)}</div>
-                  <div className={`w-full rounded-t border-2 border-b-0 border-border ${WARNA_BAR[t]} ${h.belumLapor.length ? 'opacity-60' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
+                  <div className={`w-full rounded-t border-2 border-b-0 border-border ${WARNA_BAR[t]} ${h.belumLapor.length ? 'bar-belum' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
                 </div>
               )
             })}
@@ -106,6 +106,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-warning" />80–94%</span>
             <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-danger" />di bawah 80%</span>
             <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-border" />belum dilaporkan</span>
+            <span className="flex items-center gap-1.5"><span className="bar-belum size-2.5 rounded-sm bg-muted-foreground" />garis-garis = laporan belum lengkap</span>
           </div>
 
           {perDs.length > 1 && (
