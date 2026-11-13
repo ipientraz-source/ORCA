@@ -5,7 +5,7 @@ const SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', off: 'Libu
 function List({ rows }: { rows: { tanggal: string; shift: string; ds?: string | null }[] }) {
   if (!rows.length) return <Kosong teks="Belum ada jadwal" hint="Jadwal akan muncul di sini setelah Captain menyusunnya." />
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-3">
       {rows.map((r) => (
         <li key={r.tanggal} className="card !mb-0 !p-3 flex items-center gap-4">
           <div className="size-12 rounded-lg bg-primary-soft text-primary-soft-foreground flex flex-col items-center justify-center leading-none">

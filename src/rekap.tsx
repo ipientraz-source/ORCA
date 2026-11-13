@@ -95,16 +95,25 @@ function DsTabelIsi({ rows }: { rows: DsRow[] }) {
 
 function Top({ title, rows, k }: { title: string; rows: RiderRow[]; k: 'alpha' | 'pengganti' }) {
   const t = [...rows].filter((r) => r[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 10)
+  const gaya = k === 'alpha' ? 'bg-danger-soft text-danger' : 'bg-primary-soft text-primary-soft-foreground'
   return (
-    <div className="card">
-      <b>{title}</b>
-      <ol className="list-decimal ml-5 mt-1 text-sm">
-        {t.map((r) => (
-          <li key={r.rider_id}>
-            {r.nama} <span className="text-muted-foreground/70">({r.ds_nama ?? '-'})</span> — {r[k]}×
+    <div className="card min-w-0">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <b>{title}</b>
+        {t.length > 0 && <span className="text-xs text-muted-foreground">{t.length} rider</span>}
+      </div>
+      <ol className="divide-y divide-border/60 text-sm">
+        {t.map((r, i) => (
+          <li key={r.rider_id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+            <span className="w-5 shrink-0 text-center font-mono text-xs text-muted-foreground">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-medium">{r.nama}</div>
+              <div className="truncate text-xs text-muted-foreground">{r.ds_nama ?? '-'}</div>
+            </div>
+            <span className={`badge shrink-0 ${gaya}`}>{r[k]}×</span>
           </li>
         ))}
-        {!t.length && <li className="list-none text-muted-foreground">Tidak ada.</li>}
+        {!t.length && <li className="py-2 text-muted-foreground">Tidak ada.</li>}
       </ol>
     </div>
   )
@@ -113,6 +122,8 @@ function Top({ title, rows, k }: { title: string; rows: RiderRow[]; k: 'alpha' |
 // Super-admin: ringkasan + jejak
 export function Dashboard() {
   const { from, to, ui } = useRange()
+  const [semuaPindah, setSemuaPindah] = useState(false)
+  const [semuaLog, setSemuaLog] = useState(false)
   const d = useRows<DsRow>(() => sb.rpc('laporan_ds', { p_dari: from, p_sampai: to }), [from, to])
   const r = useRows<RiderRow>(() => sb.rpc('laporan_rider', { p_dari: from, p_sampai: to }), [from, to])
   const pindah = useRows<Any>(
@@ -140,7 +151,7 @@ export function Dashboard() {
         <Stat icon={ClipboardX} label="DS belum isi absensi" value={kosong.length} tone={kosong.length ? 'red' : 'zinc'} />
       </div>
       <Fulfillment from={from} to={to} />
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
+      <div className="grid items-start md:grid-cols-2 gap-4 mb-4">
         <div className="card !mb-0">
           <b className="block mb-3">Hadir sesuai jadwal per DS</b>
           {d.rows.length === 0 && <Kosong teks="Belum ada DS" hint="Buat DS di tab Kelola DS & Captain." />}
@@ -210,26 +221,42 @@ export function Dashboard() {
         <Top title="Sering tidak hadir (Alpha)" rows={r.rows} k="alpha" />
         <Top title="Sering jadi pengganti" rows={r.rows} k="pengganti" />
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="card">
-          <b>Perpindahan rider terbaru</b>
-          <ul className="text-sm mt-1 space-y-1">
-            {pindah.rows.map((p: Any, i: number) => (
-              <li key={i}>
-                {p.rider?.nama}: {p.dari?.nama ?? 'belum punya DS'} → {p.ke?.nama ?? 'belum punya DS'} <span className="text-muted-foreground/70">oleh {p.oleh?.nama ?? '-'} · {jam(p.waktu)}</span>
+      <div className="grid items-start md:grid-cols-2 gap-4">
+        <div className="card min-w-0">
+          <b className="mb-2 block">Perpindahan rider terbaru</b>
+          <ul className="divide-y divide-border/60 text-sm">
+            {pindah.rows.slice(0, semuaPindah ? 10 : 4).map((p: Any, i: number) => (
+              <li key={i} className="py-2 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 truncate font-medium">{p.rider?.nama}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{jam(p.waktu)}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {p.dari?.nama ?? 'belum punya DS'} → <span className="font-semibold text-foreground">{p.ke?.nama ?? 'belum punya DS'}</span> · oleh {p.oleh?.nama ?? '-'}
+                </div>
               </li>
             ))}
+            {!pindah.rows.length && <li className="py-2 text-muted-foreground">Belum ada perpindahan.</li>}
           </ul>
+          {pindah.rows.length > 4 && <button type="button" className="btn2 mt-3 w-full" onClick={() => setSemuaPindah(!semuaPindah)}>{semuaPindah ? 'Tampilkan lebih sedikit' : `Lihat semua (${pindah.rows.length})`}</button>}
         </div>
-        <div className="card">
-          <b>Aktivitas Captain</b>
-          <ul className="text-sm mt-1 space-y-1">
-            {log.rows.map((l: Any, i: number) => (
-              <li key={i}>
-                {l.captain?.nama ?? l.pelaku_nama}: {l.aksi} <span className="text-muted-foreground/70">{l.detail} · {jam(l.waktu)}</span>
+        <div className="card min-w-0">
+          <b className="mb-2 block">Aktivitas Captain</b>
+          <ul className="divide-y divide-border/60 text-sm">
+            {log.rows.slice(0, semuaLog ? 10 : 5).map((l: Any, i: number) => (
+              <li key={i} className="py-2 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium">{l.captain?.nama ?? l.pelaku_nama}</span> <span className="badge ml-1 bg-muted text-foreground/80">{l.aksi}</span>
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{jam(l.waktu)}</span>
+                </div>
+                {l.detail && <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.detail}</div>}
               </li>
             ))}
+            {!log.rows.length && <li className="py-2 text-muted-foreground">Belum ada aktivitas.</li>}
           </ul>
+          {log.rows.length > 5 && <button type="button" className="btn2 mt-3 w-full" onClick={() => setSemuaLog(!semuaLog)}>{semuaLog ? 'Tampilkan lebih sedikit' : `Lihat semua (${log.rows.length})`}</button>}
         </div>
       </div>
     </div>
@@ -277,17 +304,17 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
       </div>
       <Err msg={d.err || r.err || det.err} />
       <Fulfillment from={from} to={to} dsId={dsId || undefined} />
-      <div className="card"><DsTable rows={dsRows} /></div>
+      <div className="card"><b className="mb-2 block">Ringkasan per DS</b><DsTable rows={dsRows} /></div>
       <div className="card">
         <b>Rekap per rider</b>
-        <div className="overflow-x-auto"><table className="tbl mt-2">
+        <div className="overflow-x-auto"><table className="tbl mt-2 [&_th]:whitespace-normal [&_th]:leading-tight">
           <thead>
             <tr><th>Rider</th><th>DS</th><th>Terjadwal</th><th>Hadir</th><th>Alpha</th><th>Izin</th><th>Sakit</th><th>Tukar</th><th>Pengganti</th><th>Belum diisi</th><th>Kena potongan</th><th>Insentif</th></tr>
           </thead>
           <tbody>
             {pgR.rows.map((x) => (
               <tr key={x.rider_id}>
-                <td>{x.nama} <span className="text-muted-foreground/70">{x.kode_mtr}</span></td><td>{x.ds_nama}</td><td>{x.dijadwalkan}</td><td>{x.hadir}</td>
+                <td>{x.nama} <span className="text-muted-foreground/70">{x.kode_mtr}</span></td><td className="whitespace-nowrap">{x.ds_nama}</td><td>{x.dijadwalkan}</td><td>{x.hadir}</td>
                 <td className={x.alpha ? 'text-danger font-medium' : ''}>{x.alpha}</td><td>{x.izin}</td><td>{x.sakit}</td><td>{x.tukar}</td><td>{x.pengganti}</td><td>{x.belum_diisi}</td>
                 <td className={x.potongan ? 'text-danger font-medium' : ''}>{x.potongan}</td><td className={x.insentif ? 'text-success font-medium' : ''}>{x.insentif ? `Rp ${Number(x.insentif).toLocaleString('id-ID')}` : '–'}</td>
               </tr>
@@ -305,7 +332,7 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
           <tbody>
             {pgD.rows.map((x: Any, i: number) => (
               <tr key={i}>
-                <td>{x.tanggal}</td><td>{x.ds?.nama}</td><td>{x.rider?.nama}</td><td><span className={`badge ${WARNA[x.status]}`}>{x.status}</span></td><td>{x.backup?.nama ?? (x.tanpa_pengganti ? <span className="badge bg-warning-soft text-warning">Tanpa pengganti</span> : null)}</td><td>{x.potongan === true ? 'Ya' : x.potongan === false ? 'Tidak' : '–'}</td><td>{x.insentif ? `Rp ${Number(x.insentif).toLocaleString('id-ID')}` : '–'}</td><td>{x.penjelasan}</td>
+                <td className="whitespace-nowrap">{x.tanggal}</td><td className="whitespace-nowrap">{x.ds?.nama}</td><td>{x.rider?.nama}</td><td><span className={`badge ${WARNA[x.status]}`}>{x.status}</span></td><td>{x.backup?.nama ?? (x.tanpa_pengganti ? <span className="badge bg-warning-soft text-warning">Tanpa pengganti</span> : null)}</td><td>{x.potongan === true ? 'Ya' : x.potongan === false ? 'Tidak' : '–'}</td><td>{x.insentif ? `Rp ${Number(x.insentif).toLocaleString('id-ID')}` : '–'}</td><td>{x.penjelasan}</td>
                 <td className="text-xs">{x.oleh?.nama} · {jam(x.jam_input)}</td>
               </tr>
             ))}

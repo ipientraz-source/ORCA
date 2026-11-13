@@ -301,7 +301,7 @@ function DaftarKandidat({ me }: { me: Me }) {
           </table>
         </div>
         {!tampil.length && <Kosong teks={kd.rows.length ? 'Tidak ada kandidat yang cocok.' : 'Belum ada kandidat.'} hint={bisaUbah ? 'Klik Tambah kandidat untuk mulai.' : undefined} />}
-        <div className="p-4"><Pagination {...pg} /></div>
+        <div className="p-4 empty:hidden"><Pagination {...pg} /></div>
       </div>
       {perujuk.length > 0 && (
         <div className="card">
