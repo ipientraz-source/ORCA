@@ -311,3 +311,99 @@ test('beberapa minggu berturut-turut: porsi pagi tiap rider berdekatan, hari ker
   assert.ok(Math.max(...porsi) - Math.min(...porsi) <= 0.15, `porsi pagi ${Math.min(...porsi).toFixed(2)}–${Math.max(...porsi).toFixed(2)}`) // dulu 0.29–0.77
   assert.ok(Math.max(...hk) - Math.min(...hk) <= 2, `hari kerja ${Math.min(...hk)}–${Math.max(...hk)}`)
 })
+
+// ───────── shift tengah (opsional) ─────────
+test('tengah tidak dipakai (kuota 0 atau tidak diberikan): hasil SAMA PERSIS dengan dua shift', () => {
+  for (const [n, p, s, hariN] of [[5, 2, 1, 28], [10, 3, 3, 30], [8, 2, 2, 21], [6, 2, 2, 14]]) {
+    const ids = riders(n), hari = rentang('2026-10-26', hariN)
+    assert.deepEqual(buatDraf(ids, hari, p, s, { kuotaTengah: 0 }), buatDraf(ids, hari, p, s), `${n} rider ${p}+${s}`)
+    // kuotaHari tanpa tengah: sama dengan tidak memakai tengah
+    const kh = Object.fromEntries(hari.map((d) => [d, { pagi: p, siang: s }]))
+    assert.deepEqual(buatDraf(ids, hari, p, s, { kuotaHari: kh }), buatDraf(ids, hari, p, s), `${n} rider ${p}+${s} kuotaHari`)
+  }
+})
+
+test('tengah dipakai: kuota pagi, tengah, siang terpenuhi tiap hari, tanpa dobel, tanpa pelanggaran, hari kerja adil', () => {
+  for (const [n, p, s, t, hariN] of [[12, 3, 3, 2, 28], [14, 4, 3, 3, 28], [9, 2, 2, 2, 21]]) {
+    const ids = riders(n), hari = rentang('2026-10-26', hariN)
+    const { grid, kurang, langgar } = buatDraf(ids, hari, p, s, { kuotaTengah: t })
+    const tag = `${n} rider ${p}+${t}+${s}`
+    assert.deepEqual(kurang, [], tag)
+    assert.deepEqual(langgar, [], tag)
+    for (const d of hari) {
+      assert.equal(perHari(grid, d, 'pagi'), p, `${tag} ${d} pagi`)
+      assert.equal(perHari(grid, d, 'tengah'), t, `${tag} ${d} tengah`)
+      assert.equal(perHari(grid, d, 'siang'), s, `${tag} ${d} siang`)
+    }
+    for (const id of ids) {
+      assert.equal(langsungGanti(urutan(grid, id, hari)), false, `${tag}: ${id} ganti shift tanpa libur`)
+      assert.ok(beruntunMaks(urutan(grid, id, hari)) <= 6, `${tag}: ${id} lebih dari 6 hari berturut-turut`)
+    }
+    assert.ok(maksPerPekan(grid, ids) <= 6, tag)
+    const hk = ids.map((id) => hitung(grid, id))
+    assert.ok(Math.max(...hk) - Math.min(...hk) <= 2, `${tag}: hari kerja tidak merata ${hk}`) // batas yang sama dengan dua shift (periode panjang bisa selisih 2)
+  }
+})
+
+test('tengah ikut dirotasi: dalam beberapa minggu tiap rider mengerjakan tiga shift dengan porsi berdekatan', () => {
+  const ids = riders(12)
+  const semua = []
+  const senin0 = '2026-10-26'
+  const geserHari = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10)
+  for (let w = 0; w < 8; w++) {
+    const senin = geserHari(senin0, w * 7)
+    const hari = rentang(senin, 7)
+    const riwayat = hitungRiwayat(semua.filter((r) => r.tanggal >= geserHari(senin, -28)), ids, senin)
+    const { grid, kurang, langgar } = buatDraf(ids, hari, 3, 3, { kuotaTengah: 2, riwayat })
+    assert.deepEqual(kurang, [], `minggu ${w + 1}`)
+    assert.deepEqual(langgar, [], `minggu ${w + 1}`)
+    semua.push(...barisDari(grid))
+  }
+  for (const id of ids) {
+    const mine = semua.filter((r) => r.rider_id === id)
+    const c = (s) => mine.filter((r) => r.shift === s).length
+    assert.ok(c('pagi') > 0 && c('siang') > 0 && c('tengah') > 0, `${id} tidak memegang ketiga shift: ${c('pagi')}/${c('tengah')}/${c('siang')}`)
+  }
+  const porsiTengah = ids.map((id) => semua.filter((r) => r.rider_id === id && r.shift === 'tengah').length / semua.filter((r) => r.rider_id === id).length)
+  assert.ok(Math.max(...porsiTengah) - Math.min(...porsiTengah) <= 0.3, `porsi tengah ${Math.min(...porsiTengah).toFixed(2)}–${Math.max(...porsiTengah).toFixed(2)}`)
+})
+
+test('tengah per hari: hanya hari yang punya kebutuhan tengah yang mendapat shift tengah', () => {
+  const ids = riders(10), hari = rentang('2026-10-26', 7)
+  const kuotaHari = Object.fromEntries(hari.map((d, i) => [d, { pagi: 2, siang: 2, tengah: i === 2 || i === 4 ? 2 : 0 }]))
+  const { grid, kurang } = buatDraf(ids, hari, 2, 2, { kuotaHari })
+  assert.deepEqual(kurang, [])
+  hari.forEach((d, i) => assert.equal(perHari(grid, d, 'tengah'), i === 2 || i === 4 ? 2 : 0, d))
+})
+
+test('tengah: shift tengah terkunci dipertahankan dan dihitung ke kuota tengah', () => {
+  const ids = riders(8), hari = rentang('2026-10-26', 3)
+  const { grid } = buatDraf(ids, hari, 2, 2, { kuotaTengah: 2, tetap: { 'r1|2026-10-26': 'tengah' } })
+  assert.equal(grid['r1|2026-10-26'], 'tengah')
+  assert.equal(perHari(grid, '2026-10-26', 'tengah'), 2) // r1 + satu lainnya, bukan tiga
+})
+
+test('tengah: rider kurang dilaporkan per shift, termasuk tengah', () => {
+  const { kurang } = buatDraf(riders(2), ['2026-10-26'], 1, 1, { kuotaTengah: 1 })
+  assert.deepEqual(kurang, [{ tanggal: '2026-10-26', pagi: 0, siang: 0, tengah: 1 }]) // 2 rider, 3 kebutuhan: yang terakhir kosong dilaporkan
+})
+
+test('tengah: hitungRiwayat dan ringkasanKeadilan menghitung tengah; propertinya hanya ada bila dipakai', () => {
+  const rows = [
+    { rider_id: 'r1', tanggal: '2026-10-26', shift: 'tengah' }, { rider_id: 'r1', tanggal: '2026-10-27', shift: 'tengah' },
+    { rider_id: 'r1', tanggal: '2026-10-28', shift: 'pagi' }, { rider_id: 'r2', tanggal: '2026-10-27', shift: 'siang' },
+  ]
+  const h = hitungRiwayat(rows, ['r1', 'r2'], '2026-10-29')
+  assert.deepEqual({ hk: h.r1.hk, pagi: h.r1.pagi, tengah: h.r1.tengah, shiftTerakhir: h.r1.shiftTerakhir }, { hk: 3, pagi: 1, tengah: 2, shiftTerakhir: 'pagi' })
+  assert.equal('tengah' in h.r2, false) // tidak pernah tengah: bentuk lama dipertahankan
+  const s = ringkasanKeadilan({ 'r1|2026-10-26': 'tengah', 'r1|2026-10-27': 'pagi' }, ['r1', 'r2'], ['2026-10-26', '2026-10-27'])
+  assert.deepEqual(s.r1, { hk: 2, pagi: 1, siang: 0, tengah: 1, akhirPekan: 0, libur: 0 })
+  assert.equal('tengah' in s.r2, false)
+})
+
+test('tengah: bagiCadangan membagi ke tiga shift sebanding kuota; tanpa tengah bentuknya tetap dua shift', () => {
+  assert.deepEqual(bagiCadangan({ pagi: 4, siang: 4, tengah: 2 }, 3), { pagi: 5, siang: 5, tengah: 3 }) // pagi 3×4/10=1,2→1; tengah 3×2/10=0,6→1; sisanya 1 ke siang
+  const j = bagiCadangan({ pagi: 3, siang: 3, tengah: 4 }, 5)
+  assert.equal(j.pagi + j.siang + j.tengah, 3 + 3 + 4 + 5) // tak ada cadangan yang hilang
+  assert.deepEqual(bagiCadangan({ pagi: 6, siang: 6 }, 2), { pagi: 7, siang: 7 })
+})

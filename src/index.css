@@ -1281,3 +1281,6 @@ table thead th :is(div, span) { color: inherit; }
   @keyframes tgl-ini { 50% { box-shadow: inset 0 0 0 1px #ff4fd8; border-color: #ff4fd8; } }
   :root[data-gaya="cyber"] .tgl-grid button[data-ini] { animation: tgl-ini 1.2s steps(1) infinite; }
 }
+
+/* Shift tengah (opsional): warna tepi kartu jadwal Rider di Cyber */
+:root[data-gaya="cyber"] li.card[data-shift="tengah"] { --neon: #a6ff3d; }
