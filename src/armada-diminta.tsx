@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { sb, today, useRows, ok, toast, konfirmasi, Field, Select, Kosong, usePage, Pagination, type Ds } from './lib'
 import { angka, BadgeItem, BadgeUrgent, FotoPicker, InputRupiah, JENIS_SERVIS, PilihPart, rupiah, Tenggat, tgl, type ItemServis, type Motor, type Permintaan, type RingkasanPermintaan } from './armada-lib'
+import { InputTanggal } from './tanggal'
 
 type Props = {
   permintaan: Permintaan[]; ringkasan: RingkasanPermintaan[]; terbuka: ItemServis[]; motors: Motor[]; dsNama: (id: string | null) => string
@@ -56,7 +57,7 @@ export function FormPengajuan({ dsBoleh, selesai, motorIds }: { dsBoleh: Ds[]; s
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Judul pengajuan"><input className="inp w-full" value={judul} onChange={(e) => setJudul(e.target.value)} /></Field>
         <Field label="Jenis servis"><Select value={jenis} onChange={setJenis} opsi={JENIS_SERVIS.map((v) => ({ value: v, label: v }))} /></Field>
-        <Field label="Tenggat (opsional)"><input type="date" className="inp w-full" min={today()} value={tenggat} onChange={(e) => setTenggat(e.target.value)} /></Field>
+        <Field label="Tenggat (opsional)"><InputTanggal className="inp w-full" min={today()} value={tenggat} onChange={(e) => setTenggat(e.target.value)} /></Field>
         {motorIds ? (
           <Field label="Cakupan"><div className="inp flex items-center font-semibold">{motorIds.length} motor yang dicentang</div></Field>
         ) : (
@@ -158,7 +159,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
             <button className="btn2 ml-auto" onClick={() => setDipilih(new Set())}>Kosongkan pilihan</button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-1.5 text-muted-foreground">Tanggal servis <input type="date" className="inp" max={today()} value={mTgl} onChange={(e) => setMTgl(e.target.value)} /></label>
+            <label className="flex items-center gap-1.5 text-muted-foreground">Tanggal servis <InputTanggal className="inp" max={today()} value={mTgl} onChange={(e) => setMTgl(e.target.value)} /></label>
             <input className="inp w-48 max-w-full" placeholder="Bengkel (opsional)" value={mBengkel} onChange={(e) => setMBengkel(e.target.value)} />
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={mAsuransi} onChange={(e) => { setMAsuransi(e.target.checked); if (e.target.checked) setMBiaya('') }} />Ditanggung asuransi</label>
             <span className="flex items-center gap-2 text-muted-foreground">Total biaya semua motor <InputRupiah nilai={mAsuransi ? '' : mBiaya} ubah={setMBiaya} disabled={mAsuransi} /></span>
@@ -199,7 +200,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
                       {aksi?.id === it.id && aksi.jenis === 'selesai' && (
                         <div className="mt-2 space-y-2 rounded-lg border border-border bg-muted/40 p-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">Tanggal servis <input type="date" className="inp" max={today()} value={nilai} onChange={(e) => setNilai(e.target.value)} /></label>
+                            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">Tanggal servis <InputTanggal className="inp" max={today()} value={nilai} onChange={(e) => setNilai(e.target.value)} /></label>
                             <input className="inp w-48 max-w-full" placeholder="Bengkel (opsional)" value={bengkel} onChange={(e) => setBengkel(e.target.value)} />
                           </div>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
@@ -216,7 +217,7 @@ function Menunggu({ permintaan, terbuka, motors, dsNama, kelola, bukaServis, rel
                       {aksi?.id === it.id && aksi.jenis !== 'selesai' && (
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           {aksi.jenis === 'jadwal'
-                            ? <input type="date" className="inp" min={today()} value={nilai} onChange={(e) => setNilai(e.target.value)} />
+                            ? <InputTanggal className="inp" min={today()} value={nilai} onChange={(e) => setNilai(e.target.value)} />
                             : <input className="inp w-56 max-w-full" placeholder="Alasan dilewati" value={nilai} onChange={(e) => setNilai(e.target.value)} />}
                           <button className="btn" onClick={() => simpan(it.id)}>Simpan</button>
                         </div>

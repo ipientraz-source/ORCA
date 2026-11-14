@@ -479,7 +479,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
             tabIndex={-1}
             onKeyDown={tekan}
             style={{ position: 'fixed', left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxH }}
-            className="rise z-[60] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl outline-none"
+            className="select-hud rise z-[60] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl outline-none"
           >
             {bisaCari && (
               <div className="p-2 border-b border-border">

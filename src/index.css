@@ -1110,3 +1110,174 @@ table thead th :is(div, span) { color: inherit; }
   .hud-orbit .hud-blip rect:nth-child(3) { animation-delay: 2.5s; }
   .hud-orbit .hud-blip rect:nth-child(4) { animation-delay: 3.7s; }
 }
+
+/* ════════ Cyber terang: dipertegas (tinta navy, kisi teknis, neon pekat, kepala tabel gelap) ════════ */
+:root[data-gaya="cyber"]:not(.dark) { --ink: #141a4a; --brk: 3px; --bl: 20px; --cy: #0a93b0; --mg: #d11c9b; }
+:root[data-gaya="cyber"]:not(.dark) body {
+  background-image:
+    linear-gradient(rgb(20 60 200 / 0.09) 1px, transparent 1px), linear-gradient(90deg, rgb(20 60 200 / 0.09) 1px, transparent 1px),
+    linear-gradient(rgb(20 60 200 / 0.17) 1px, transparent 1px), linear-gradient(90deg, rgb(20 60 200 / 0.17) 1px, transparent 1px),
+    radial-gradient(60rem 30rem at 85% -10%, rgb(255 79 216 / 0.38), transparent), radial-gradient(50rem 30rem at -10% 110%, rgb(0 200 255 / 0.36), transparent);
+  background-size: 32px 32px, 32px 32px, 160px 160px, 160px 160px, auto, auto;
+  background-attachment: fixed;
+}
+/* kartu: garis tinta yang jelas */
+:root[data-gaya="cyber"]:not(.dark) :is(.card, .stat) { border: 1.5px solid rgb(20 26 74 / 0.6); }
+/* kartu angka: isi neon pekat (stabilo) dengan teks tinta */
+:root[data-gaya="cyber"]:not(.dark) .stat:is(:nth-child(4n+1), :nth-child(4n+2), :nth-child(4n+3), :nth-child(4n+4)) {
+  background:
+    linear-gradient(var(--ink), var(--ink)) left / 5px 100% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) top left / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--ink), var(--ink)) bottom right / var(--bl) var(--brk) no-repeat,
+    linear-gradient(var(--ink), var(--ink)) bottom right / var(--brk) var(--bl) no-repeat,
+    linear-gradient(95deg, color-mix(in srgb, var(--neon) 70%, #fff), color-mix(in srgb, var(--neon) 34%, #fff));
+}
+:root[data-gaya="cyber"]:not(.dark) .stat b, :root[data-gaya="cyber"]:not(.dark) .stat span { color: var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) .stat::after { opacity: 0.55; background: radial-gradient(circle, var(--ink) 1.3px, transparent 1.7px) 0 0 / 6px 6px; }
+:root[data-gaya="cyber"]:not(.dark) .stat > div:first-child { background: rgb(255 255 255 / 0.55); color: var(--ink); border-radius: 0; }
+/* kepala tabel gelap bertinta cyan, seperti bar atas */
+:root[data-gaya="cyber"]:not(.dark) :is(table thead th, .tbl th) { background: var(--ink); color: #7ef0ff; border-bottom: 2px solid var(--mg); }
+:root[data-gaya="cyber"]:not(.dark) :is(table thead th, .tbl th) :is(div, span) { color: inherit; }
+:root[data-gaya="cyber"]:not(.dark) .cetak table thead th { background: var(--kuning); color: #0c0c0f; }
+:root[data-gaya="cyber"]:not(.dark) .tbl tbody tr:hover { background: rgb(209 28 155 / 0.1); }
+/* tombol dan isian: garis tinta */
+:root[data-gaya="cyber"]:not(.dark) .btn2 { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) .btn2:hover:not(:disabled) { background: color-mix(in srgb, var(--cy) 22%, #fff); border-color: var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) .inp { background: #fff; border: 1.5px solid rgb(20 26 74 / 0.55); border-bottom: 2.5px solid var(--cy); color: var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) .badge { border-color: rgb(20 26 74 / 0.55); }
+:root[data-gaya="cyber"]:not(.dark) .tab { color: var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) header h2 { color: var(--ink); }
+/* kartu bertakik di terang: garis diagonal bertinta */
+@media (min-width: 768px) {
+  :root[data-gaya="cyber"]:not(.dark) .card:not(:has(.absolute))::after { background: linear-gradient(45deg, transparent calc(50% - 1px), var(--ink) calc(50% - 1px), var(--ink) calc(50% + 1px), transparent calc(50% + 1px)); }
+}
+/* badge di Cyber terang: isi pekat bertinta navy, tidak lagi pastel */
+:root[data-gaya="cyber"]:not(.dark) .badge { border: 1.5px solid var(--ink); color: var(--ink); font-weight: 700; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-primary-soft { background: #e5a3ff; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-warning-soft { background: #fff200; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-danger-soft { background: #ff93ad; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-success-soft { background: #b6ff4d; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-muted { background: #c9d2ff; }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-primary { background: #ff4fd8; color: var(--ink); }
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-border { background: #aab4e8; }
+:root[data-gaya="cyber"]:not(.dark) .badge.text-danger, :root[data-gaya="cyber"]:not(.dark) .badge.text-warning, :root[data-gaya="cyber"]:not(.dark) .badge.text-success { color: var(--ink); }
+/* Cyber terang: teks keterangan abu-abu dipertegas jadi biru tinta (rasio kontras > 7:1 di atas putih) */
+:root[data-gaya="cyber"]:not(.dark) { --muted-foreground: #323c78; }
+:root[data-gaya="cyber"]:not(.dark) [class*="text-muted-foreground/"] { color: var(--muted-foreground); }
+/* perbaikan kontras Cyber terang: badge berlatar gelap tetap bertulisan putih; teks berwarna di kepala tabel navy dibuat terang */
+:root[data-gaya="cyber"]:not(.dark) .badge.bg-foreground { background: var(--ink); color: #fff; }
+:root[data-gaya="cyber"]:not(.dark) :is(table thead th, .tbl th) .text-primary { color: #ff9fe9; }
+
+/* ── Cyber: efek HUD saat "Susun otomatis" di halaman Jadwal ── */
+.susun-hud { display: none; }
+:root[data-gaya="cyber"] .susun-hud { display: flex; position: absolute; inset: 0; z-index: 20; align-items: center; justify-content: center; pointer-events: none; background: color-mix(in srgb, var(--card) 58%, transparent); }
+:root[data-gaya="cyber"] .susun-hud::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--cy), var(--mg), var(--cy), transparent); }
+:root[data-gaya="cyber"] .susun-kotak {
+  position: relative; min-width: 300px; padding: 16px 20px; color: #cfd6ff; background: #05070f; border: 1px solid var(--cy);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+:root[data-gaya="cyber"] .susun-judul { font: 700 0.95rem/1.2 'Orbitron', 'Chakra Petch', sans-serif; letter-spacing: 0.14em; color: var(--cy); }
+:root[data-gaya="cyber"] .susun-judul::before { content: '// '; color: var(--mg); }
+:root[data-gaya="cyber"] .susun-judul::after { content: '\258C'; margin-left: 0.25em; color: var(--mg); }
+:root[data-gaya="cyber"] .susun-bar { height: 12px; margin: 12px 0 10px; background: rgb(34 232 255 / 0.15); -webkit-mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 11px); mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 11px); }
+:root[data-gaya="cyber"] .susun-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #22e8ff, #ff4fd8); }
+:root[data-gaya="cyber"] .susun-log { display: grid; gap: 3px; font: 700 0.7rem/1.2 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.1em; color: #9fb0ff; }
+:root[data-gaya="cyber"] .susun-log span::before { content: '\25B8 '; color: var(--cy); }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes sapu-susun { from { top: -3px; } to { top: 100%; } }
+  :root[data-gaya="cyber"] .susun-hud::before { animation: sapu-susun 0.8s linear infinite; }
+  @keyframes isi-susun { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  :root[data-gaya="cyber"] .susun-bar i { transform-origin: left; animation: isi-susun 1.4s ease-out forwards; }
+  @keyframes muncul-log { from { opacity: 0; transform: translateX(-8px); } }
+  :root[data-gaya="cyber"] .susun-log span { animation: muncul-log 0.3s ease-out backwards; }
+  :root[data-gaya="cyber"] .susun-log span:nth-child(2) { animation-delay: 0.45s; }
+  :root[data-gaya="cyber"] .susun-log span:nth-child(3) { animation-delay: 0.9s; }
+  :root[data-gaya="cyber"] .susun-judul::after { animation: kursor 0.6s steps(1) infinite; }
+  /* sel jadwal berkedip acak seperti sedang dihitung */
+  @keyframes acak-susun { 0% { opacity: 1; } 25% { opacity: 0.2; } 50% { opacity: 0.85; transform: translateX(1px); } 75% { opacity: 0.4; } 100% { opacity: 1; } }
+  :root[data-gaya="cyber"] [data-susun="jalan"] tbody td button { animation: acak-susun 0.22s steps(1) infinite; }
+  :root[data-gaya="cyber"] [data-susun="jalan"] tbody td:nth-child(2n) button { animation-delay: 0.07s; }
+  :root[data-gaya="cyber"] [data-susun="jalan"] tbody td:nth-child(3n) button { animation-delay: 0.13s; }
+  :root[data-gaya="cyber"] [data-susun="jalan"] tbody tr:nth-child(2n) td button { animation-direction: reverse; }
+  /* setelah selesai: sel muncul menyapu dari kiri ke kanan, dan bingkai tabel berkilat */
+  @keyframes muncul-susun { from { opacity: 0; transform: scale(0.55); filter: brightness(2.2); } }
+  @keyframes kilat-susun { 0%, 100% { outline-color: var(--cy); } 50% { outline-color: var(--mg); } }
+  :root[data-gaya="cyber"] [data-susun="selesai"] { outline: 2px solid var(--cy); outline-offset: -2px; animation: kilat-susun 0.4s steps(1) 3; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td button { animation: muncul-susun 0.45s ease-out backwards; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(3) button { animation-delay: 0.05s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(4) button { animation-delay: 0.1s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(5) button { animation-delay: 0.15s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(6) button { animation-delay: 0.2s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(7) button { animation-delay: 0.25s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(8) button { animation-delay: 0.3s; }
+  :root[data-gaya="cyber"] [data-susun="selesai"] tbody td:nth-child(n+9) button { animation-delay: 0.35s; }
+}
+
+/* ── Cyber: dropdown (daftar pilihan Select, menu Unduh) dan kartu lipat <details> ── */
+/* panel pilihan: kotak gelap HUD bersudut potong, bingkai cyan, label // di atas, penanda » pada baris aktif */
+:root[data-gaya="cyber"] .select-hud {
+  border-radius: 0; border: 1px solid var(--cy); color: #e6ebff; box-shadow: none; padding-bottom: 4px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  background:
+    linear-gradient(var(--mg), var(--mg)) bottom right / 16px 2px no-repeat, linear-gradient(var(--mg), var(--mg)) bottom right / 2px 16px no-repeat,
+    linear-gradient(rgb(34 232 255 / 0.05) 1px, transparent 1px) 0 0 / 100% 24px,
+    #070a1a;
+}
+:root[data-gaya="cyber"] .select-hud::before {
+  content: '// PILIH'; display: block; padding: 7px 12px 5px; font: 700 0.65rem/1 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.22em; color: var(--mg);
+  border-bottom: 1px solid rgb(34 232 255 / 0.35);
+}
+:root[data-gaya="cyber"] .select-hud[role="menu"]::before { content: '// UNDUH'; }
+:root[data-gaya="cyber"] .select-hud .inp { background: rgb(255 255 255 / 0.06); color: #e6ebff; border: 1px solid rgb(34 232 255 / 0.5); border-bottom: 2px solid #22e8ff; }
+:root[data-gaya="cyber"] .select-hud li[role="option"], :root[data-gaya="cyber"] .select-hud > button { border-radius: 0; color: #dfe6ff; position: relative; transition: padding-left 0.12s; }
+:root[data-gaya="cyber"] .select-hud li[role="option"][data-aktif="true"], :root[data-gaya="cyber"] .select-hud > button:hover {
+  color: #fff; padding-left: 1.5rem; background: linear-gradient(90deg, rgb(255 79 216 / 0.34), transparent 85%), linear-gradient(#ff4fd8, #ff4fd8) left / 3px 100% no-repeat;
+}
+:root[data-gaya="cyber"] .select-hud li[role="option"][data-aktif="true"]::before, :root[data-gaya="cyber"] .select-hud > button:hover::before { content: '\00BB'; position: absolute; left: 0.5rem; color: #ff4fd8; font-weight: 700; }
+:root[data-gaya="cyber"] .select-hud li[aria-selected="true"] { font-weight: 700; }
+:root[data-gaya="cyber"] .select-hud li[aria-selected="true"] svg { color: #a6ff3d; }
+:root[data-gaya="cyber"] .select-hud .text-muted-foreground { color: #9fb0ff; }
+:root[data-gaya="cyber"] .select-hud > button:hover { background-color: transparent; }
+/* kartu lipat: segitiga penanda, label [ BUKA ] / [ TUTUP ], garis putus di bawah judul saat terbuka */
+:root[data-gaya="cyber"] main details > summary { list-style: none; display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'Rajdhani', 'Chakra Petch', sans-serif; font-size: 0.95rem; font-weight: 700; }
+:root[data-gaya="cyber"] main details > summary::-webkit-details-marker { display: none; }
+:root[data-gaya="cyber"] main details > summary::before { content: ''; flex: none; width: 0.7em; height: 0.7em; background: var(--cy); clip-path: polygon(0 0, 100% 50%, 0 100%); transition: transform 0.2s; }
+:root[data-gaya="cyber"] main details[open] > summary::before { transform: rotate(90deg); background: var(--mg); }
+:root[data-gaya="cyber"] main details > summary::after { content: '[ BUKA ]'; margin-left: auto; flex: none; font: 700 0.7rem/1 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.16em; color: var(--cy); }
+:root[data-gaya="cyber"] main details[open] > summary::after { content: '[ TUTUP ]'; color: var(--mg); }
+:root[data-gaya="cyber"] main details[open] > summary { padding-bottom: 0.6rem; margin-bottom: 0.5rem; border-bottom: 1px dashed color-mix(in srgb, var(--cy) 55%, transparent); }
+:root[data-gaya="cyber"] main details.card { border-left: 4px solid var(--mg); }
+:root[data-gaya="cyber"] main details:not(.card) { border-radius: 0; border-color: color-mix(in srgb, var(--cy) 50%, transparent); border-left: 4px solid var(--mg); }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes buka-panel { from { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 0, 100% 0, 12px 0, 0 0); } }
+  :root[data-gaya="cyber"] .select-hud { animation: buka-panel 0.18s ease-out; }
+  @keyframes buka-isi { from { opacity: 0; transform: translateY(-6px); } }
+  :root[data-gaya="cyber"] main details[open] > :not(summary) { animation: buka-isi 0.3s ease-out backwards; }
+}
+
+/* ── Cyber: kalender HUD (komponen InputTanggal di src/tanggal.tsx) ── */
+:root[data-gaya="cyber"] .tanggal-hud::before { content: '// PILIH TANGGAL'; }
+:root[data-gaya="cyber"] .tanggal-hud { padding-bottom: 0; }
+:root[data-gaya="cyber"] .tgl-nav { display: flex; align-items: center; gap: 2px; padding: 8px 6px 6px; }
+:root[data-gaya="cyber"] .tgl-nav button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: var(--cy, #22e8ff); border: 1px solid rgb(34 232 255 / 0.35); background: transparent; }
+:root[data-gaya="cyber"] .tgl-nav button:hover { background: rgb(255 79 216 / 0.25); border-color: #ff4fd8; color: #fff; }
+:root[data-gaya="cyber"] .tgl-judul { flex: 1; text-align: center; font: 700 0.8rem/1 'Orbitron', 'Chakra Petch', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; }
+:root[data-gaya="cyber"] .tgl-hari { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 6px; font: 700 0.62rem/1 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.1em; color: #22e8ff; text-align: center; }
+:root[data-gaya="cyber"] .tgl-hari span { padding: 4px 0 6px; border-bottom: 1px solid rgb(34 232 255 / 0.3); }
+:root[data-gaya="cyber"] .tgl-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 6px; }
+:root[data-gaya="cyber"] .tgl-grid button { position: relative; height: 34px; font: 700 0.85rem/1 'Share Tech Mono', ui-monospace, monospace; color: #e6ebff; background: rgb(255 255 255 / 0.04); border: 1px solid transparent; }
+:root[data-gaya="cyber"] .tgl-grid button[data-luar] { color: #6f7bb5; background: transparent; }
+:root[data-gaya="cyber"] .tgl-grid button:hover:not(:disabled) { background: rgb(255 79 216 / 0.28); border-color: #ff4fd8; color: #fff; }
+:root[data-gaya="cyber"] .tgl-grid button[data-ini] { border-color: #22e8ff; box-shadow: inset 0 0 0 1px #22e8ff; }
+:root[data-gaya="cyber"] .tgl-grid button[aria-pressed="true"] { background: #ff4fd8; border-color: #ff4fd8; color: #0c0c0f; clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+:root[data-gaya="cyber"] .tgl-grid button:disabled { color: #4a5384; background: repeating-linear-gradient(135deg, transparent 0 4px, rgb(255 255 255 / 0.05) 4px 8px); cursor: not-allowed; }
+:root[data-gaya="cyber"] .tgl-kaki { display: flex; justify-content: space-between; padding: 6px; border-top: 1px solid rgb(34 232 255 / 0.3); }
+:root[data-gaya="cyber"] .tgl-kaki button { padding: 6px 12px; font: 700 0.7rem/1 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: #22e8ff; border: 1px solid rgb(34 232 255 / 0.4); }
+:root[data-gaya="cyber"] .tgl-kaki button:hover:not(:disabled) { background: rgb(34 232 255 / 0.18); color: #fff; }
+:root[data-gaya="cyber"] .tgl-kaki button:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes tgl-masuk { from { opacity: 0; transform: translateY(-4px); } }
+  :root[data-gaya="cyber"] .tgl-grid { animation: tgl-masuk 0.18s ease-out; }
+  @keyframes tgl-ini { 50% { box-shadow: inset 0 0 0 1px #ff4fd8; border-color: #ff4fd8; } }
+  :root[data-gaya="cyber"] .tgl-grid button[data-ini] { animation: tgl-ini 1.2s steps(1) infinite; }
+}

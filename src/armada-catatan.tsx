@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { sb, today, ok, toast, Field, Select, type Me, type Rider } from './lib'
 import { angka, BadgeParah, BadgeRusak, FotoGaleri, FotoPicker, InputRupiah, JENIS_RUSAK, JENIS_SERVIS, namaJenis, PilihPart, rupiah, tgl, type Rusak, type Servis } from './armada-lib'
+import { InputTanggal } from './tanggal'
 
 const opsi = (l: string[]) => l.map((v) => ({ value: v, label: v }))
 
@@ -54,7 +55,7 @@ export function FormServis({ motorId, selesai }: { motorId: string; selesai: () 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Tanggal servis"><input type="date" className="inp w-full" value={tanggal} max={today()} onChange={(e) => e.target.value && setTanggal(e.target.value)} /></Field>
+        <Field label="Tanggal servis"><InputTanggal className="inp w-full" value={tanggal} max={today()} onChange={(e) => e.target.value && setTanggal(e.target.value)} /></Field>
         <Field label="Jenis servis" hint="Servis rutin memajukan jadwal servis berikutnya."><Select value={jenis} onChange={setJenis} opsi={opsi(JENIS_SERVIS)} /></Field>
         {jenis === 'Lainnya' && <Field label="Jenis servis (tulis)"><input className="inp w-full" value={lain} onChange={(e) => setLain(e.target.value)} placeholder="Mis. ganti lampu rem" /></Field>}
         <Field label="Bengkel"><input className="inp w-full" value={bengkel} onChange={(e) => setBengkel(e.target.value)} /></Field>

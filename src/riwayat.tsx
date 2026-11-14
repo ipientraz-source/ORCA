@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { addDays, Err, Kosong, Pagination, Select, sb, today, usePage, useRows, type Ds } from './lib'
+import { InputTanggal } from './tanggal'
 
 type Baris = { id: string; waktu: string; aksi: string; detail: string | null; jenis: 'tambah' | 'ubah' | 'hapus' | null; ds_id: string | null; pelaku_nama: string | null; captain: { nama: string } | null }
 
@@ -35,8 +36,8 @@ export function Riwayat() {
     <div>
       <Err msg={log.err || dsl.err} />
       <div className="card !p-3 flex flex-wrap items-end gap-3">
-        <div><label className="lbl">Dari</label><input type="date" className="inp" value={dari} max={sampai} onChange={(e) => e.target.value && setDari(e.target.value)} /></div>
-        <div><label className="lbl">Sampai</label><input type="date" className="inp" value={sampai} min={dari} max={today()} onChange={(e) => e.target.value && setSampai(e.target.value)} /></div>
+        <div><label className="lbl">Dari</label><InputTanggal className="inp" value={dari} max={sampai} onChange={(e) => e.target.value && setDari(e.target.value)} /></div>
+        <div><label className="lbl">Sampai</label><InputTanggal className="inp" value={sampai} min={dari} max={today()} onChange={(e) => e.target.value && setSampai(e.target.value)} /></div>
         {dsl.rows.length > 1 && (
           <div className="w-56"><label className="lbl">DS</label><Select value={fds} onChange={setFds} opsi={[{ value: '', label: 'Semua DS' }, ...dsl.rows.map((d) => ({ value: d.id, label: d.nama }))]} /></div>
         )}
