@@ -288,17 +288,19 @@ test('Foto di Storage: nama berkas {motor_id}/..., akses mengikuti hak lihat mot
   await as(AB, async () => assert.equal(await boleh(`${M3}/a.jpg`, false), false)) // Arcon B hanya memegang Gowa
 })
 
-test('Hapus motor dan pengajuan hanya Super-admin; riwayat ikut terhapus dan pengajuan induk menyesuaikan', async () => {
-  const [X1, X2] = [id(291), id(292)]
-  await db.exec(`insert into motor (id, kode_motor, ds_id) values ('${X1}', 'EV-X1', '${GALAXY}'), ('${X2}', 'EV-X2', '${GALAXY}')`)
+test('Hapus motor: Super-admin (semua) dan Arcon (DS-nya); hapus pengajuan hanya Super-admin; riwayat ikut terhapus dan pengajuan induk menyesuaikan', async () => {
+  const [X1, X2, X3] = [id(291), id(292), id(293)]
+  await db.exec(`insert into motor (id, kode_motor, ds_id) values ('${X1}', 'EV-X1', '${GALAXY}'), ('${X2}', 'EV-X2', '${GALAXY}'), ('${X3}', 'EV-X3', '${GALAXY}')`)
   await q("insert into servis_motor (motor_id, tanggal, jenis) values ($1, today_wib(), 'Ganti ban')", [X1])
   const [{ id: P }] = await q("insert into permintaan_servis (judul, jenis) values ('Uji hapus', 'Servis rutin') returning id")
   await q('insert into permintaan_servis_item (permintaan_id, motor_id) values ($1, $2), ($1, $3)', [P, X1, X2])
   const hapus = (tabel, rid) => q(`delete from ${tabel} where id = $1 returning id`, [rid])
 
   const hapusMotor = (mid, alasan) => q('select hapus_motor($1, $2)', [mid, alasan])
-  await as(AA, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Hanya Super-admin/)) // Arcon boleh mengubah, tidak boleh menghapus
-  await as(CG, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Hanya Super-admin/))
+  await as(AB, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Arcon hanya bisa menghapus motor di DS yang dipegang/)) // Arcon DS lain: ditolak
+  await as(CG, async () => await assert.rejects(hapusMotor(X1, 'salah plat'), /Hanya Super-admin atau Arcon/)) // Captain: ditolak
+  await as(AA, async () => await hapusMotor(X3, 'Motor ganda')) // Arcon boleh menghapus motor di DS yang dipegang (Galaxy)
+  assert.equal((await q('select * from motor where id = $1', [X3])).length, 0)
   await as(S, async () => {
     assert.equal((await hapus('motor', X1)).length, 0) // jalan pintas lewat tabel ditutup
     await assert.rejects(hapusMotor(X1, '  '), /Alasan penghapusan wajib/)
