@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 import { addDays, Err, Kosong, Select, konfirmasi, parseCsv, sb, toast, today, useRows, type Me } from './lib'
 import { tgl } from './armada-lib'
 import { KATEGORI_BERHENTI } from './berhenti'
+import { InputTanggal } from './tanggal'
 
 type Rekrut = { direkrut: number; berhenti: number; aktif: number; aktif_tidak_hadir: number; tidak_pernah_hadir: number; belum_dijadwalkan: number; baru: number; sudah_mulai: number; hari_ke_mulai: number | null; hari_ke_hadir_pertama: number | null }
 type Turn = { mulai: string; selesai: string; berjalan: boolean; awal: number; akhir: number; bergabung: number; berhenti: number; mengundurkan_diri: number; diberhentikan: number; kontrak_selesai: number; tidak_diketahui: number; berhenti_dini: number; persen: number | null }
@@ -60,8 +61,8 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
     <div>
       <Err msg={rk.err || tn.err || rt.err || sm.err || al.err || dsl.err} />
       <div className="card !p-3 flex flex-wrap items-end gap-3">
-        <div><label className="lbl">Dari</label><input type="date" className="inp" value={dari} max={sampai} onChange={(e) => e.target.value && setDari(e.target.value)} /></div>
-        <div><label className="lbl">Sampai</label><input type="date" className="inp" value={sampai} min={dari} max={today()} onChange={(e) => e.target.value && setSampai(e.target.value)} /></div>
+        <div><label className="lbl">Dari</label><InputTanggal className="inp" value={dari} max={sampai} onChange={(e) => e.target.value && setDari(e.target.value)} /></div>
+        <div><label className="lbl">Sampai</label><InputTanggal className="inp" value={sampai} min={dari} max={today()} onChange={(e) => e.target.value && setSampai(e.target.value)} /></div>
         {dsl.rows.length > 1 && <div className="w-56"><label className="lbl">DS</label><Select value={fds} onChange={setFds} opsi={[{ value: '', label: 'Semua DS' }, ...dsl.rows.map((d) => ({ value: d.ds_id, label: d.ds_nama }))]} /></div>}
         <div>
           <label className="lbl">Turnover per</label>

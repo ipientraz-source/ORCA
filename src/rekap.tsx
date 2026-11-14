@@ -3,6 +3,7 @@ import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirma
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
 import { CalendarDays, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
+import { InputTanggal } from './tanggal'
 
 type DsRow = {
   ds_id: string; ds_nama: string; dijadwalkan: number; terisi: number; patuh: number; alpha: number; tukar: number
@@ -43,11 +44,11 @@ function useRange() {
     <div className="flex flex-wrap gap-2 items-center mb-3">
       <Select className="w-52" value={mode} onChange={(v) => setMode(v as typeof mode)} opsi={[{ value: 'harian', label: 'Harian' }, { value: 'mingguan', label: 'Mingguan (Senin–Minggu)' }, { value: 'bulanan', label: 'Bulanan' }, { value: 'rentang', label: 'Rentang sendiri' }]} />
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {mode === 'rentang' ? 'Dari' : 'Tanggal acuan'} <input type="date" className="inp" value={ref} onChange={(e) => e.target.value && setRef(e.target.value)} />
+        {mode === 'rentang' ? 'Dari' : 'Tanggal acuan'} <InputTanggal className="inp" value={ref} onChange={(e) => e.target.value && setRef(e.target.value)} />
       </label>
       {mode === 'rentang' && (
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          Sampai <input type="date" className="inp" value={akhir} onChange={(e) => e.target.value && setAkhir(e.target.value)} />
+          Sampai <InputTanggal className="inp" value={akhir} onChange={(e) => e.target.value && setAkhir(e.target.value)} />
         </label>
       )}
       <span className="text-sm text-muted-foreground">

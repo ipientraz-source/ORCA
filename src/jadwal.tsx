@@ -3,6 +3,7 @@ import { CalendarOff, ChevronDown, Copy, Download, FileText, Image as ImageIcon,
 import { sb, today, monday, addDays, hari, useRows, ok, toast, konfirmasi, Err, Select, type Ds, type Me, type Rider } from './lib'
 import { bagiCadangan, buatDraf, cadanganDisarankan, hitungRiwayat, polaAbsen, ringkasanKeadilan, type KuotaHari, type PolaHari, type StatRider } from './otomatis'
 import { Cetak } from './unduh'
+import { InputTanggal } from './tanggal'
 
 // urutan ganti saat sel diklik: kosong (libur biasa) → pagi → siang → libur terkunci (cuti/izin yang disepakati)
 const SIKLUS = ['', 'pagi', 'siang', 'off']
@@ -136,7 +137,7 @@ function MenuUnduh({ sibuk, kosong, pilih }: { sibuk: string | null; kosong: boo
       {buka && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setBuka(false)} />
-          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-44 rounded-xl border border-border bg-card p-1 shadow-lg">
+          <div role="menu" className="select-hud absolute left-0 top-full z-30 mt-1 w-44 rounded-xl border border-border bg-card p-1 shadow-lg">
             {item('png', <ImageIcon size={14} />, 'Gambar (PNG)')}
             {item('pdf', <FileText size={14} />, 'PDF')}
           </div>
@@ -284,6 +285,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
   const [versiRiwayat, setVersiRiwayat] = useState(0) // naik tiap kali jadwal disimpan, supaya Riwayat jadwal ikut diperbarui
   const [pertahankan, setPertahankan] = useState(false) // opsi Susun otomatis: pertahankan pagi/siang yang sudah diisi
   const [pakaiCadangan, setPakaiCadangan] = useState(false) // opsi Susun otomatis: tambah cadangan sesuai pola absen
+  const [susun, setSusun] = useState<'diam' | 'jalan' | 'selesai'>('diam') // efek visual Cyber saat Susun otomatis
   const [pola, setPola] = useState<PolaHari[] | null>(null)
   const days = rentang(dari, sampai)
   const padat = days.length > 10 // periode panjang: sel dan header diringkas
@@ -351,34 +353,42 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
     if (!riders.rows.length) return toast('Belum ada rider aktif di DS ini.')
     if (days.every((d) => kq(d).pagi + kq(d).siang === 0)) return toast('Kebutuhan masih 0 untuk semua hari. Isi kebutuhan di baris kuota, atau minta Super-admin mengisi kuota DS di Kelola DS & Captain.')
     if (adaIsi && !pertahankan && !(await konfirmasi('Jadwal periode ini sudah ada isinya. Ganti dengan draf otomatis? Sel Off (gembok) tetap dihormati.', { judul: 'Ganti jadwal periode ini?', ya: 'Ganti' }))) return
-    // Ingat 28 hari terakhir yang sudah tersimpan: keadilan hari kerja berlanjut lintas minggu, dan shift
-    // tidak berganti tanpa libur dulu walau melewati batas periode.
-    const { data, error } = await ambilJadwal(ds.id, addDays(dari, -28), addDays(dari, -1))
-    if (error) return toast(error.message)
-    const ids = riders.rows.map((r) => r.id)
-    const tetap: Record<string, 'pagi' | 'siang' | 'off'> = {}
-    for (const [k, v] of Object.entries(g)) if (days.includes(k.split('|')[1]) && (v === 'off' || (pertahankan && (v === 'pagi' || v === 'siang')))) tetap[k] = v as 'pagi' | 'siang' | 'off'
-    // kebutuhan efektif per hari = kebutuhan client + cadangan (manual, atau saran pola absen bila opsinya dicentang)
-    const kuotaBaru: Record<string, Kq> = { ...kuota }
-    const kuotaHari: Record<string, KuotaHari> = {}
-    for (const d of days) {
-      let k = kq(d)
-      if (pakaiCadangan && pola) {
-        const saran = cadanganDisarankan(pola[urutanHari(d)], k.pagi + k.siang)
-        if (saran > k.cadangan) k = { ...k, cadangan: saran }
+    // Efek HUD hanya di gaya Cyber dan bila perangkat tidak meminta gerakan dikurangi; selain itu perilaku tetap seperti semula.
+    const efek = document.documentElement.dataset.gaya === 'cyber' && matchMedia('(prefers-reduced-motion: no-preference)').matches
+    const mulai = Date.now()
+    if (efek) setSusun('jalan')
+    try {
+      // Ingat 28 hari terakhir yang sudah tersimpan: keadilan hari kerja berlanjut lintas minggu, dan shift
+      // tidak berganti tanpa libur dulu walau melewati batas periode.
+      const { data, error } = await ambilJadwal(ds.id, addDays(dari, -28), addDays(dari, -1))
+      if (error) { setSusun('diam'); return toast(error.message) }
+      const ids = riders.rows.map((r) => r.id)
+      const tetap: Record<string, 'pagi' | 'siang' | 'off'> = {}
+      for (const [k, v] of Object.entries(g)) if (days.includes(k.split('|')[1]) && (v === 'off' || (pertahankan && (v === 'pagi' || v === 'siang')))) tetap[k] = v as 'pagi' | 'siang' | 'off'
+      // kebutuhan efektif per hari = kebutuhan client + cadangan (manual, atau saran pola absen bila opsinya dicentang)
+      const kuotaBaru: Record<string, Kq> = { ...kuota }
+      const kuotaHari: Record<string, KuotaHari> = {}
+      for (const d of days) {
+        let k = kq(d)
+        if (pakaiCadangan && pola) {
+          const saran = cadanganDisarankan(pola[urutanHari(d)], k.pagi + k.siang)
+          if (saran > k.cadangan) k = { ...k, cadangan: saran }
+        }
+        kuotaBaru[d] = k
+        kuotaHari[d] = bagiCadangan({ pagi: k.pagi, siang: k.siang }, k.cadangan)
       }
-      kuotaBaru[d] = k
-      kuotaHari[d] = bagiCadangan({ pagi: k.pagi, siang: k.siang }, k.cadangan)
-    }
-    const { grid, kurang, langgar } = buatDraf(ids, days, ds.kuota_pagi, ds.kuota_siang, { riwayat: hitungRiwayat(data ?? [], ids, dari), kuotaHari, tetap })
-    const kunci = Object.fromEntries(Object.entries(tetap).filter(([, v]) => v === 'off')) // libur terkunci tetap tampil
-    setG({ ...grid, ...kunci })
-    setKuota(kuotaBaru)
-    const hk = ids.map((id) => days.filter((d) => grid[`${id}|${d}`]).length)
-    toast.ok(`Draf jadwal dibuat: ${Object.keys(grid).length} shift, hari kerja per rider ${Math.min(...hk)}–${Math.max(...hk)}. Periksa dulu, lalu klik Simpan jadwal.`)
-    if (pakaiCadangan && !pola?.some((p) => p.terisi >= 20)) toast('Data absensi belum cukup untuk menyarankan cadangan, jadi tidak ada cadangan yang ditambahkan.')
-    if (kurang.length) toast(`Rider kurang untuk memenuhi kebutuhan di ${kurang.length} hari (mulai ${hari(kurang[0].tanggal)}). Tambah rider atau kurangi kebutuhan.`)
-    if (langgar.length) toast(`${langgar.length} kali rider terpaksa pindah shift tanpa libur dulu supaya kebutuhan terpenuhi (mulai ${hari(langgar[0].tanggal)}). Periksa lagi jadwalnya.`)
+      const { grid, kurang, langgar } = buatDraf(ids, days, ds.kuota_pagi, ds.kuota_siang, { riwayat: hitungRiwayat(data ?? [], ids, dari), kuotaHari, tetap })
+      const kunci = Object.fromEntries(Object.entries(tetap).filter(([, v]) => v === 'off')) // libur terkunci tetap tampil
+      if (efek) await new Promise((r) => setTimeout(r, Math.max(0, 1500 - (Date.now() - mulai)))) // beri waktu efek HUD terlihat
+      setG({ ...grid, ...kunci })
+      setKuota(kuotaBaru)
+      if (efek) { setSusun('selesai'); setTimeout(() => setSusun('diam'), 1400) }
+      const hk = ids.map((id) => days.filter((d) => grid[`${id}|${d}`]).length)
+      toast.ok(`Draf jadwal dibuat: ${Object.keys(grid).length} shift, hari kerja per rider ${Math.min(...hk)}–${Math.max(...hk)}. Periksa dulu, lalu klik Simpan jadwal.`)
+      if (pakaiCadangan && !pola?.some((p) => p.terisi >= 20)) toast('Data absensi belum cukup untuk menyarankan cadangan, jadi tidak ada cadangan yang ditambahkan.')
+      if (kurang.length) toast(`Rider kurang untuk memenuhi kebutuhan di ${kurang.length} hari (mulai ${hari(kurang[0].tanggal)}). Tambah rider atau kurangi kebutuhan.`)
+      if (langgar.length) toast(`${langgar.length} kali rider terpaksa pindah shift tanpa libur dulu supaya kebutuhan terpenuhi (mulai ${hari(langgar[0].tanggal)}). Periksa lagi jadwalnya.`)
+    } catch (e) { setSusun('diam'); throw e }
   }
 
   // Salin periode sebelumnya yang panjangnya sama (mis. 14 hari terakhir sebelum periode ini), termasuk Off bergembok
@@ -422,10 +432,10 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
           <Select className="w-44" value={mode} onChange={gantiMode} opsi={[{ value: 'minggu', label: 'Per minggu' }, { value: 'dua', label: 'Per 2 minggu' }, { value: 'bulan', label: 'Per bulan' }, { value: 'bebas', label: 'Rentang sendiri' }]} />
           <button className="btn2" onClick={() => pasang(...periodeDi(mode, today(), days.length))}>Hari ini</button>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Dari <input type="date" className="inp" value={dari} onChange={(e) => e.target.value && ubahDari(e.target.value)} />
+            Dari <InputTanggal className="inp" value={dari} onChange={(e) => e.target.value && ubahDari(e.target.value)} />
           </label>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Sampai <input type="date" className="inp" value={sampai} min={dari} onChange={(e) => e.target.value && ubahTanggal(dari, e.target.value)} />
+            Sampai <InputTanggal className="inp" value={sampai} min={dari} onChange={(e) => e.target.value && ubahTanggal(dari, e.target.value)} />
           </label>
           <span className="text-xs text-muted-foreground">{days.length} hari</span>
         </Langkah>
@@ -469,7 +479,16 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
           Belum ada jadwal di periode ini. Captain DS ini belum menyusunnya.
         </div>
       )}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm" data-susun={susun}>
+        {susun === 'jalan' && (
+          <div className="susun-hud" role="status" aria-live="polite">
+            <div className="susun-kotak">
+              <div className="susun-judul">MENYUSUN JADWAL</div>
+              <div className="susun-bar"><i /></div>
+              <div className="susun-log"><span>MEMBACA KEBUTUHAN</span><span>MEMBAGI SHIFT ADIL</span><span>MENGUNCI LIBUR</span></div>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
         <table className="w-full border-separate border-spacing-0 text-sm">
           <thead>

@@ -1,6 +1,7 @@
 // Menonaktifkan rider wajib menyebut alasan dan tanggal berhenti: dasar angka turnover yang bisa dipertanggungjawabkan.
 import { useState } from 'react'
 import { Field, ok, sb, toast, today, type Rider } from './lib'
+import { InputTanggal } from './tanggal'
 
 export const KATEGORI_BERHENTI: Record<string, string> = {
   mengundurkan_diri: 'Mengundurkan diri',
@@ -36,7 +37,7 @@ export function DialogBerhenti({ rider, tutup, selesai }: { rider: Rider; tutup:
             </select>
           </Field>
           <Field label="Tanggal terakhir bekerja" hint="Boleh diisi tanggal yang sudah lewat. Tidak boleh di masa depan.">
-            <input type="date" className="inp w-full" value={tgl} max={today()} onChange={(e) => e.target.value && setTgl(e.target.value)} />
+            <InputTanggal className="inp w-full" value={tgl} max={today()} onChange={(e) => e.target.value && setTgl(e.target.value)} />
           </Field>
           <Field label="Keterangan (opsional)">
             <input className="inp w-full" placeholder="mis. pindah kota, sering alpha" value={alasan} onChange={(e) => setAlasan(e.target.value)} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { sb, today, monday, hari, useRows, ok, toast, Err, Kosong, RiderPick, Select, usePage, Pagination, type Ds, type Me, type Rider } from './lib'
+import { InputTanggal } from './tanggal'
 
 type Act = { rider_id: string; status: string; backup_untuk_id: string | null; penjelasan: string | null; potongan: boolean | null; insentif: number; tanpa_pengganti: boolean }
 // potongan: Ya/Tidak untuk alpha/izin/sakit; insentif: nominal rupiah untuk rider pengganti
@@ -129,7 +130,7 @@ function DailyInner({ ds }: { ds: Ds }) {
   return (
     <div>
       <div className="flex flex-wrap gap-2 items-center mb-3">
-        <input type="date" className="inp" value={tgl} max={today()} onChange={(e) => e.target.value && setTgl(e.target.value)} />
+        <InputTanggal className="inp" value={tgl} max={today()} onChange={(e) => e.target.value && setTgl(e.target.value)} />
         <b>{hari(tgl)}</b>
         <input className="inp ml-auto" placeholder="cari rider / Kode MTR" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
