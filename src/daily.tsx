@@ -4,7 +4,7 @@ import { InputTanggal } from './tanggal'
 
 type Act = { rider_id: string; status: string; backup_untuk_id: string | null; penjelasan: string | null; potongan: boolean | null; insentif: number; tanpa_pengganti: boolean }
 // potongan: Ya/Tidak untuk alpha/izin/sakit; insentif: nominal rupiah untuk rider pengganti
-type TabShift = 'pagi' | 'siang' | 'lain'
+type TabShift = 'pagi' | 'tengah' | 'siang' | 'lain'
 type Catat = (rider: string, status: string, backup?: string, teks?: string, potongan?: boolean | null, insentif?: number, tanpa?: boolean) => Promise<boolean>
 
 const rupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
@@ -92,7 +92,7 @@ function DailyInner({ ds }: { ds: Ds }) {
   // kalau tidak menggantikan siapa pun, masuk tab "Lainnya".
   const shiftTab = (id: string): TabShift => {
     const s = shift(id) ?? shift(act(id)?.backup_untuk_id ?? '')
-    return s === 'pagi' || s === 'siang' ? s : 'lain'
+    return s === 'pagi' || s === 'tengah' || s === 'siang' ? s : 'lain'
   }
   const listed = riders.rows.filter((r) => shift(r.id) || act(r.id))
   const terjadwal = riders.rows.filter((r) => shift(r.id))
@@ -101,7 +101,7 @@ function DailyInner({ ds }: { ds: Ds }) {
   // Tab awal: shift pertama yang masih ada rider belum diabsen (pagi dulu), jadi Captain langsung di shift yang perlu dilaporkan.
   const [pilihTab, setPilihTab] = useState<TabShift | null>(null)
   useEffect(() => setPilihTab(null), [tgl])
-  const tabAwal: TabShift = (['pagi', 'siang'] as const).find((t) => hitung(t).terisi < hitung(t).total) ?? (ada('pagi') ? 'pagi' : ada('siang') ? 'siang' : 'pagi')
+  const tabAwal: TabShift = (['pagi', 'tengah', 'siang'] as const).find((t) => hitung(t).terisi < hitung(t).total) ?? (ada('pagi') ? 'pagi' : ada('tengah') ? 'tengah' : ada('siang') ? 'siang' : 'pagi')
   const tab = pilihTab ?? tabAwal
   const dicari = q.trim().length > 0
   // Mencari rider menelusuri semua shift sekaligus; tanpa kata kunci, hanya shift yang sedang dibuka
@@ -135,7 +135,7 @@ function DailyInner({ ds }: { ds: Ds }) {
         <input className="inp ml-auto" placeholder="cari rider / Kode MTR" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div role="tablist" aria-label="Shift" className="mb-3 flex flex-wrap items-center gap-2">
-        {([['pagi', 'Shift Pagi'], ['siang', 'Shift Siang'], ['lain', 'Lainnya']] as const).filter(([t]) => t !== 'lain' || ada('lain')).map(([t, label]) => {
+        {([['pagi', 'Shift Pagi'], ['tengah', 'Shift Middle'], ['siang', 'Shift Siang'], ['lain', 'Lainnya']] as const).filter(([t]) => (t !== 'lain' && t !== 'tengah') || ada(t)).map(([t, label]) => {
           const h = hitung(t)
           const lengkap = h.total > 0 && h.terisi === h.total
           return (
@@ -173,7 +173,7 @@ function DailyInner({ ds }: { ds: Ds }) {
             hapus={hapus}
           />
         ))}
-        {!shown.length && <div className="card"><Kosong teks={dicari ? 'Tidak ada rider yang cocok' : listed.length ? `Tidak ada rider di ${tab === 'pagi' ? 'shift pagi' : tab === 'siang' ? 'shift siang' : 'tab ini'}` : 'Tidak ada rider yang dijadwalkan di tanggal ini'} hint={listed.length ? 'Coba shift lain di atas.' : 'Susun jadwal di tab Jadwal DS, atau tambahkan rider pengganti di bawah.'} /></div>}
+        {!shown.length && <div className="card"><Kosong teks={dicari ? 'Tidak ada rider yang cocok' : listed.length ? `Tidak ada rider di ${tab === 'pagi' ? 'shift pagi' : tab === 'tengah' ? 'shift middle' : tab === 'siang' ? 'shift siang' : 'tab ini'}` : 'Tidak ada rider yang dijadwalkan di tanggal ini'} hint={listed.length ? 'Coba shift lain di atas.' : 'Susun jadwal di tab Jadwal DS, atau tambahkan rider pengganti di bawah.'} /></div>}
       </div>
       <div className="mt-3"><Pagination {...pg} /></div>
       <TambahPengganti

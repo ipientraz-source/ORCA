@@ -1,6 +1,6 @@
 import { sb, today, hari, useRows, Err, Kosong, Logo, TemaToggle, type Me } from './lib'
 
-const SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', off: 'Libur' }
+const SHIFT: Record<string, string> = { pagi: 'Pagi', tengah: 'Middle', siang: 'Siang', off: 'Libur' }
 
 function List({ rows }: { rows: { tanggal: string; shift: string; ds?: string | null }[] }) {
   if (!rows.length) return <Kosong teks="Belum ada jadwal" hint="Jadwal akan muncul di sini setelah Captain menyusunnya." />
@@ -19,7 +19,7 @@ function List({ rows }: { rows: { tanggal: string; shift: string; ds?: string | 
             </div>
             {r.ds && <div className="text-xs text-muted-foreground">{r.ds}</div>}
           </div>
-          <span className={`badge ${r.shift === 'pagi' ? 'bg-warning-soft text-warning' : r.shift === 'siang' ? 'bg-primary text-white' : 'bg-border text-muted-foreground'}`}>{SHIFT[r.shift]}</span>
+          <span className={`badge ${r.shift === 'pagi' ? 'bg-warning-soft text-warning' : r.shift === 'tengah' ? 'bg-[#38e8d8] text-black' : r.shift === 'siang' ? 'bg-primary text-white' : 'bg-border text-muted-foreground'}`}>{SHIFT[r.shift]}</span>
         </li>
       ))}
     </ul>

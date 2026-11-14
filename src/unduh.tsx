@@ -7,8 +7,8 @@ export type DataCetak = {
   judul: string
   days: string[]
   riders: { id: string; nama: string; kode_mtr: string | null }[]
-  g: Record<string, string> // "riderId|tanggal" -> pagi | siang | off (libur terkunci)
-  kuota: Record<string, { pagi: number; siang: number; cadangan: number }> // kebutuhan client per tanggal
+  g: Record<string, string> // "riderId|tanggal" -> pagi | tengah | siang | off (libur terkunci)
+  kuota: Record<string, { pagi: number; siang: number; tengah?: number; cadangan: number }> // kebutuhan client per tanggal
 }
 
 const NAMA_HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
@@ -24,6 +24,7 @@ const warnaKuota = (n: number, q: number, lebihTotal: number, cad: number) => (n
 
 const TEPI_PAGI = '0 2px 0 #d97706'
 const TEPI_SIANG = '0 2px 0 var(--purple-800)'
+const TEPI_TENGAH = '0 2px 0 #0f9488'
 
 function Sel({ v, padat }: { v: string; padat: boolean }) {
   if (!v) return padat ? <span className="text-muted-foreground/40">·</span> : <span className="text-xs font-medium text-muted-foreground/60">Off</span>
@@ -34,12 +35,13 @@ function Sel({ v, padat }: { v: string; padat: boolean }) {
       <span className="inline-flex w-[4.5rem] items-center justify-center gap-1 rounded-lg border border-border bg-muted px-2 py-1.5 text-xs font-bold text-foreground/70"><Lock size={11} />Off</span>
     )
   const pagi = v === 'pagi'
-  const warna = pagi ? 'bg-[var(--amber-400)] text-[#451a03]' : 'bg-primary text-primary-foreground'
-  const tepi = pagi ? TEPI_PAGI : TEPI_SIANG
-  if (padat) return <span style={{ boxShadow: tepi }} className={`inline-flex size-6 items-center justify-center rounded-md text-[11px] font-bold ${warna}`}>{pagi ? 'P' : 'S'}</span>
+  const tengah = v === 'tengah'
+  const warna = pagi ? 'bg-[var(--amber-400)] text-[#451a03]' : tengah ? 'bg-[#38e8d8] text-[#04332f]' : 'bg-primary text-primary-foreground'
+  const tepi = pagi ? TEPI_PAGI : tengah ? TEPI_TENGAH : TEPI_SIANG
+  if (padat) return <span style={{ boxShadow: tepi }} className={`inline-flex size-6 items-center justify-center rounded-md text-[11px] font-bold ${warna}`}>{pagi ? 'P' : tengah ? 'M' : 'S'}</span>
   return (
     <span style={{ boxShadow: tepi }} className={`inline-block w-[4.5rem] rounded-lg px-2 py-1.5 text-xs font-bold ${warna}`}>
-      {pagi ? 'Pagi' : 'Siang'}
+      {pagi ? 'Pagi' : tengah ? 'Middle' : 'Siang'}
     </span>
   )
 }
@@ -99,7 +101,9 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
 
   const nPagi = riders.reduce((n, r) => n + days.filter((d) => g[`${r.id}|${d}`] === 'pagi').length, 0)
   const nSiang = riders.reduce((n, r) => n + days.filter((d) => g[`${r.id}|${d}`] === 'siang').length, 0)
-  const ringkas: [string, number][] = [['Rider', riders.length], ['Shift pagi', nPagi], ['Shift siang', nSiang], ['Total shift', nPagi + nSiang]]
+  const nTengah = riders.reduce((n, r) => n + days.filter((d) => g[`${r.id}|${d}`] === 'tengah').length, 0)
+  const adaTengah = nTengah > 0 || days.some((d) => (data.kuota[d]?.tengah ?? 0) > 0) // kolom/baris tengah hanya muncul bila dipakai
+  const ringkas: [string, number][] = [['Rider', riders.length], ['Shift pagi', nPagi], ...(adaTengah ? [['Shift middle', nTengah] as [string, number]] : []), ['Shift siang', nSiang], ['Total shift', nPagi + nSiang + nTengah]]
 
   return (
     <div ref={akar} aria-hidden style={{ position: 'fixed', left: -100000, top: 0, pointerEvents: 'none' }}>
@@ -126,6 +130,7 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
           </div>
           <div className="mb-3 mt-4 flex items-center gap-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><Sel v="pagi" padat={false} /> shift pagi</span>
+            {adaTengah && <span className="flex items-center gap-1.5"><Sel v="tengah" padat={false} /> shift middle</span>}
             <span className="flex items-center gap-1.5"><Sel v="siang" padat={false} /> shift siang</span>
             <span className="flex items-center gap-1.5"><Sel v="off" padat={false} /> libur terkunci (cuti/izin)</span>
             <span className="flex items-center gap-1.5"><Sel v="" padat={false} /> libur</span>
@@ -168,7 +173,7 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
                     </td>
                   ))}
                   <td className="border-l border-[#dcdfe8] text-center">
-                    <span className="inline-block min-w-8 rounded-full bg-primary-soft px-2 py-0.5 font-mono text-xs font-bold text-primary-soft-foreground">{days.filter((d) => ['pagi', 'siang'].includes(g[`${r.id}|${d}`])).length}</span>
+                    <span className="inline-block min-w-8 rounded-full bg-primary-soft px-2 py-0.5 font-mono text-xs font-bold text-primary-soft-foreground">{days.filter((d) => ['pagi', 'tengah', 'siang'].includes(g[`${r.id}|${d}`])).length}</span>
                   </td>
                 </tr>
               ))}
@@ -185,11 +190,14 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
                 {days.map((d) => {
                   const p = hitung(d, 'pagi')
                   const s = hitung(d, 'siang')
+                  const t = hitung(d, 'tengah')
                   const k = data.kuota[d] ?? { pagi: 0, siang: 0, cadangan: 0 }
-                  const lebih = Math.max(0, p - k.pagi) + Math.max(0, s - k.siang)
+                  const kt = k.tengah ?? 0
+                  const lebih = Math.max(0, p - k.pagi) + Math.max(0, s - k.siang) + (adaTengah ? Math.max(0, t - kt) : 0)
                   return (
                     <td key={d} className="border-l border-[#dcdfe8] py-1.5 text-center font-mono text-[10px] font-semibold leading-snug">
                       <div className={warnaKuota(p, k.pagi, lebih, k.cadangan)}>{padat ? `P${p}` : `P ${p}/${k.pagi}`}</div>
+                      {adaTengah && <div className={warnaKuota(t, kt, lebih, k.cadangan)}>{padat ? `M${t}` : `M ${t}/${kt}`}</div>}
                       <div className={warnaKuota(s, k.siang, lebih, k.cadangan)}>{padat ? `S${s}` : `S ${s}/${k.siang}`}</div>
                       {k.cadangan > 0 && !padat && <div className="text-[9px] font-normal text-muted-foreground">+{k.cadangan} cad</div>}
                     </td>

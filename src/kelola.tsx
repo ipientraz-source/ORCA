@@ -75,7 +75,7 @@ export function Kelola() {
                   <span className="text-sm font-semibold">{d.nama}</span>
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className={`size-1.5 shrink-0 rounded-full ${capNama ? 'bg-success' : 'bg-warning'}`} />
-                    {capNama ?? 'Belum ada Captain'} · {d.kuota_pagi + d.kuota_siang} rider/hari
+                    {capNama ?? 'Belum ada Captain'} · {d.kuota_pagi + d.kuota_siang + (d.kuota_tengah ?? 0)} rider/hari
                   </span>
                 </button>
               )
@@ -117,7 +117,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
       reload()
     }
   }
-  const [f, setF] = useState({ nama: d.nama, kuota_pagi: d.kuota_pagi, kuota_siang: d.kuota_siang, group_wa_id: d.group_wa_id ?? '' })
+  const [f, setF] = useState({ nama: d.nama, kuota_pagi: d.kuota_pagi, kuota_siang: d.kuota_siang, kuota_tengah: d.kuota_tengah ?? 0, group_wa_id: d.group_wa_id ?? '' })
   const [pick, setPick] = useState('')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
@@ -133,13 +133,15 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
   }
   const calonCaptain = terbatas ? [...candidates, ...bebas.filter((b) => !candidates.some((c) => c.id === b.id)).map((b) => ({ ...b, kode_mtr: null }))] : candidates
   const cap = riders.find((r) => r.id === d.captain_id)
-  const berubah = f.kuota_pagi !== d.kuota_pagi || f.kuota_siang !== d.kuota_siang || (!terbatas && (f.nama.trim() !== d.nama || f.group_wa_id !== (d.group_wa_id ?? '')))
+  const berubah = f.kuota_pagi !== d.kuota_pagi || f.kuota_siang !== d.kuota_siang || f.kuota_tengah !== (d.kuota_tengah ?? 0) || (!terbatas && (f.nama.trim() !== d.nama || f.group_wa_id !== (d.group_wa_id ?? '')))
   const angka = (v: string) => Math.max(0, Math.floor(+v || 0))
 
   const kurang = !pick ? 'Pilih rider dulu' : !email.trim() ? 'Isi email untuk login' : pw && pw.length < 8 ? 'Password minimal 8 karakter' : ''
 
   const simpan = async () => {
-    const isi = terbatas ? { kuota_pagi: f.kuota_pagi, kuota_siang: f.kuota_siang } : { nama: f.nama.trim(), kuota_pagi: f.kuota_pagi, kuota_siang: f.kuota_siang, group_wa_id: f.group_wa_id.trim() || null }
+    // kuota_tengah dikirim hanya bila diubah, supaya menyimpan DS tetap jalan walau migrasi shift tengah belum dijalankan di database
+    const tengah = f.kuota_tengah !== (d.kuota_tengah ?? 0) ? { kuota_tengah: f.kuota_tengah } : {}
+    const isi = terbatas ? { kuota_pagi: f.kuota_pagi, kuota_siang: f.kuota_siang, ...tengah } : { nama: f.nama.trim(), kuota_pagi: f.kuota_pagi, kuota_siang: f.kuota_siang, ...tengah, group_wa_id: f.group_wa_id.trim() || null }
     if (await ok(sb.from('ds').update(isi).eq('id', d.id))) {
       toast.ok('Perubahan DS disimpan')
       reload()
@@ -159,7 +161,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
     <>
       <h3 className="mr-1 min-w-40 text-base font-bold">{d.nama}</h3>
       <span className="badge bg-muted text-muted-foreground" title="Rider yang harus masuk tiap hari">
-        {d.kuota_pagi} pagi + {d.kuota_siang} siang = {d.kuota_pagi + d.kuota_siang} rider/hari
+        {d.kuota_pagi} pagi + {(d.kuota_tengah ?? 0) > 0 ? `${d.kuota_tengah} middle + ` : ''}{d.kuota_siang} siang = {d.kuota_pagi + d.kuota_siang + (d.kuota_tengah ?? 0)} rider/hari
       </span>
       {cap ? <span className="badge bg-primary-soft text-primary-soft-foreground">Captain: {cap.nama}</span> : <span className="badge bg-warning-soft text-warning">Belum ada Captain</span>}
       {!terbatas && (arc ? <span className="badge bg-muted text-foreground/80">Arcon: {arc.nama}</span> : <span className="badge bg-muted text-muted-foreground">Tanpa Arcon</span>)}
@@ -197,6 +199,9 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
         </Field>
         <Field label={terbatas ? 'Kebutuhan rider shift siang' : 'Kuota shift siang'} hint="Jumlah rider yang harus masuk shift siang setiap hari.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_siang} onChange={(e) => setF({ ...f, kuota_siang: angka(e.target.value) })} />
+        </Field>
+        <Field label={terbatas ? 'Kebutuhan rider shift middle (opsional)' : 'Kuota shift middle (opsional)'} hint="Shift ketiga di antara pagi dan siang. Biarkan 0 bila DS ini tidak memakainya; kalau diisi, shift middle muncul di jadwal dan dibagi adil seperti shift lain.">
+          <input type="number" min={0} className="inp w-full" value={f.kuota_tengah} onChange={(e) => setF({ ...f, kuota_tengah: angka(e.target.value) })} />
         </Field>
         {!terbatas && (
           <Field label="ID grup WhatsApp (opsional)" hint="Untuk pengingat jadwal ke grup nanti. Boleh dikosongkan.">

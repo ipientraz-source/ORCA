@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarOff, ChevronDown, Copy, Download, FileText, Image as ImageIcon, Lock, Sparkles, Sun, Sunrise } from 'lucide-react'
+import { CalendarOff, ChevronDown, Copy, Download, FileText, Image as ImageIcon, Lock, Sparkles, Sun, SunMedium, Sunrise } from 'lucide-react'
 import { sb, today, monday, addDays, hari, useRows, ok, toast, konfirmasi, Err, Select, type Ds, type Me, type Rider } from './lib'
 import { bagiCadangan, buatDraf, cadanganDisarankan, hitungRiwayat, polaAbsen, ringkasanKeadilan, type KuotaHari, type PolaHari, type StatRider } from './otomatis'
 import { Cetak } from './unduh'
@@ -7,11 +7,12 @@ import { InputTanggal } from './tanggal'
 
 // urutan ganti saat sel diklik: kosong (libur biasa) → pagi → siang → libur terkunci (cuti/izin yang disepakati)
 const SIKLUS = ['', 'pagi', 'siang', 'off']
+const SIKLUS_TENGAH = ['', 'pagi', 'tengah', 'siang', 'off'] // bila shift tengah dipakai
 const NAMA_HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const urutanHari = (d: string) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7 // 0 = Senin
 const namaHari = (d: string) => NAMA_HARI[urutanHari(d)]
-const kerjaShift = (v: string | undefined) => v === 'pagi' || v === 'siang'
+const kerjaShift = (v: string | undefined) => v === 'pagi' || v === 'siang' || v === 'tengah'
 
 // ── periode fleksibel: per minggu, per 2 minggu, per bulan, atau rentang tanggal sendiri ──
 type Mode = 'minggu' | 'dua' | 'bulan' | 'bebas'
@@ -33,8 +34,8 @@ function periodeDi(mode: Mode, d: string, panjang: number): [string, string] {
 
 type Jd = { rider_id: string; tanggal: string; shift: string }
 type Ak = { rider_id: string; tanggal: string; status: string }
-type Kq = { pagi: number; siang: number; cadangan: number } // kebutuhan client per hari + rider cadangan
-type KuotaRow = { tanggal: string; kuota_pagi: number; kuota_siang: number; cadangan: number }
+type Kq = { pagi: number; siang: number; tengah: number; cadangan: number } // kebutuhan client per hari + rider cadangan
+type KuotaRow = { tanggal: string; kuota_pagi: number; kuota_siang: number; kuota_tengah?: number; cadangan: number }
 
 // PostgREST membatasi 1000 baris per permintaan; periode panjang + banyak rider bisa melewatinya.
 // Ambil bertahap sampai habis — kalau terpotong, menyimpan akan menghapus jadwal yang tidak termuat.
@@ -78,12 +79,14 @@ function Pil({ v, klik, title, ringkas }: { v: string; klik?: () => void; title?
   const gaya =
     v === 'pagi' ? 'border-border bg-[#ffdd00] text-black shadow-[2px_2px_0_var(--edge)]'
     : v === 'siang' ? 'border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--edge)]'
+    : v === 'tengah' ? 'border-border bg-[#38e8d8] text-black shadow-[2px_2px_0_var(--edge)]'
     : v === 'off' ? 'border-border bg-card text-foreground shadow-[2px_2px_0_var(--edge)]'
     : 'border-dashed border-input text-muted-foreground/70'
   const isi = ringkas
-    ? v === 'pagi' ? 'P' : v === 'siang' ? 'S' : v === 'off' ? <Lock size={12} /> : '–'
+    ? v === 'pagi' ? 'P' : v === 'siang' ? 'S' : v === 'tengah' ? 'M' : v === 'off' ? <Lock size={12} /> : '–'
     : v === 'pagi' ? <><Sunrise size={13} />Pagi</>
     : v === 'siang' ? <><Sun size={13} />Siang</>
+    : v === 'tengah' ? <><SunMedium size={13} />Middle</>
     : v === 'off' ? <><Lock size={12} />Off</>
     : <span title="Libur biasa (tidak terkunci)">Off</span>
   const kelas = `inline-flex items-center justify-center rounded-lg border font-bold transition-all ${ringkas ? 'size-7 text-[11px]' : 'w-[4.75rem] gap-1 px-2 py-1.5 text-xs'} ${gaya}`
@@ -97,18 +100,21 @@ function Pil({ v, klik, title, ringkas }: { v: string; klik?: () => void; title?
 // Hijau = pas, kuning = kurang. Kelebihan: biru bila masih dalam jatah cadangan, merah bila melebihi.
 const warnaKuota = (n: number, q: number, lebihTotal: number, cad: number) => (n === q ? 'text-success' : n < q ? 'text-warning' : lebihTotal <= cad ? 'text-primary' : 'text-danger')
 
-// Sel baris bawah: jumlah rider terisi vs kebutuhan client hari itu; kebutuhan bisa diedit (Captain / Super-admin)
-function SelKuota({ nP, nS, k, editable, ringkas, ubah }: { nP: number; nS: number; k: Kq; editable: boolean; ringkas: boolean; ubah: (f: 'pagi' | 'siang' | 'cadangan', v: string) => void }) {
-  const lebih = Math.max(0, nP - k.pagi) + Math.max(0, nS - k.siang)
+// Sel baris bawah: jumlah rider terisi vs kebutuhan client hari itu; kebutuhan bisa diedit (Captain / Super-admin).
+// Baris T (tengah) hanya tampil bila shift tengah dipakai (`tengah`).
+function SelKuota({ nP, nS, nT, k, tengah, editable, ringkas, ubah }: { nP: number; nS: number; nT: number; k: Kq; tengah: boolean; editable: boolean; ringkas: boolean; ubah: (f: 'pagi' | 'siang' | 'tengah' | 'cadangan', v: string) => void }) {
+  const lebih = Math.max(0, nP - k.pagi) + Math.max(0, nS - k.siang) + (tengah ? Math.max(0, nT - k.tengah) : 0)
   const wP = warnaKuota(nP, k.pagi, lebih, k.cadangan)
   const wS = warnaKuota(nS, k.siang, lebih, k.cadangan)
-  const input = (f: 'pagi' | 'siang' | 'cadangan', v: number, judul: string) => (
+  const wT = warnaKuota(nT, k.tengah, lebih, k.cadangan)
+  const input = (f: 'pagi' | 'siang' | 'tengah' | 'cadangan', v: number, judul: string) => (
     <input type="number" min={0} title={judul} aria-label={judul} value={v} onChange={(e) => ubah(f, e.target.value)} className={`inp !px-0.5 !py-0 text-center font-mono text-[11px] [@media(pointer:coarse)]:!h-9 [@media(pointer:coarse)]:!text-base ${ringkas ? 'w-8 [@media(pointer:coarse)]:w-10' : 'w-10 [@media(pointer:coarse)]:w-12'}`} />
   )
   if (!editable)
     return (
       <>
         <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wP}`}>{ringkas ? `P${nP}` : <><span>P</span><span>{nP}/{k.pagi}</span></>}</div>
+        {tengah && <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wT}`}>{ringkas ? `M${nT}` : <><span>M</span><span>{nT}/{k.tengah}</span></>}</div>}
         <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wS}`}>{ringkas ? `S${nS}` : <><span>S</span><span>{nS}/{k.siang}</span></>}</div>
         {k.cadangan > 0 && <div className="text-center text-[10px] text-muted-foreground" title="Rider cadangan di atas kebutuhan client">+{k.cadangan} cad.</div>}
       </>
@@ -117,6 +123,7 @@ function SelKuota({ nP, nS, k, editable, ringkas, ubah }: { nP: number; nS: numb
   return (
     <div className="space-y-1">
       <div className={`${baris} font-mono text-[11px] font-semibold ${wP}`}><span>P{nP}</span>{input('pagi', k.pagi, 'Kebutuhan shift pagi hari ini (sesuai permintaan client)')}</div>
+      {tengah && <div className={`${baris} font-mono text-[11px] font-semibold ${wT}`}><span>M{nT}</span>{input('tengah', k.tengah, 'Kebutuhan shift middle hari ini (opsional, sesuai permintaan client)')}</div>}
       <div className={`${baris} font-mono text-[11px] font-semibold ${wS}`}><span>S{nS}</span>{input('siang', k.siang, 'Kebutuhan shift siang hari ini (sesuai permintaan client)')}</div>
       <div className={`${baris} font-mono text-[10px] text-muted-foreground`}><span>cad</span>{input('cadangan', k.cadangan, 'Rider cadangan di atas kebutuhan client (opsional)')}</div>
     </div>
@@ -207,11 +214,12 @@ function RiwayatJadwal({ ds, aktif, versi, buka }: { ds: Ds; aktif: string; vers
   )
 }
 
-// Ringkasan keadilan: hari kerja, pagi, siang, akhir pekan, libur tiap rider pada draf/jadwal yang sedang tampil
+// Ringkasan keadilan: hari kerja, pagi, (tengah,) siang, akhir pekan, libur tiap rider pada draf/jadwal yang sedang tampil
 function PanelKeadilan({ riders, stat }: { riders: Rider[]; stat: Record<string, StatRider> }) {
   const baris = riders.map((r) => ({ r, s: stat[r.id] })).sort((a, b) => b.s.hk - a.s.hk || a.r.nama.localeCompare(b.r.nama))
   const hk = baris.map((b) => b.s.hk)
   const we = baris.map((b) => b.s.akhirPekan)
+  const adaTengah = baris.some((b) => (b.s.tengah ?? 0) > 0)
   const kisaran = (a: number[]) => (a.length ? `${Math.min(...a)}–${Math.max(...a)}` : '–')
   const selisih = (a: number[]) => (a.length ? Math.max(...a) - Math.min(...a) : 0)
   return (
@@ -225,12 +233,12 @@ function PanelKeadilan({ riders, stat }: { riders: Rider[]; stat: Record<string,
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="overflow-x-auto">
           <table className="tbl">
-            <thead><tr><th>Rider</th><th>Hari kerja</th><th>Pagi</th><th>Siang</th><th>Akhir pekan</th><th>Libur</th></tr></thead>
+            <thead><tr><th>Rider</th><th>Hari kerja</th><th>Pagi</th>{adaTengah && <th>Middle</th>}<th>Siang</th><th>Akhir pekan</th><th>Libur</th></tr></thead>
             <tbody>
               {baris.map(({ r, s }) => (
                 <tr key={r.id}>
                   <td>{r.nama} <span className="font-mono text-[11px] text-muted-foreground">{r.kode_mtr}</span></td>
-                  <td className="font-mono font-semibold">{s.hk}</td><td className="font-mono">{s.pagi}</td><td className="font-mono">{s.siang}</td>
+                  <td className="font-mono font-semibold">{s.hk}</td><td className="font-mono">{s.pagi}</td>{adaTengah && <td className="font-mono">{s.tengah ?? 0}</td>}<td className="font-mono">{s.siang}</td>
                   <td className="font-mono">{s.akhirPekan}</td><td className="font-mono text-muted-foreground">{s.libur}</td>
                 </tr>
               ))}
@@ -244,7 +252,7 @@ function PanelKeadilan({ riders, stat }: { riders: Rider[]; stat: Record<string,
 
 // Pola absen nyata (8 minggu terakhir) → saran jumlah rider cadangan per hari dalam seminggu
 function PanelPola({ pola, ds }: { pola: PolaHari[] | null; ds: Ds }) {
-  const total = ds.kuota_pagi + ds.kuota_siang
+  const total = ds.kuota_pagi + ds.kuota_siang + (ds.kuota_tengah ?? 0)
   return (
     <details className="card">
       <summary className="cursor-pointer font-bold">Pola absen dan saran cadangan</summary>
@@ -286,17 +294,18 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
   const [pertahankan, setPertahankan] = useState(false) // opsi Susun otomatis: pertahankan pagi/siang yang sudah diisi
   const [pakaiCadangan, setPakaiCadangan] = useState(false) // opsi Susun otomatis: tambah cadangan sesuai pola absen
   const [susun, setSusun] = useState<'diam' | 'jalan' | 'selesai'>('diam') // efek visual Cyber saat Susun otomatis
+  const [tampilTengah, setTampilTengah] = useState(false) // Captain/Arcon menyalakan shift tengah untuk DS yang belum memakainya
   const [pola, setPola] = useState<PolaHari[] | null>(null)
   const days = rentang(dari, sampai)
   const padat = days.length > 10 // periode panjang: sel dan header diringkas
   const riders = useRows<Rider>(() => sb.from('riders').select('*').eq('ds_id', ds.id).eq('status', 'aktif').order('nama'), [ds.id])
   const j = useRows<Jd>(() => ambilJadwal(ds.id, dari, sampai), [ds.id, dari, sampai])
-  const kRows = useRows<KuotaRow>(() => sb.from('kuota_harian').select('tanggal,kuota_pagi,kuota_siang,cadangan').eq('ds_id', ds.id).gte('tanggal', dari).lte('tanggal', sampai), [ds.id, dari, sampai])
+  const kRows = useRows<KuotaRow>(() => sb.from('kuota_harian').select('*').eq('ds_id', ds.id).gte('tanggal', dari).lte('tanggal', sampai), [ds.id, dari, sampai])
   useEffect(() => {
     setG(Object.fromEntries(j.rows.map((r) => [`${r.rider_id}|${r.tanggal}`, r.shift])))
   }, [j.rows])
   useEffect(() => {
-    setKuota(Object.fromEntries(kRows.rows.map((r) => [r.tanggal, { pagi: r.kuota_pagi, siang: r.kuota_siang, cadangan: r.cadangan }])))
+    setKuota(Object.fromEntries(kRows.rows.map((r) => [r.tanggal, { pagi: r.kuota_pagi, siang: r.kuota_siang, tengah: r.kuota_tengah ?? 0, cadangan: r.cadangan }])))
   }, [kRows.rows])
   // pola absen 8 minggu terakhir (sebelum hari ini), dipakai untuk saran dan opsi cadangan
   useEffect(() => {
@@ -310,10 +319,13 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
     }
   }, [ds.id])
 
-  const kq = (d: string): Kq => kuota[d] ?? { pagi: ds.kuota_pagi, siang: ds.kuota_siang, cadangan: 0 }
+  const kq = (d: string): Kq => kuota[d] ?? { pagi: ds.kuota_pagi, siang: ds.kuota_siang, tengah: ds.kuota_tengah ?? 0, cadangan: 0 }
   const cnt = (d: string, s: string) => riders.rows.filter((r) => g[`${r.id}|${d}`] === s).length
   const shown = riders.rows.filter((r) => (r.nama + (r.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()))
   const adaIsi = days.some((d) => riders.rows.some((r) => kerjaShift(g[`${r.id}|${d}`])))
+  // Shift tengah tampil bila DS memakainya (bawaan atau per hari), sudah ada isiannya, atau dinyalakan lewat tombol "+ Shift tengah"
+  const tengahAktif = tampilTengah || (ds.kuota_tengah ?? 0) > 0 || days.some((d) => kq(d).tengah > 0 || riders.rows.some((r) => g[`${r.id}|${d}`] === 'tengah'))
+  const siklus = tengahAktif ? SIKLUS_TENGAH : SIKLUS
   const stat = ringkasanKeadilan(g, riders.rows.map((r) => r.id), days)
   // lebih dari 6 hari kerja dalam satu minggu Senin–Minggu → tandai merah
   const lebihBatas = (id: string) => {
@@ -321,9 +333,9 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
     for (const d of days) if (kerjaShift(g[`${id}|${d}`])) m[monday(d)] = (m[monday(d)] ?? 0) + 1
     return Object.values(m).some((n) => n > 6)
   }
-  const ubahKuota = (d: string, f: 'pagi' | 'siang' | 'cadangan', v: string) => {
+  const ubahKuota = (d: string, f: 'pagi' | 'siang' | 'tengah' | 'cadangan', v: string) => {
     const n = Math.max(0, Math.min(f === 'cadangan' ? 100 : 500, Math.floor(+v || 0)))
-    setKuota((s) => ({ ...s, [d]: { ...(s[d] ?? { pagi: ds.kuota_pagi, siang: ds.kuota_siang, cadangan: 0 }), [f]: n } }))
+    setKuota((s) => ({ ...s, [d]: { ...(s[d] ?? { pagi: ds.kuota_pagi, siang: ds.kuota_siang, tengah: ds.kuota_tengah ?? 0, cadangan: 0 }), [f]: n } }))
   }
 
   // ── ganti periode ──
@@ -348,10 +360,10 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
   const ubahDari = (tgl: string) => (mode === 'bebas' ? ubahTanggal(tgl, sampai < tgl ? tgl : sampai) : pasang(...periodeDi(mode, tgl, days.length)))
 
   // Draf otomatis: dibagi sesuai kebutuhan tiap hari secara adil. Belum tersimpan sampai klik "Simpan jadwal".
-  // Libur terkunci (gembok) SELALU dihormati; pagi/siang yang sudah diisi hanya dipertahankan bila opsinya dicentang.
+  // Libur terkunci (gembok) SELALU dihormati; pagi/siang/tengah yang sudah diisi hanya dipertahankan bila opsinya dicentang.
   const susunOtomatis = async () => {
     if (!riders.rows.length) return toast('Belum ada rider aktif di DS ini.')
-    if (days.every((d) => kq(d).pagi + kq(d).siang === 0)) return toast('Kebutuhan masih 0 untuk semua hari. Isi kebutuhan di baris kuota, atau minta Super-admin mengisi kuota DS di Kelola DS & Captain.')
+    if (days.every((d) => kq(d).pagi + kq(d).siang + kq(d).tengah === 0)) return toast('Kebutuhan masih 0 untuk semua hari. Isi kebutuhan di baris kuota, atau minta Super-admin mengisi kuota DS di Kelola DS & Captain.')
     if (adaIsi && !pertahankan && !(await konfirmasi('Jadwal periode ini sudah ada isinya. Ganti dengan draf otomatis? Sel Off (gembok) tetap dihormati.', { judul: 'Ganti jadwal periode ini?', ya: 'Ganti' }))) return
     // Efek HUD hanya di gaya Cyber dan bila perangkat tidak meminta gerakan dikurangi; selain itu perilaku tetap seperti semula.
     const efek = document.documentElement.dataset.gaya === 'cyber' && matchMedia('(prefers-reduced-motion: no-preference)').matches
@@ -363,21 +375,21 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
       const { data, error } = await ambilJadwal(ds.id, addDays(dari, -28), addDays(dari, -1))
       if (error) { setSusun('diam'); return toast(error.message) }
       const ids = riders.rows.map((r) => r.id)
-      const tetap: Record<string, 'pagi' | 'siang' | 'off'> = {}
-      for (const [k, v] of Object.entries(g)) if (days.includes(k.split('|')[1]) && (v === 'off' || (pertahankan && (v === 'pagi' || v === 'siang')))) tetap[k] = v as 'pagi' | 'siang' | 'off'
+      const tetap: Record<string, 'pagi' | 'siang' | 'tengah' | 'off'> = {}
+      for (const [k, v] of Object.entries(g)) if (days.includes(k.split('|')[1]) && (v === 'off' || (pertahankan && (v === 'pagi' || v === 'siang' || v === 'tengah')))) tetap[k] = v as 'pagi' | 'siang' | 'tengah' | 'off'
       // kebutuhan efektif per hari = kebutuhan client + cadangan (manual, atau saran pola absen bila opsinya dicentang)
       const kuotaBaru: Record<string, Kq> = { ...kuota }
       const kuotaHari: Record<string, KuotaHari> = {}
       for (const d of days) {
         let k = kq(d)
         if (pakaiCadangan && pola) {
-          const saran = cadanganDisarankan(pola[urutanHari(d)], k.pagi + k.siang)
+          const saran = cadanganDisarankan(pola[urutanHari(d)], k.pagi + k.siang + k.tengah)
           if (saran > k.cadangan) k = { ...k, cadangan: saran }
         }
         kuotaBaru[d] = k
-        kuotaHari[d] = bagiCadangan({ pagi: k.pagi, siang: k.siang }, k.cadangan)
+        kuotaHari[d] = bagiCadangan({ pagi: k.pagi, siang: k.siang, tengah: k.tengah }, k.cadangan)
       }
-      const { grid, kurang, langgar } = buatDraf(ids, days, ds.kuota_pagi, ds.kuota_siang, { riwayat: hitungRiwayat(data ?? [], ids, dari), kuotaHari, tetap })
+      const { grid, kurang, langgar } = buatDraf(ids, days, ds.kuota_pagi, ds.kuota_siang, { riwayat: hitungRiwayat(data ?? [], ids, dari), kuotaHari, kuotaTengah: ds.kuota_tengah ?? 0, tetap })
       const kunci = Object.fromEntries(Object.entries(tetap).filter(([, v]) => v === 'off')) // libur terkunci tetap tampil
       if (efek) await new Promise((r) => setTimeout(r, Math.max(0, 1500 - (Date.now() - mulai)))) // beri waktu efek HUD terlihat
       setG({ ...grid, ...kunci })
@@ -469,7 +481,10 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <input className="inp w-56" placeholder="Cari rider / Kode MTR" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Keterangan:</span> <Pil v="pagi" /> <Pil v="siang" /> <Pil v="" /> <span>libur</span> <Pil v="off" /> <span>libur terkunci (tidak diubah susun otomatis)</span>
+          <span className="font-semibold text-foreground">Keterangan:</span> <Pil v="pagi" /> {tengahAktif && <><Pil v="tengah" /> </>}<Pil v="siang" /> <Pil v="" /> <span>libur</span> <Pil v="off" /> <span>libur terkunci (tidak diubah susun otomatis)</span>
+          {editable && !tengahAktif && (
+            <button type="button" className="btn2" onClick={() => setTampilTengah(true)} title="Tambahkan shift ketiga di antara pagi dan siang (opsional)"><SunMedium size={14} />Shift middle</button>
+          )}
         </div>
       </div>
       <Err msg={riders.err || j.err || kRows.err} />
@@ -528,7 +543,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
                     const v = g[k] ?? ''
                     return (
                       <td key={d} className={`border-b border-border/60 py-2 text-center transition-colors group-hover:bg-primary-soft/60 ${padat ? 'px-0.5' : 'px-2'} ${d === today() ? 'bg-primary-soft/40' : ''}`}>
-                        <Pil v={v} ringkas={padat} title="Klik untuk mengganti: kosong (libur) → pagi → siang → Off bergembok (cuti/izin, tidak diisi otomatis)" klik={editable ? () => setG({ ...g, [k]: SIKLUS[(SIKLUS.indexOf(v) + 1) % SIKLUS.length] }) : undefined} />
+                        <Pil v={v} ringkas={padat} title={tengahAktif ? 'Klik untuk mengganti: kosong (libur) → pagi → middle → siang → Off bergembok (cuti/izin, tidak diisi otomatis)' : 'Klik untuk mengganti: kosong (libur) → pagi → siang → Off bergembok (cuti/izin, tidak diisi otomatis)'} klik={editable ? () => setG({ ...g, [k]: siklus[(siklus.indexOf(v) + 1) % siklus.length] }) : undefined} />
                       </td>
                     )
                   })}
@@ -547,11 +562,11 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
             <tr>
               <td className="sticky left-0 z-10 bg-muted px-2 py-3 text-xs font-semibold md:px-4">
                 Terisi / kebutuhan client
-                <div className="hidden font-normal text-[11px] text-muted-foreground md:block">P = pagi, S = siang, cad = rider cadangan{editable ? '. Angka kebutuhan bisa diubah per hari.' : ''}</div>
+                <div className="hidden font-normal text-[11px] text-muted-foreground md:block">P = pagi, {tengahAktif ? 'M = middle, ' : ''}S = siang, cad = rider cadangan{editable ? '. Angka kebutuhan bisa diubah per hari.' : ''}</div>
               </td>
               {days.map((d) => (
                 <td key={d} className={`py-2.5 ${padat ? 'px-0.5' : 'px-3'} ${d === today() ? 'bg-primary-soft' : 'bg-muted'}`}>
-                  <SelKuota nP={cnt(d, 'pagi')} nS={cnt(d, 'siang')} k={kq(d)} editable={editable} ringkas={padat} ubah={(f, v) => ubahKuota(d, f, v)} />
+                  <SelKuota nP={cnt(d, 'pagi')} nS={cnt(d, 'siang')} nT={cnt(d, 'tengah')} tengah={tengahAktif} k={kq(d)} editable={editable} ringkas={padat} ubah={(f, v) => ubahKuota(d, f, v)} />
                 </td>
               ))}
               <td className="bg-muted" />

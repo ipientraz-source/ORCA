@@ -246,6 +246,36 @@ test('Kuota per hari mengikuti permintaan client: Captain DS-nya, Arcon yang mem
   })
 })
 
+test('Shift tengah (opsional): kebutuhan tengah per DS dan per hari, jadwal boleh berisi shift tengah; DS tanpa tengah tidak berubah', async () => {
+  const tgl = (await q('select (today_wib() + 20)::text t'))[0].t
+  const atur = (ds, r) => q('select simpan_kuota($1::uuid, $2::date, $2::date, $3::jsonb) n', [ds, tgl, JSON.stringify(r)])
+  const baris = () => q('select kuota_pagi, kuota_siang, kuota_tengah, cadangan from kuota_harian where ds_id = $1 and tanggal = $2::date', [GALAXY, tgl])
+  assert.equal((await q('select kuota_tengah from ds where id = $1', [GALAXY]))[0].kuota_tengah, 0) // bawaan: tidak dipakai
+  await as(CG, async () => {
+    assert.equal((await atur(GALAXY, [{ tanggal: tgl, pagi: 1, siang: 1 }]))[0].n, 0) // sama dengan bawaan dan tanpa tengah: tidak disimpan (perilaku lama)
+    assert.equal((await atur(GALAXY, [{ tanggal: tgl, pagi: 1, siang: 1, tengah: 2 }]))[0].n, 1) // ada tengah: disimpan walau pagi dan siang sama dengan bawaan
+    assert.deepEqual({ ...(await baris())[0] }, { kuota_pagi: 1, kuota_siang: 1, kuota_tengah: 2, cadangan: 0 })
+    await assert.rejects(atur(GALAXY, [{ tanggal: tgl, pagi: 1, siang: 1, tengah: -1 }]), /tidak valid/)
+    await assert.rejects(atur(GALAXY, [{ tanggal: tgl, pagi: 1, siang: 1, tengah: 9999 }]), /check constraint|kuota_tengah/) // batas wajar di database
+    // jadwal boleh berisi shift tengah
+    assert.equal((await q('select simpan_jadwal($1::uuid, $2::date, $2::date, $3::jsonb) n', [GALAXY, tgl, JSON.stringify([{ tanggal: tgl, rider_id: R_G, shift: 'tengah' }])]))[0].n, 1)
+    assert.equal((await q('select shift::text s from jadwal where rider_id = $1 and tanggal = $2::date', [R_G, tgl]))[0].s, 'tengah')
+  })
+  await as(AA, async () => {
+    await q('update ds set kuota_tengah = 2 where id = $1', [GALAXY]) // Arcon yang memegang boleh mengubah bawaan tengah DS-nya
+    assert.equal((await q('select kuota_tengah from ds where id = $1', [GALAXY]))[0].kuota_tengah, 2)
+  })
+  await as(AB, async () => {
+    assert.equal((await q('update ds set kuota_tengah = 5 where id = $1 returning id', [GALAXY])).length, 0) // bukan DS-nya: tidak ada baris yang berubah
+  })
+  assert.equal((await q('select kuota_tengah from ds where id = $1', [GALAXY]))[0].kuota_tengah, 2)
+  await as(CG, async () => {
+    assert.equal((await atur(GALAXY, [{ tanggal: tgl, pagi: 1, siang: 1, tengah: 2 }]))[0].n, 0) // kini sama dengan bawaan DS: tidak perlu disimpan
+    assert.equal((await baris()).length, 0)
+  })
+  await db.exec(`update ds set kuota_tengah = 0 where id = '${GALAXY}'; delete from jadwal where rider_id = '${R_G}' and tanggal = '${tgl}'; delete from kuota_harian where tanggal = '${tgl}'`)
+})
+
 test('Arcon mengatur kebutuhan rider (kuota) dan menunjuk Captain hanya di DS yang dipegang, dari rider DS itu sendiri', async () => {
   await as(AA, async () => {
     // kuota DS yang dipegang: boleh; nama, Captain, Arcon, grup WA: tidak
