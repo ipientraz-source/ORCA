@@ -86,7 +86,10 @@ function DailyInner({ ds }: { ds: Ds }) {
   const locked = lock.rows.length > 0
   const nama = (id: string | null) => riders.rows.find((r) => r.id === id)?.nama ?? '?'
   const shift = (id: string) => jd.rows.find((r) => r.rider_id === id && r.shift !== 'off')?.shift
-  const act = (id: string) => ac.rows.find((r) => r.rider_id === id)
+  // Rider yang dijadwalkan bisa punya dua isian: miliknya sendiri (hadir, dst.) dan isian pengganti bila ia lanjut menutup shift lain (long shift).
+  // act() = isian miliknya sendiri; longShift() = isian pengganti rider terjadwal. Rider tanpa jadwal tetap satu isian.
+  const act = (id: string) => ac.rows.find((r) => r.rider_id === id && (!shift(id) || r.status !== 'pengganti'))
+  const longShift = (id: string) => (shift(id) ? ac.rows.find((r) => r.rider_id === id && r.status === 'pengganti') : undefined)
 
   // Tiap rider masuk tab shift-nya. Rider pengganti (tak ada di jadwal hari itu) ikut tab shift rider yang digantikannya;
   // kalau tidak menggantikan siapa pun, masuk tab "Lainnya".
@@ -112,7 +115,16 @@ function DailyInner({ ds }: { ds: Ds }) {
   // Rider pengganti milik seorang rider yang tidak hadir; calon pengganti = rider lain yang hari itu tidak dijadwalkan masuk
   // dan belum punya absensi lain (aturan yang sama dipaksakan di database)
   const penggantiDari = (id: string) => ac.rows.find((a) => a.status === 'pengganti' && a.backup_untuk_id === id)
-  const calonPengganti = (id: string) => riders.rows.filter((x) => x.id !== id && !shift(x.id) && (!act(x.id) || (act(x.id)!.status === 'pengganti' && act(x.id)!.backup_untuk_id === id)))
+  // Rider yang sudah dijadwalkan boleh lanjut menutup shift LAIN (long shift) bila ia hadir/belum diabsen dan belum menutup orang lain.
+  const calonPengganti = (id: string) =>
+    riders.rows.filter((x) => {
+      if (x.id === id) return false
+      const sx = shift(x.id)
+      if (!sx) return !act(x.id) || (act(x.id)!.status === 'pengganti' && act(x.id)!.backup_untuk_id === id)
+      const lain = longShift(x.id)
+      if (lain && lain.backup_untuk_id !== id) return false
+      return sx !== shift(id) && (!act(x.id) || act(x.id)!.status === 'hadir')
+    })
 
   const catat: Catat = async (rider, status, backup, teks, potongan, insentif, tanpa) => {
     setPilihTab((t) => t ?? tab) // kunci tab yang sedang dibuka: selesai mengabsen satu shift tidak langsung memindahkan layar ke shift lain
@@ -167,6 +179,8 @@ function DailyInner({ ds }: { ds: Ds }) {
             nama={nama}
             rekan={riders.rows.filter((x) => x.id !== r.id)}
             pengganti={penggantiDari(r.id)}
+            longShift={longShift(r.id)}
+            shiftDari={shift}
             calon={calonPengganti(r.id)}
             locked={locked}
             catat={catat}
@@ -187,7 +201,7 @@ function DailyInner({ ds }: { ds: Ds }) {
 }
 
 function Baris({
-  r, shift, act, nama, rekan, pengganti, calon, locked, catat, hapus,
+  r, shift, act, nama, rekan, pengganti, longShift, shiftDari, calon, locked, catat, hapus,
 }: {
   r: Rider
   shift?: string
@@ -195,6 +209,8 @@ function Baris({
   nama: (id: string | null) => string
   rekan: Rider[] // rekan tukar shift
   pengganti?: Act // baris pengganti milik rider ini (kalau ada)
+  longShift?: Act // isian pengganti rider ini sendiri, bila ia dijadwalkan lalu lanjut menutup shift rider lain
+  shiftDari: (id: string) => string | undefined // shift terjadwal seorang rider pada tanggal ini
   calon: Rider[] // calon rider pengganti
   locked: boolean
   catat: Catat
@@ -243,6 +259,12 @@ function Baris({
           </span>
         )}
         {pengganti && act && act.status !== 'pengganti' && <span className="badge bg-primary-soft text-primary-soft-foreground">Pengganti: {nama(pengganti.rider_id)}</span>}
+        {longShift?.backup_untuk_id && (
+          <span className="badge bg-primary text-white">
+            Long shift: lanjut {shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk {nama(longShift.backup_untuk_id)}
+            {longShift.insentif ? ` · + Insentif ${rupiah(longShift.insentif)}` : ''}
+          </span>
+        )}
         {act?.tanpa_pengganti && <span className="badge bg-warning-soft text-warning">Tanpa pengganti</span>}
         {act?.potongan === true && <span className="badge bg-danger-soft text-danger">Potongan: Ya</span>}
         {act?.potongan === false && <span className="badge bg-muted text-muted-foreground">Tanpa potongan</span>}
@@ -273,9 +295,14 @@ function Baris({
               {!adaPengganti && !calon.length && <span className="text-xs text-muted-foreground">Tidak ada rider yang bisa jadi pengganti hari ini.</span>}
               {adaPengganti && (
                 calon.length ? (
-                  <RiderPick riders={calon} value={backup} onChange={setBackup} placeholder="Pilih rider pengganti" />
+                  <>
+                    <RiderPick riders={calon} value={backup} onChange={setBackup} placeholder="Pilih rider pengganti" />
+                    {backup && shiftDari(backup) && (
+                      <span className="text-xs text-muted-foreground">Long shift: {nama(backup)} sudah masuk {shiftDari(backup)}, lalu lanjut menutup {shift ?? 'shift ini'}. Dihitung 2 shift.</span>
+                    )}
+                  </>
                 ) : (
-                  <span className="text-xs text-warning">Tidak ada rider yang bisa jadi pengganti hari ini (semua dijadwalkan masuk atau sudah punya absensi). Pilih "Tidak dapat pengganti".</span>
+                  <span className="text-xs text-warning">Tidak ada rider yang bisa jadi pengganti hari ini (semua dijadwalkan di shift yang sama, tidak hadir, atau sudah menutup shift lain). Pilih "Tidak dapat pengganti".</span>
                 )
               )}
             </div>
