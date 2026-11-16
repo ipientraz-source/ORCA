@@ -109,6 +109,20 @@ test('rekan yang sudah bertukar dengan orang lain dipasangkan ulang tanpa mening
   assert.deepEqual(await absen(7, P2), [{ status: 'tukar', backup_untuk_id: S }])
 })
 
+test('rider yang sudah bertukar shift boleh lanjut menutup shift lain, dengan shift yang DIKERJAKAN sebagai pembanding', async () => {
+  // S (jadwal siang) bertukar dengan P (jadwal pagi): S mengerjakan pagi, P mengerjakan siang
+  await jadwal(9, P, 'pagi'); await jadwal(9, S, 'siang'); await jadwal(9, S2, 'siang'); await jadwal(9, P2, 'pagi')
+  await catat(9, S, 'tukar', P)
+  const alpha = (n, rider, backup) => sebagaiSuper(() => q(`select catat_actual(${tgl(n)}, $1, 'alpha', $2, null, true, 0, false)`, [rider, backup]))
+  // P2 (pagi) alpha: S sudah mengerjakan pagi, jadi tidak boleh menutup pagi lagi (padahal jadwal aslinya siang)
+  await assert.rejects(alpha(9, P2, S), /shift yang sama/)
+  // S2 (siang) alpha: S mengerjakan pagi, boleh lanjut menutup siang (padahal jadwal aslinya juga siang)
+  await alpha(9, S2, S)
+  assert.deepEqual(await absen(9, S), [{ status: 'tukar', backup_untuk_id: P }, { status: 'pengganti', backup_untuk_id: S2 }])
+  const l = await laporan(9)
+  assert.deepEqual([l.rider(S).dijadwalkan, l.rider(S).tukar, l.rider(S).pengganti, l.rider(S).belum_diisi], [1, 1, 1, 0]) // jadwal tidak dobel
+})
+
 test('data tukar lama (satu arah): rekan tetap terhitung terisi, dan klik Hadir menimpa isian pengganti lamanya', async () => {
   await jadwal(8, P, 'pagi'); await jadwal(8, S, 'siang')
   // bentuk lama: A tukar tanpa rekan, B pengganti untuk A
