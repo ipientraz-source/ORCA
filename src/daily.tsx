@@ -123,7 +123,7 @@ function DailyInner({ ds }: { ds: Ds }) {
       if (!sx) return !act(x.id) || (act(x.id)!.status === 'pengganti' && act(x.id)!.backup_untuk_id === id)
       const lain = longShift(x.id)
       if (lain && lain.backup_untuk_id !== id) return false
-      return sx !== shift(id) && (!act(x.id) || act(x.id)!.status === 'hadir')
+      return sx !== shift(id) && act(x.id)?.status !== 'tukar' // rider yang tidak hadir di shiftnya sendiri tetap boleh menutup shift lain
     })
 
   const catat: Catat = async (rider, status, backup, teks, potongan, insentif, tanpa) => {
@@ -259,9 +259,9 @@ function Baris({
           </span>
         )}
         {pengganti && act && act.status !== 'pengganti' && <span className="badge bg-primary-soft text-primary-soft-foreground">Pengganti: {nama(pengganti.rider_id)}</span>}
-        {longShift?.backup_untuk_id && (
+        {longShift && (
           <span className="badge bg-primary text-white">
-            Long shift: lanjut {shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk {nama(longShift.backup_untuk_id)}
+            {longShift.backup_untuk_id ? `Long shift: menutup ${shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk ${nama(longShift.backup_untuk_id)}` : 'Pengganti tambahan'}
             {longShift.insentif ? ` · + Insentif ${rupiah(longShift.insentif)}` : ''}
           </span>
         )}
@@ -288,9 +288,9 @@ function Baris({
           >
             {lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
-          {act && (
-            <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title="Hapus isian, kembali ke belum diabsen">
-              Batalkan
+          {(act || longShift) && (
+            <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title={act ? 'Hapus isian, kembali ke belum diabsen' : 'Hapus isian pengganti tambahan'}>
+              {act ? 'Batalkan' : 'Batalkan pengganti'}
             </button>
           )}
         </div>
