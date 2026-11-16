@@ -271,11 +271,22 @@ function Baris({
         {!!act?.insentif && <span className="badge bg-success-soft text-success">+ Insentif {rupiah(act.insentif)}</span>}
         {act?.penjelasan && <span className="text-xs text-muted-foreground">“{act.penjelasan}”</span>}
         <div className="flex w-full flex-wrap gap-2 md:ml-auto md:w-auto">
-          <button className="btn btn-lg flex-1 whitespace-nowrap md:flex-none" disabled={locked} onClick={() => { setBuka(false); catat(r.id, 'hadir') }}>
-            Hadir
+          {/* Tombol yang sesuai status tersimpan berubah warna (hijau = hadir, merah = tidak hadir) supaya Captain tahu mana yang sudah diklik */}
+          <button
+            className={`${act?.status === 'hadir' ? 'btn2 !border-success !bg-success-soft !text-success' : 'btn'} btn-lg flex-1 whitespace-nowrap md:flex-none`}
+            disabled={locked}
+            aria-pressed={act?.status === 'hadir'}
+            onClick={() => { setBuka(false); catat(r.id, 'hadir') }}
+          >
+            {act?.status === 'hadir' ? '✓ Hadir' : 'Hadir'}
           </button>
-          <button className="btn2 btn-lg flex-1 whitespace-nowrap md:flex-none" disabled={locked} aria-expanded={buka} onClick={() => setBuka(!buka)}>
-            Tidak hadir
+          <button
+            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
+            disabled={locked}
+            aria-expanded={buka}
+            onClick={() => setBuka(!buka)}
+          >
+            {lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
           {act && (
             <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title="Hapus isian, kembali ke belum diabsen">
