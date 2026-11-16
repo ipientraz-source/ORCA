@@ -270,7 +270,8 @@ export type PolaHari = { hari: number; terisi: number; absen: number; tingkat: n
 // (yang belum diisi tidak dihitung agar tidak menggelembungkan angka). 'tukar' bukan absen: itu penggantian yang direncanakan.
 export function polaAbsen(jadwal: { rider_id: string; tanggal: string; shift: string }[], actual: { rider_id: string; tanggal: string; status: string }[]): PolaHari[] {
   const dow = (d: string) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7
-  const status = new Map(actual.map((a) => [`${a.rider_id}|${a.tanggal}`, a.status]))
+  // isian pengganti (long shift) bukan absensi shift miliknya, jadi tidak ikut dihitung
+  const status = new Map(actual.filter((a) => a.status !== 'pengganti').map((a) => [`${a.rider_id}|${a.tanggal}`, a.status]))
   const out: PolaHari[] = Array.from({ length: 7 }, (_, i) => ({ hari: i, terisi: 0, absen: 0, tingkat: 0 }))
   for (const j of jadwal) {
     if (!adalahShift(j.shift)) continue

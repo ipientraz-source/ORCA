@@ -279,10 +279,10 @@ test('Pengganti wajib: alpha/izin/sakit pilih pengganti ATAU "Tidak dapat pengga
     assert.deepEqual(await baris(R1), [{ status: 'sakit', potongan: false, insentif: 0, tanpa_pengganti: true, backup_untuk_id: null }])
     assert.equal((await baris(R2)).length, 0)
   })
-  // pengganti yang dijadwalkan masuk hari itu ditolak (jadwal disiapkan di luar peran Captain)
-  await db.exec(`insert into jadwal (tanggal, rider_id, shift, ds_id) values ('${t}', '${R2}', 'siang', '${GALAXY}')`)
+  // pengganti yang dijadwalkan di shift YANG SAMA ditolak (shift lain boleh sebagai long shift, diuji di test/long-shift.test.mjs)
+  await db.exec(`insert into jadwal (tanggal, rider_id, shift, ds_id) values ('${t}', '${R2}', 'pagi', '${GALAXY}')`)
   await as(A, async () => {
-    await assert.rejects(catat(t, R1, 'alpha', R2, null, true), /sudah dijadwalkan masuk/)
+    await assert.rejects(catat(t, R1, 'alpha', R2, null, true), /shift yang sama/)
     // pengganti yang sudah punya absensi lain hari itu ditolak (absensinya tidak boleh tertimpa diam-diam)
     await catat(t2, R2, 'hadir')
     await assert.rejects(catat(t2, R1, 'alpha', R2, null, true), /sudah punya absensi/)
