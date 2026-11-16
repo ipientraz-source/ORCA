@@ -67,12 +67,46 @@ test('shift yang sama ditolak (pagi tidak bisa menutup pagi)', async () => {
   await assert.rejects(catat(2, P2, 'alpha', P, 0, true), /shift yang sama/)
 })
 
-test('rider yang sedang menutup shift lain tidak bisa dijadikan alpha/izin/sakit/tukar, tetap bisa hadir', async () => {
+test('rider yang sedang menutup shift lain: tukar terencana ditolak, hadir tetap aman', async () => {
   // hari 1: P sedang menutup siang S
-  for (const status of ['alpha', 'izin', 'sakit']) await assert.rejects(catat(1, P, status, null, 0, false, true), /menutup shift rider lain/)
-  await assert.rejects(catat(1, P, 'tukar', REKAN), /menutup shift rider lain/)
+  await assert.rejects(catat(1, P, 'tukar', REKAN), /tukar terencana tidak bisa dipakai/)
   await catat(1, P, 'hadir')
   assert.equal((await absen(1, P)).length, 2) // isian pengganti tidak hilang
+})
+
+test('kasus lelah: X menutup shift pagi B, lalu shift siang milik X diganti Y (isian X: izin + pengganti)', async () => {
+  // X = S (siang), B = P (pagi, alpha), Y = P2 (pagi)
+  await jadwal(9, S, 'siang'); await jadwal(9, P, 'pagi'); await jadwal(9, P2, 'pagi')
+  await catat(9, P, 'alpha', S, 0, true) // S menutup shift pagi P
+  assert.deepEqual((await absen(9, S)).map((r) => [r.status, r.backup_untuk_id]), [['pengganti', P]])
+  await catat(9, S, 'izin', P2, 15000, false) // S kelelahan: shift siangnya diganti P2
+  assert.deepEqual((await absen(9, S)).map((r) => [r.status, r.backup_untuk_id]), [['izin', null], ['pengganti', P]])
+  assert.deepEqual((await absen(9, P2)).map((r) => [r.status, r.backup_untuk_id, r.insentif]), [['pengganti', S, 15000]])
+  const x = (await sebagaiSuper(() => q(`select * from laporan_rider(${tgl(9)}, ${tgl(9)})`))).find((r) => r.rider_id === S)
+  assert.deepEqual([x.dijadwalkan, x.izin, x.pengganti, x.belum_diisi], [1, 1, 1, 0]) // jadwal tidak dobel
+  const f = (await sebagaiSuper(() => q(`select * from laporan_fulfillment(${tgl(9)}, ${tgl(9)})`)))[0]
+  assert.deepEqual([f.terpenuhi_pagi, f.terpenuhi_siang], [1, 1]) // pagi: S menutup P; siang: P2 menggantikan S
+})
+
+test('kasus lelah, urutan dibalik: X dicatat izin dulu, baru tercatat menutup shift lain', async () => {
+  await jadwal(10, S, 'siang'); await jadwal(10, P, 'pagi'); await jadwal(10, P2, 'pagi')
+  await catat(10, S, 'izin', P2, 0, false)
+  await catat(10, P, 'alpha', S, 0, true) // S sedang izin di shiftnya sendiri, tetap boleh menutup pagi P
+  assert.deepEqual((await absen(10, S)).map((r) => r.status), ['izin', 'pengganti'])
+})
+
+test('tukar terencana tidak boleh menimpa isian pengganti long shift rekan', async () => {
+  await jadwal(11, P, 'pagi'); await jadwal(11, S, 'siang'); await jadwal(11, P2, 'pagi')
+  await catat(11, S, 'alpha', P, 0, true) // P menutup siang S
+  await assert.rejects(catat(11, P2, 'tukar', P), /Rekan tukar sedang menutup shift rider lain/)
+  assert.deepEqual((await absen(11, P)).map((r) => [r.status, r.backup_untuk_id]), [['pengganti', S]])
+})
+
+test('Batalkan pada rider yang hanya punya isian pengganti (termasuk isian lama tanpa rider yang digantikan) menghapusnya', async () => {
+  await jadwal(12, P, 'pagi')
+  await db.exec(`insert into actual_harian (tanggal, rider_id, ds_id, status) values (${tgl(12)}, '${P}', '${GALAXY}', 'pengganti')`)
+  await sebagaiSuper(() => q(`select hapus_actual(${tgl(12)}, $1)`, [P]))
+  assert.deepEqual(await absen(12, P), [])
 })
 
 test('maksimal satu shift tambahan per hari', async () => {
@@ -81,10 +115,12 @@ test('maksimal satu shift tambahan per hari', async () => {
   await assert.rejects(catat(3, S3, 'alpha', P, 0, true), /sudah menutup shift rider lain/)
 })
 
-test('rider yang sendiri tidak hadir tidak bisa jadi pengganti', async () => {
-  await jadwal(4, P, 'pagi'); await jadwal(4, S, 'siang')
+test('rider yang tidak hadir di shiftnya sendiri tetap boleh menutup shift lain (shift harus beda)', async () => {
+  await jadwal(4, P, 'pagi'); await jadwal(4, S, 'siang'); await jadwal(4, S2, 'siang')
   await catat(4, P, 'sakit', null, 0, false, true)
-  await assert.rejects(catat(4, S, 'alpha', P, 0, true), /sedang tidak hadir/)
+  await assert.rejects(catat(4, S2, 'alpha', S, 0, true), /shift yang sama/) // siang tidak bisa menutup siang
+  await catat(4, S, 'alpha', P, 0, true) // P (sakit di pagi) menutup siang S
+  assert.deepEqual((await absen(4, P)).map((r) => r.status), ['sakit', 'pengganti'])
 })
 
 test('rider terjadwal tidak bisa dicatat sebagai pengganti langsung', async () => {
