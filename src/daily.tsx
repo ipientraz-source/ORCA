@@ -88,8 +88,14 @@ function DailyInner({ ds }: { ds: Ds }) {
   const shift = (id: string) => jd.rows.find((r) => r.rider_id === id && r.shift !== 'off')?.shift
   // Rider yang dijadwalkan bisa punya dua isian: miliknya sendiri (hadir, dst.) dan isian pengganti bila ia lanjut menutup shift lain (long shift).
   // act() = isian miliknya sendiri; longShift() = isian pengganti rider terjadwal. Rider tanpa jadwal tetap satu isian.
-  const act = (id: string) => ac.rows.find((r) => r.rider_id === id && (!shift(id) || r.status !== 'pengganti'))
-  const longShift = (id: string) => (shift(id) ? ac.rows.find((r) => r.rider_id === id && r.status === 'pengganti') : undefined)
+  // Isian pengganti hasil tukar lama (satu arah): rekan yang digantikan berstatus tukar. Itu absensi rider itu sendiri, bukan long shift.
+  const dariTukar = (r: Act) => ac.rows.some((t) => t.rider_id === r.backup_untuk_id && t.status === 'tukar')
+  const act = (id: string) => {
+    const milik = ac.rows.filter((r) => r.rider_id === id)
+    if (!shift(id)) return milik[0]
+    return milik.find((r) => r.status !== 'pengganti') ?? milik.find((r) => r.status === 'pengganti' && dariTukar(r))
+  }
+  const longShift = (id: string) => (shift(id) ? ac.rows.find((r) => r.rider_id === id && r.status === 'pengganti' && !dariTukar(r)) : undefined)
 
   // Tiap rider masuk tab shift-nya. Rider pengganti (tak ada di jadwal hari itu) ikut tab shift rider yang digantikannya;
   // kalau tidak menggantikan siapa pun, masuk tab "Lainnya".
@@ -177,7 +183,7 @@ function DailyInner({ ds }: { ds: Ds }) {
             shift={shift(r.id)}
             act={act(r.id)}
             nama={nama}
-            rekan={riders.rows.filter((x) => x.id !== r.id)}
+            rekan={riders.rows.filter((x) => x.id !== r.id && !(shift(x.id) && shift(x.id) === shift(r.id)))} // tukar butuh shift berbeda
             pengganti={penggantiDari(r.id)}
             longShift={longShift(r.id)}
             shiftDari={shift}
@@ -259,6 +265,11 @@ function Baris({
           </span>
         )}
         {pengganti && act && act.status !== 'pengganti' && <span className="badge bg-primary-soft text-primary-soft-foreground">Pengganti: {nama(pengganti.rider_id)}</span>}
+        {act?.status === 'tukar' && act.backup_untuk_id && (
+          <span className="badge bg-primary-soft text-primary-soft-foreground">
+            Tukar dengan {nama(act.backup_untuk_id)}{shiftDari(act.backup_untuk_id) ? ` (kerja ${shiftDari(act.backup_untuk_id)})` : ''}
+          </span>
+        )}
         {longShift && (
           <span className="badge bg-primary text-white">
             {longShift.backup_untuk_id ? `Long shift: menutup ${shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk ${nama(longShift.backup_untuk_id)}` : 'Pengganti tambahan'}
@@ -281,12 +292,12 @@ function Baris({
             {act?.status === 'hadir' ? '✓ Hadir' : 'Hadir'}
           </button>
           <button
-            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
+            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${act?.status === 'tukar' ? '!border-primary !bg-primary-soft !text-primary-soft-foreground' : lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
             disabled={locked}
             aria-expanded={buka}
             onClick={() => setBuka(!buka)}
           >
-            {lama ? '✓ Tidak hadir' : 'Tidak hadir'}
+            {act?.status === 'tukar' ? '✓ Tukar shift' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
           {(act || longShift) && (
             <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title={act ? 'Hapus isian, kembali ke belum diabsen' : 'Hapus isian pengganti tambahan'}>
@@ -299,6 +310,9 @@ function Baris({
         <div className="mt-2 pt-2 border-t flex flex-wrap gap-2 items-center">
           <Select className="w-72 max-w-full" value={alasan} onChange={gantiAlasan} opsi={ALASAN.map(([value, label]) => ({ value, label }))} />
           {alasan === 'tukar' && <RiderPick riders={rekan} value={backup} onChange={setBackup} placeholder="Rekan tukar" />}
+          {alasan === 'tukar' && backup && shiftDari(backup) && shift && (
+            <span className="basis-full text-xs text-muted-foreground">Tukar: {r.nama} pindah ke {shiftDari(backup)}, {nama(backup)} pindah ke {shift}. Keduanya dihitung hadir di shift barunya.</span>
+          )}
           {alasan !== 'tukar' && (
             <div className="flex basis-full flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Rider pengganti (wajib):</span>
