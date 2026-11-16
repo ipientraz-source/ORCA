@@ -96,9 +96,9 @@ test('kasus lelah, urutan dibalik: X dicatat izin dulu, baru tercatat menutup sh
 })
 
 test('tukar terencana tidak boleh menimpa isian pengganti long shift rekan', async () => {
-  await jadwal(11, P, 'pagi'); await jadwal(11, S, 'siang'); await jadwal(11, P2, 'pagi')
+  await jadwal(11, P, 'pagi'); await jadwal(11, S, 'siang'); await jadwal(11, S2, 'siang')
   await catat(11, S, 'alpha', P, 0, true) // P menutup siang S
-  await assert.rejects(catat(11, P2, 'tukar', P), /Rekan tukar sedang menutup shift rider lain/)
+  await assert.rejects(catat(11, S2, 'tukar', P), /Rekan tukar sedang menutup shift rider lain/)
   assert.deepEqual((await absen(11, P)).map((r) => [r.status, r.backup_untuk_id]), [['pengganti', S]])
 })
 
@@ -135,11 +135,11 @@ test('rider tanpa jadwal tetap satu isian per hari seperti sebelumnya', async ()
   await assert.rejects(catat(6, S2, 'alpha', EXTRA, 0, true), /sudah punya absensi/) // EXTRA sudah menutup orang lain
 })
 
-test('tukar terencana tetap menggantikan isian rekan, bukan menambah', async () => {
+test('tukar terencana tetap menggantikan isian rekan, bukan menambah (sekarang dua arah, lihat test/tukar.test.mjs)', async () => {
   await jadwal(7, P, 'pagi'); await jadwal(7, REKAN, 'siang')
   await catat(7, REKAN, 'hadir')
   await catat(7, P, 'tukar', REKAN)
-  assert.deepEqual((await absen(7, REKAN)).map((r) => r.status), ['pengganti'])
+  assert.deepEqual((await absen(7, REKAN)).map((r) => r.status), ['tukar'])
 })
 
 test('membatalkan: isian milik A saja, atau penggantian lewat isian B', async () => {
