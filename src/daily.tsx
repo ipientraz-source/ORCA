@@ -99,8 +99,11 @@ function DailyInner({ ds }: { ds: Ds }) {
 
   // Tiap rider masuk tab shift-nya. Rider pengganti (tak ada di jadwal hari itu) ikut tab shift rider yang digantikannya;
   // kalau tidak menggantikan siapa pun, masuk tab "Lainnya".
+  // Rider yang bertukar shift (dua arah) tampil di shift yang DIKERJAKAN, yaitu shift rekannya: yang pagi jadi siang, yang siang jadi pagi.
   const shiftTab = (id: string): TabShift => {
-    const s = shift(id) ?? shift(act(id)?.backup_untuk_id ?? '')
+    const a = act(id)
+    const kerja = a?.status === 'tukar' && a.backup_untuk_id ? shift(a.backup_untuk_id) : undefined
+    const s = kerja ?? shift(id) ?? shift(a?.backup_untuk_id ?? '')
     return s === 'pagi' || s === 'tengah' || s === 'siang' ? s : 'lain'
   }
   const listed = riders.rows.filter((r) => shift(r.id) || act(r.id))
@@ -256,7 +259,9 @@ function Baris({
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-40">
           <b>{r.nama}</b> <span className="text-muted-foreground/70 text-xs">{r.kode_mtr}</span>
-          <div className="text-xs text-muted-foreground capitalize">{shift ?? 'tidak ada di jadwal'}</div>
+          <div className="text-xs text-muted-foreground capitalize">
+            {act?.status === 'tukar' && act.backup_untuk_id && shiftDari(act.backup_untuk_id) ? `${shift} → ${shiftDari(act.backup_untuk_id)} (tukar)` : shift ?? 'tidak ada di jadwal'}
+          </div>
         </div>
         {act && (
           <span className={`badge ${WARNA[act.status]}`}>
