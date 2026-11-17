@@ -12,7 +12,7 @@ type DsRow = {
 }
 type RiderRow = {
   rider_id: string; kode_mtr: string | null; nama: string; ds_nama: string | null; dijadwalkan: number; hadir: number
-  alpha: number; izin: number; sakit: number; tukar: number; pengganti: number; belum_diisi: number; potongan: number; insentif: number
+  alpha: number; izin: number; sakit: number; tukar: number; pengganti: number; belum_diisi: number; potongan: number; insentif: number; shift_kerja: number
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any
@@ -310,13 +310,13 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
         <b>Rekap per rider</b>
         <div className="overflow-x-auto"><table className="tbl mt-2 [&_th]:whitespace-normal [&_th]:leading-tight">
           <thead>
-            <tr><th>Rider</th><th>DS</th><th>Terjadwal</th><th>Hadir</th><th>Alpha</th><th>Izin</th><th>Sakit</th><th>Tukar</th><th>Pengganti</th><th>Belum diisi</th><th>Kena potongan</th><th>Insentif</th></tr>
+            <tr><th>Rider</th><th>DS</th><th>Terjadwal</th><th>Hadir</th><th>Alpha</th><th>Izin</th><th>Sakit</th><th>Tukar</th><th>Pengganti</th><th>Belum diisi</th><th title="Shift yang benar-benar dikerjakan: hadir + pengganti + tukar shift. Long shift terhitung 2. Dasar hari kerja untuk gaji.">Shift kerja</th><th>Kena potongan</th><th>Insentif</th></tr>
           </thead>
           <tbody>
             {pgR.rows.map((x) => (
               <tr key={x.rider_id}>
                 <td>{x.nama} <span className="text-muted-foreground/70">{x.kode_mtr}</span></td><td className="whitespace-nowrap">{x.ds_nama}</td><td>{x.dijadwalkan}</td><td>{x.hadir}</td>
-                <td className={x.alpha ? 'text-danger font-medium' : ''}>{x.alpha}</td><td>{x.izin}</td><td>{x.sakit}</td><td>{x.tukar}</td><td>{x.pengganti}</td><td>{x.belum_diisi}</td>
+                <td className={x.alpha ? 'text-danger font-medium' : ''}>{x.alpha}</td><td>{x.izin}</td><td>{x.sakit}</td><td>{x.tukar}</td><td>{x.pengganti}</td><td>{x.belum_diisi}</td><td className="font-medium">{x.shift_kerja}</td>
                 <td className={x.potongan ? 'text-danger font-medium' : ''}>{x.potongan}</td><td className={x.insentif ? 'text-success font-medium' : ''}>{x.insentif ? `Rp ${Number(x.insentif).toLocaleString('id-ID')}` : '–'}</td>
               </tr>
             ))}
