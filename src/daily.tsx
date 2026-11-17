@@ -43,6 +43,7 @@ const ALASAN: [string, string][] = [
   ['izin', 'Izin'],
   ['sakit', 'Sakit'],
   ['tukar', 'Tukar shift (sudah direncanakan)'],
+  ['tukar_libur', 'Tukar libur (tanpa potongan)'],
 ]
 export const WARNA: Record<string, string> = {
   hadir: 'bg-foreground text-background',
@@ -50,6 +51,7 @@ export const WARNA: Record<string, string> = {
   izin: 'bg-border text-foreground/80',
   sakit: 'bg-border text-foreground/80',
   tukar: 'bg-primary-soft text-primary-soft-foreground',
+  tukar_libur: 'bg-primary-soft text-primary-soft-foreground',
   pengganti: 'bg-primary text-white',
 }
 
@@ -233,7 +235,8 @@ function Baris({
   hapus: (id: string) => void
 }) {
   // Form "Tidak hadir" memuat isian yang sudah tersimpan, jadi mengoreksi tidak mengulang dari awal.
-  const lama = act && ['alpha', 'izin', 'sakit', 'tukar'].includes(act.status) ? act : undefined
+  const lama = act && ['alpha', 'izin', 'sakit', 'tukar', 'tukar_libur'].includes(act.status) ? act : undefined
+  const tukaran = act?.status === 'tukar' || act?.status === 'tukar_libur' // tukar shift atau tukar libur: bukan tidak hadir biasa, tanpa potongan
   const [buka, setBuka] = useState(false)
   const [alasan, setAlasan] = useState(lama?.status ?? 'alpha')
   const [backup, setBackup] = useState(pengganti?.rider_id ?? '')
@@ -257,7 +260,7 @@ function Baris({
     const pakaiPengganti = alasan === 'tukar' || adaPengganti
     const adaIns = alasan !== 'tukar' && adaPengganti && !!backup && ins
     if (adaIns && angka(nominal) <= 0) return toast('Isi nominal insentif lebih dari 0')
-    const pot = alasan === 'tukar' ? undefined : potongan === 'ya'
+    const pot = alasan === 'tukar' || alasan === 'tukar_libur' ? undefined : potongan === 'ya'
     if (await catat(r.id, alasan, pakaiPengganti ? backup : undefined, teks, pot, adaIns ? angka(nominal) : 0, alasan !== 'tukar' && !adaPengganti)) setBuka(false)
   }
 
@@ -272,7 +275,7 @@ function Baris({
         </div>
         {act && (
           <span className={`badge ${WARNA[act.status]}`}>
-            {act.status}
+            {act.status.replace('_', ' ')}
             {act.status === 'pengganti' && act.backup_untuk_id ? ` untuk ${nama(act.backup_untuk_id)}` : ''}
           </span>
         )}
@@ -284,7 +287,7 @@ function Baris({
         )}
         {longShift && (
           <span className="badge bg-primary text-white">
-            {longShift.backup_untuk_id ? `Long shift: menutup ${shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk ${nama(longShift.backup_untuk_id)}` : 'Pengganti tambahan'}
+            {longShift.backup_untuk_id ? `${act?.status === 'tukar' ? 'Menutup' : 'Long shift: menutup'} ${shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk ${nama(longShift.backup_untuk_id)}` : 'Pengganti tambahan'}
             {longShift.insentif ? ` · + Insentif ${rupiah(longShift.insentif)}` : ''}
           </span>
         )}
@@ -304,12 +307,12 @@ function Baris({
             {act?.status === 'hadir' ? '✓ Hadir' : 'Hadir'}
           </button>
           <button
-            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${act?.status === 'tukar' ? '!border-primary !bg-primary-soft !text-primary-soft-foreground' : lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
+            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${tukaran ? '!border-primary !bg-primary-soft !text-primary-soft-foreground' : lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
             disabled={locked}
             aria-expanded={buka}
             onClick={() => setBuka(!buka)}
           >
-            {act?.status === 'tukar' ? '✓ Tukar shift' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
+            {act?.status === 'tukar' ? '✓ Tukar shift' : act?.status === 'tukar_libur' ? '✓ Tukar libur' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
           {(act || longShift) && (
             <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title={act ? 'Hapus isian, kembali ke belum diabsen' : 'Hapus isian pengganti tambahan'}>
@@ -335,7 +338,7 @@ function Baris({
                   <>
                     <RiderPick riders={calon} value={backup} onChange={setBackup} placeholder="Pilih rider pengganti" />
                     {backup && shiftKerja(backup) && (
-                      <span className="text-xs text-muted-foreground">Long shift: {nama(backup)} sudah masuk {shiftKerja(backup)}{shiftKerja(backup) !== shiftDari(backup) ? ' (hasil tukar)' : ''}, lalu lanjut menutup {shift ?? 'shift ini'}. Dihitung 2 shift.</span>
+                      <span className="text-xs text-muted-foreground">{nama(backup)} masuk {shiftKerja(backup)}{shiftKerja(backup) !== shiftDari(backup) ? ' (hasil tukar)' : ''}, lalu menutup {shift ?? 'shift ini'}: long shift, dihitung 2 shift. Jika shift {shiftKerja(backup)}-nya ditukar ke rider lain, catat lewat Tukar shift pada {nama(backup)}.</span>
                     )}
                   </>
                 ) : (
@@ -347,7 +350,8 @@ function Baris({
           {alasan !== 'tukar' && (
             <input className="inp flex-1 min-w-40" placeholder={!adaPengganti ? 'Kenapa tidak dapat pengganti? (opsional)' : alasan === 'sakit' ? 'Keterangan (opsional)' : 'Keterangan'} value={teks} onChange={(e) => setTeks(e.target.value)} />
           )}
-          {alasan !== 'tukar' && (
+          {alasan === 'tukar_libur' && <span className="basis-full text-xs text-muted-foreground">Tukar libur: rider ini menukar hari liburnya dengan rider lain, jadi tanpa potongan. Pilih rider yang menutup shift-nya di atas.</span>}
+          {alasan !== 'tukar' && alasan !== 'tukar_libur' && (
             <div className="flex basis-full flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Kena potongan gaji (deduction)?</span>
               <Pilih nilai={potongan} ubah={setPotongan} opsi={[['ya', 'Ya'], ['tidak', 'Tidak', true]]} />
