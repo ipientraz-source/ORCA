@@ -592,3 +592,14 @@ test('Pengajuan jadi Arcon di DS: butuh persetujuan; tidak bisa ke DS sendiri, D
   assert.equal((await q('select arcon_id from ds where id = $1', [D]))[0].arcon_id, A2) // A2 kini Arcon DS itu
   assert.match((await q("select detail from log_aktivitas where aksi = 'setujui pengajuan' order by waktu desc limit 1"))[0].detail, /Arcon Aju Dua: jadi Arcon di DS Rebutan \(menggantikan Arcon sebelumnya\)/)
 })
+
+// Penjaga performa: fungsi peran ditulis telanjang di aturan RLS dievaluasi PER BARIS (tiap panggilan membaca tabel lain),
+// sehingga tabel besar kena "statement timeout" (Daftar Jadwal Arcon, daftar rider). Aturan baca wajib membungkusnya (select ...).
+test('Aturan baca RLS tidak memanggil fungsi peran per baris (bungkus dengan select)', async () => {
+  const fn = '(is_super|my_peran|is_admin|my_ds_ids|my_ds|me)[(][)]'
+  const bad = await q(`select tablename || '.' || policyname as p from pg_policies
+    where schemaname = 'public' and cmd in ('SELECT', 'ALL')
+      and regexp_replace(coalesce(qual, '') || ' ' || coalesce(with_check, ''), 'SELECT ' || '${fn}', '', 'g') ~ '${fn}'
+    order by 1`)
+  assert.deepEqual(bad.map((r) => r.p), [])
+})
