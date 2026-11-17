@@ -67,9 +67,10 @@ test('shift yang sama ditolak (pagi tidak bisa menutup pagi)', async () => {
   await assert.rejects(catat(2, P2, 'alpha', P, 0, true), /shift yang sama/)
 })
 
-test('rider yang sedang menutup shift lain: tukar terencana ditolak, hadir tetap aman', async () => {
-  // hari 1: P sedang menutup siang S
-  await assert.rejects(catat(1, P, 'tukar', REKAN), /tukar terencana tidak bisa dipakai/)
+test('rider yang sedang menutup shift lain boleh bertukar (isian pengganti tetap), hadir juga aman', async () => {
+  // hari 1: P sedang menutup siang S. Dulu tukar ditolak; sekarang boleh (kasus berantai tukar libur), isian pengganti P tidak tertimpa.
+  await catat(1, P, 'tukar', REKAN)
+  assert.deepEqual((await absen(1, P)).map((r) => r.status), ['tukar', 'pengganti'])
   await catat(1, P, 'hadir')
   assert.equal((await absen(1, P)).length, 2) // isian pengganti tidak hilang
 })

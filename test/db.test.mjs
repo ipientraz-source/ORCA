@@ -269,7 +269,7 @@ test('Pengganti wajib: alpha/izin/sakit pilih pengganti ATAU "Tidak dapat pengga
     for (const st of ['alpha', 'izin', 'sakit']) await assert.rejects(catat(t, R1, st, null, null, true, 0, false), /Pilih rider pengganti, atau pilih/)
     // memilih pengganti sekaligus "tidak dapat pengganti": ditolak; tanda itu hanya untuk yang tidak hadir
     await assert.rejects(catat(t, R1, 'alpha', R2, null, true, 0, true), /tidak keduanya/)
-    await assert.rejects(catat(t, R1, 'hadir', null, null, null, 0, true), /hanya untuk alpha, izin, atau sakit/)
+    await assert.rejects(catat(t, R1, 'hadir', null, null, null, 0, true), /hanya untuk alpha, izin, sakit, atau tukar libur/)
     // izin dengan pengganti + insentif: baris pengganti terbentuk, insentif ikut pengganti
     await catat(t, R1, 'izin', R2, 'ke dokter', false, 40000)
     assert.deepEqual(await baris(R1), [{ status: 'izin', potongan: false, insentif: 0, tanpa_pengganti: false, backup_untuk_id: null }])
