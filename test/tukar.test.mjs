@@ -177,16 +177,32 @@ test('tukar dengan rekan tanpa jadwal dan data tukar lama tidak butuh konfirmasi
   assert.equal(await dikonfirmasi(13, S), true)
 })
 
-test('X (pagi) tukar dengan Y (siang), Y dikonfirmasi pagi, X tidak masuk siang: Tidak hadir melepas tukar dan pengganti dipilih bebas', async () => {
+test('X (pagi) tukar dengan Y (siang), Y dikonfirmasi pagi, X tidak masuk siang: tukar separuh tetap, pengganti lain menutup siang (migrasi 0052)', async () => {
   await jadwal(14, P, 'pagi'); await jadwal(14, S, 'siang')
   await catat(14, P, 'tukar', S)
   await konf(14, S) // S hadir di pagi
   await sebagaiSuper(() => q(`select catat_actual(${tgl(14)}, $1, 'alpha', $2, null, true, 0, false)`, [P, EXTRA])) // P tidak masuk, EXTRA menggantikan
   assert.deepEqual(await absen(14, P), [{ status: 'alpha', backup_untuk_id: null }])
   assert.deepEqual(await absen(14, EXTRA), [{ status: 'pengganti', backup_untuk_id: P }])
-  assert.deepEqual(await absen(14, S), []) // tukar batal, S kembali belum diabsen untuk shift sendirinya
-  await catat(14, S, 'hadir')
+  assert.deepEqual(await absen(14, S), [{ status: 'tukar', backup_untuk_id: P }]) // S sudah mengerjakan pagi: tukarnya tidak dibatalkan
   const l = await laporan(14)
   assert.deepEqual([l.ful.terpenuhi_pagi, l.ful.terpenuhi_siang, l.ful.terpenuhi_lain], [1, 1, 0])
   assert.deepEqual([l.rider(P).alpha, l.rider(P).potongan, l.rider(S).belum_diisi], [1, 1, 0])
+})
+
+test('X (pagi) tukar dengan Y (siang), X sakit, pengganti rider lain yang jadwal pagi: boleh (long shift siang), tukar batal, Y kembali ke shift sendiri (migrasi 0051)', async () => {
+  await jadwal(20, P, 'pagi'); await jadwal(20, S, 'siang'); await jadwal(20, P2, 'pagi'); await jadwal(20, S2, 'siang')
+  await catat(20, P, 'tukar', S)
+  const sakit = (pengganti) => sebagaiSuper(() => q(`select catat_actual(${tgl(20)}, $1, 'sakit', $2, null, false, 0, false)`, [P, pengganti]))
+  await assert.rejects(sakit(S2), /shift yang sama/) // P sebenarnya bekerja siang, S2 juga siang
+  await sakit(P2) // P2 pagi menutup siang P
+  assert.deepEqual(await absen(20, P), [{ status: 'sakit', backup_untuk_id: null }])
+  assert.deepEqual(await absen(20, P2), [{ status: 'pengganti', backup_untuk_id: P }])
+  assert.deepEqual(await absen(20, S), [{ status: 'tukar', backup_untuk_id: P }]) // S sudah mengerjakan pagi: tukarnya tetap (tinggal dikonfirmasi)
+  await catat(20, P2, 'hadir'); await konf(20, S)
+  const l = await laporan(20)
+  assert.equal(l.rider(P2).shift_kerja, 2) // pagi sendiri + menutup siang P
+  assert.equal(l.rider(S).shift_kerja, 1) // S hanya pagi (siangnya ditutup P2)
+  assert.deepEqual([l.rider(P).belum_diisi, l.rider(S).belum_diisi, l.rider(P2).belum_diisi], [0, 0, 0])
+  assert.deepEqual([l.ful.terpenuhi_pagi, l.ful.terpenuhi_siang], [2, 1]) // pagi: P2 + S, siang: P2 (pengganti)
 })
