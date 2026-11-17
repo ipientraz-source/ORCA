@@ -254,6 +254,8 @@ function Baris({
   // Tukar hanya bisa dibatalkan dari shift pertama (yang dikerjakan lebih awal); di shift kedua isiannya sudah terkunci
   const shiftPertama = !tukarDua || urut(shiftKerja(r.id)) < urut(shift)
   const hadirTukar = tukarDua && !!act?.tukar_dikonfirmasi
+  // Sudah masuk isian = punya status tersimpan (tukar dua arah baru terisi setelah dikonfirmasi). Dipakai untuk penanda di baris.
+  const terisi = !!act && !(act.status === 'tukar' && !act.tukar_dikonfirmasi)
   const awal = tukarDua ? undefined : lama // tidak hadir pada baris tukar mulai dari isian kosong (alpha), bukan dari isian tukarnya
   const [buka, setBuka] = useState(false)
   const [alasan, setAlasan] = useState(awal?.status ?? 'alpha')
@@ -283,14 +285,16 @@ function Baris({
   }
 
   return (
-    <div className="card !mb-0">
+    <div className={`card !mb-0 !border-l-4 ${terisi ? '!border-l-success' : '!border-l-warning'}`}>
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-40">
+          {terisi && <span className="mr-1 font-bold text-success" title="Sudah diabsen" aria-label="Sudah diabsen">✓</span>}
           <b>{r.nama}</b> <span className="text-muted-foreground/70 text-xs">{r.kode_mtr}</span>
           <div className="text-xs text-muted-foreground capitalize">
             {act?.status === 'tukar' && act.backup_untuk_id && shiftDari(act.backup_untuk_id) ? `${shift} → ${shiftDari(act.backup_untuk_id)} (tukar)` : shift ?? 'tidak ada di jadwal'}
           </div>
         </div>
+        {!terisi && !tukarDua && <span className="badge bg-warning-soft text-warning">Belum diabsen</span>}
         {act && (
           <span className={`badge ${WARNA[act.status]}`}>
             {act.status.replace('_', ' ')}
