@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { sb, today, monday, hari, useRows, ok, toast, Err, Kosong, RiderPick, Select, usePage, Pagination, type Ds, type Me, type Rider } from './lib'
 import { InputTanggal } from './tanggal'
 
-type Act = { rider_id: string; status: string; backup_untuk_id: string | null; penjelasan: string | null; potongan: boolean | null; insentif: number; tanpa_pengganti: boolean }
+type Act = { rider_id: string; status: string; backup_untuk_id: string | null; penjelasan: string | null; potongan: boolean | null; insentif: number; tanpa_pengganti: boolean; tukar_dikonfirmasi: boolean }
 // potongan: Ya/Tidak untuk alpha/izin/sakit; insentif: nominal rupiah untuk rider pengganti
 type TabShift = 'pagi' | 'tengah' | 'siang' | 'lain'
 type Catat = (rider: string, status: string, backup?: string, teks?: string, potongan?: boolean | null, insentif?: number, tanpa?: boolean) => Promise<boolean>
@@ -78,7 +78,7 @@ function DailyInner({ ds }: { ds: Ds }) {
   const riders = useRows<Rider>(() => sb.from('riders').select('*').eq('ds_id', ds.id).eq('status', 'aktif').order('nama'), [ds.id])
   const jd = useRows<{ rider_id: string; shift: string }>(() => sb.from('jadwal').select('rider_id,shift').eq('ds_id', ds.id).eq('tanggal', tgl), [ds.id, tgl])
   const ac = useRows<Act>(
-    () => sb.from('actual_harian').select('rider_id,status,backup_untuk_id,penjelasan,potongan,insentif,tanpa_pengganti').eq('ds_id', ds.id).eq('tanggal', tgl),
+    () => sb.from('actual_harian').select('rider_id,status,backup_untuk_id,penjelasan,potongan,insentif,tanpa_pengganti,tukar_dikonfirmasi').eq('ds_id', ds.id).eq('tanggal', tgl),
     [ds.id, tgl],
   )
   const lock = useRows<{ minggu_mulai: string }>(
@@ -110,7 +110,9 @@ function DailyInner({ ds }: { ds: Ds }) {
   }
   const listed = riders.rows.filter((r) => shift(r.id) || act(r.id))
   const terjadwal = riders.rows.filter((r) => shift(r.id))
-  const hitung = (t: TabShift) => ({ total: terjadwal.filter((r) => shiftTab(r.id) === t).length, terisi: terjadwal.filter((r) => shiftTab(r.id) === t && act(r.id)).length })
+  // Tukar dua arah yang belum dikonfirmasi Captain dihitung belum diabsen (sama seperti di laporan)
+  const sudahIsi = (id: string) => { const a = act(id); return !!a && !(a.status === 'tukar' && !a.tukar_dikonfirmasi) }
+  const hitung = (t: TabShift) => ({ total: terjadwal.filter((r) => shiftTab(r.id) === t).length, terisi: terjadwal.filter((r) => shiftTab(r.id) === t && sudahIsi(r.id)).length })
   const ada = (t: TabShift) => listed.some((r) => shiftTab(r.id) === t)
   // Tab awal: shift pertama yang masih ada rider belum diabsen (pagi dulu), jadi Captain langsung di shift yang perlu dilaporkan.
   const [pilihTab, setPilihTab] = useState<TabShift | null>(null)
@@ -153,6 +155,11 @@ function DailyInner({ ds }: { ds: Ds }) {
   const hapus = async (rider: string) => {
     setPilihTab((t) => t ?? tab)
     if (await ok(sb.rpc('hapus_actual', { p_tanggal: tgl, p_rider: rider }))) ac.reload()
+  }
+  // Hadir pada rider hasil tukar = konfirmasi bahwa ia benar masuk di shift barunya (tukarnya tidak berubah)
+  const konfirmasi = async (rider: string, hadir: boolean) => {
+    setPilihTab((t) => t ?? tab)
+    if (await ok(sb.rpc('konfirmasi_tukar', { p_tanggal: tgl, p_rider: rider, p_hadir: hadir }))) ac.reload()
   }
 
   return (
@@ -202,6 +209,7 @@ function DailyInner({ ds }: { ds: Ds }) {
             locked={locked}
             catat={catat}
             hapus={hapus}
+            konfirmasi={konfirmasi}
           />
         ))}
         {!shown.length && <div className="card"><Kosong teks={dicari ? 'Tidak ada rider yang cocok' : listed.length ? `Tidak ada rider di ${tab === 'pagi' ? 'shift pagi' : tab === 'tengah' ? 'shift middle' : tab === 'siang' ? 'shift siang' : 'tab ini'}` : 'Tidak ada rider yang dijadwalkan di tanggal ini'} hint={listed.length ? 'Coba shift lain di atas.' : 'Susun jadwal di tab Jadwal DS, atau tambahkan rider pengganti di bawah.'} /></div>}
@@ -218,7 +226,7 @@ function DailyInner({ ds }: { ds: Ds }) {
 }
 
 function Baris({
-  r, shift, act, nama, rekan, pengganti, longShift, shiftDari, shiftKerja, calon, locked, catat, hapus,
+  r, shift, act, nama, rekan, pengganti, longShift, shiftDari, shiftKerja, calon, locked, catat, hapus, konfirmasi,
 }: {
   r: Rider
   shift?: string
@@ -233,17 +241,26 @@ function Baris({
   locked: boolean
   catat: Catat
   hapus: (id: string) => void
+  konfirmasi: (id: string, hadir: boolean) => void
 }) {
   // Form "Tidak hadir" memuat isian yang sudah tersimpan, jadi mengoreksi tidak mengulang dari awal.
   const lama = act && ['alpha', 'izin', 'sakit', 'tukar', 'tukar_libur'].includes(act.status) ? act : undefined
   const tukaran = act?.status === 'tukar' || act?.status === 'tukar_libur' // tukar shift atau tukar libur: bukan tidak hadir biasa, tanpa potongan
+  // Tukar dua arah (rekan juga terjadwal): shift keduanya sudah terkunci, Captain tinggal mengonfirmasi hadir atau tidaknya.
+  const rekanTukar = act?.status === 'tukar' ? act.backup_untuk_id : null
+  const tukarDua = !!rekanTukar && !!shiftDari(rekanTukar)
+  const urut = (s?: string) => (s === 'pagi' ? 0 : s === 'tengah' ? 1 : s === 'siang' ? 2 : 9)
+  // Tukar hanya bisa dibatalkan dari shift pertama (yang dikerjakan lebih awal); di shift kedua isiannya sudah terkunci
+  const shiftPertama = !tukarDua || urut(shiftKerja(r.id)) < urut(shift)
+  const hadirTukar = tukarDua && !!act?.tukar_dikonfirmasi
+  const awal = tukarDua ? undefined : lama // tidak hadir pada baris tukar mulai dari isian kosong (alpha), bukan dari isian tukarnya
   const [buka, setBuka] = useState(false)
-  const [alasan, setAlasan] = useState(lama?.status ?? 'alpha')
+  const [alasan, setAlasan] = useState(awal?.status ?? 'alpha')
   const [backup, setBackup] = useState(pengganti?.rider_id ?? '')
   // alpha/izin/sakit: pilih rider pengganti ('ada') ATAU "Tidak dapat pengganti" ('tidak'). Tanpa calon sama sekali, bawaannya 'tidak'.
-  const [adaPengganti, setAdaPengganti] = useState(lama ? !lama.tanpa_pengganti : calon.length > 0)
-  const [teks, setTeks] = useState(lama?.penjelasan ?? '')
-  const [potongan, setPotongan] = useState(lama ? (lama.potongan === true || (lama.potongan == null && lama.status === 'alpha') ? 'ya' : 'tidak') : 'ya') // saran awal: Alpha = Ya, Izin/Sakit = Tidak; Captain bisa mengubah
+  const [adaPengganti, setAdaPengganti] = useState(awal ? !awal.tanpa_pengganti : calon.length > 0)
+  const [teks, setTeks] = useState(awal?.penjelasan ?? '')
+  const [potongan, setPotongan] = useState(awal ? (awal.potongan === true || (awal.potongan == null && awal.status === 'alpha') ? 'ya' : 'tidak') : 'ya') // saran awal: Alpha = Ya, Izin/Sakit = Tidak; Captain bisa mengubah
   const [ins, setIns] = useState(!!pengganti?.insentif)
   const [nominal, setNominal] = useState(pengganti?.insentif ? String(pengganti.insentif) : '')
 
@@ -285,6 +302,9 @@ function Baris({
             Tukar dengan {nama(act.backup_untuk_id)}{shiftDari(act.backup_untuk_id) ? ` (kerja ${shiftDari(act.backup_untuk_id)})` : ''}
           </span>
         )}
+        {tukarDua && (hadirTukar
+          ? <span className="badge bg-success-soft text-success">Hadir dikonfirmasi</span>
+          : <span className="badge bg-warning-soft text-warning">Belum dikonfirmasi hadir</span>)}
         {longShift && (
           <span className="badge bg-primary text-white">
             {longShift.backup_untuk_id ? `${act?.status === 'tukar' ? 'Menutup' : 'Long shift: menutup'} ${shiftDari(longShift.backup_untuk_id) ?? 'shift lain'} untuk ${nama(longShift.backup_untuk_id)}` : 'Pengganti tambahan'}
@@ -299,22 +319,23 @@ function Baris({
         <div className="flex w-full flex-wrap gap-2 md:ml-auto md:w-auto">
           {/* Tombol yang sesuai status tersimpan berubah warna (hijau = hadir, merah = tidak hadir) supaya Captain tahu mana yang sudah diklik */}
           <button
-            className={`${act?.status === 'hadir' ? 'btn2 !border-success !bg-success-soft !text-success' : 'btn'} btn-lg flex-1 whitespace-nowrap md:flex-none`}
+            className={`${act?.status === 'hadir' || hadirTukar ? 'btn2 !border-success !bg-success-soft !text-success' : 'btn'} btn-lg flex-1 whitespace-nowrap md:flex-none`}
             disabled={locked}
-            aria-pressed={act?.status === 'hadir'}
-            onClick={() => { setBuka(false); catat(r.id, 'hadir') }}
+            aria-pressed={act?.status === 'hadir' || hadirTukar}
+            onClick={() => { setBuka(false); if (tukarDua) konfirmasi(r.id, !hadirTukar); else catat(r.id, 'hadir') }}
           >
-            {act?.status === 'hadir' ? '✓ Hadir' : 'Hadir'}
+            {act?.status === 'hadir' || hadirTukar ? '✓ Hadir' : 'Hadir'}
           </button>
           <button
-            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${tukaran ? '!border-primary !bg-primary-soft !text-primary-soft-foreground' : lama ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
+            className={`btn2 btn-lg flex-1 whitespace-nowrap md:flex-none ${tukaran && !tukarDua ? '!border-primary !bg-primary-soft !text-primary-soft-foreground' : lama && !tukarDua ? '!border-danger !bg-danger-soft !text-danger' : ''}`}
             disabled={locked}
             aria-expanded={buka}
             onClick={() => setBuka(!buka)}
           >
-            {act?.status === 'tukar' ? '✓ Tukar shift' : act?.status === 'tukar_libur' ? '✓ Tukar libur' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
+            {tukarDua ? 'Tidak hadir' : act?.status === 'tukar' ? '✓ Tukar shift' : act?.status === 'tukar_libur' ? '✓ Tukar libur' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
-          {(act || longShift) && (
+          {tukarDua && !shiftPertama && <span className="self-center text-xs text-muted-foreground">Batalkan tukar lewat shift {shift}</span>}
+          {(act || longShift) && shiftPertama && (
             <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title={act ? 'Hapus isian, kembali ke belum diabsen' : 'Hapus isian pengganti tambahan'}>
               {act ? 'Batalkan' : 'Batalkan pengganti'}
             </button>
@@ -324,6 +345,9 @@ function Baris({
       {buka && (
         <div className="mt-2 pt-2 border-t flex flex-wrap gap-2 items-center">
           <Select className="w-72 max-w-full" value={alasan} onChange={gantiAlasan} opsi={ALASAN.map(([value, label]) => ({ value, label }))} />
+          {tukarDua && rekanTukar && alasan !== 'tukar' && (
+            <span className="basis-full text-xs text-muted-foreground">Rider ini bertukar dengan {nama(rekanTukar)}. Mencatat tidak hadir membatalkan tukarnya: {nama(rekanTukar)} kembali ke shift {shiftDari(rekanTukar)} sendiri dan perlu diabsen lagi.</span>
+          )}
           {alasan === 'tukar' && <RiderPick riders={rekan} value={backup} onChange={setBackup} placeholder="Rekan tukar" />}
           {alasan === 'tukar' && backup && shiftDari(backup) && shift && (
             <span className="basis-full text-xs text-muted-foreground">Tukar: {r.nama} pindah ke {shiftDari(backup)}, {nama(backup)} pindah ke {shift}. Keduanya dihitung hadir di shift barunya.</span>
