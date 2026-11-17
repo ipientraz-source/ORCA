@@ -118,9 +118,8 @@ test('Daftar jadwal semua DS: Super-admin melihat semua, Arcon hanya DS yang dip
   await as(S, async () => await assert.rejects(q('select * from ringkasan_jadwal(today_wib(), today_wib() - 1)'), /Rentang tanggal tidak valid/))
 })
 
-test('Arcon hanya memantau: tidak bisa menyusun jadwal, mengisi absensi, tarik rider, atau menulis langsung', async () => {
+test('Arcon tidak bisa menyusun jadwal DS lain, tarik rider, atau menulis langsung ke tabel (absensi harian lewat RPC boleh, lihat tes 0053)', async () => {
   await as(AA, async () => {
-    await assert.rejects(q("select catat_actual(today_wib(), $1::uuid, 'hadir')", [R_G]), /Hanya Captain/)
     await assert.rejects(q('select simpan_jadwal($1::uuid, today_wib(), today_wib(), $2::jsonb)', [GOWA, '[]']), /Arcon yang memegangnya/) // DS yang tidak dipegang
     await assert.rejects(q('select tarik_rider($1::uuid)', [id(24)]), /Hanya Captain/)
     await assert.rejects(q("insert into actual_harian (tanggal, rider_id, ds_id, status) values (today_wib(), $1, $2, 'alpha')", [R_G, GALAXY]), /row-level security/)
@@ -196,8 +195,8 @@ test('Super-admin akses penuh absensi: isi, koreksi, hapus di DS mana pun; kunci
   })
   await as(AA, async () => {
     await assert.rejects(q('select buka_kunci($1::uuid, $2::date)', [GALAXY, w]), /Hanya Super-admin/) // Arcon boleh mengunci, bukan membuka
-    await assert.rejects(q("select catat_actual($1::date, $2::uuid, 'hadir')", [w, R_G]), /Hanya Captain/)
-    await assert.rejects(q('select hapus_actual($1::date, $2::uuid)', [w, R_G]), /Hanya Captain/)
+    await assert.rejects(q("select catat_actual($1::date, $2::uuid, 'hadir')", [w, R_W]), /bukan anggota DS yang Anda pegang/) // DS yang tidak dipegang
+    await assert.rejects(q('select hapus_actual($1::date, $2::uuid)', [w, R_W]), /bukan anggota DS yang Anda pegang/)
   })
   await as(CG, async () => {
     await assert.rejects(q('select buka_kunci($1::uuid, $2::date)', [GALAXY, w]), /Hanya Super-admin/)
@@ -602,4 +601,24 @@ test('Aturan baca RLS tidak memanggil fungsi peran per baris (bungkus dengan sel
       and regexp_replace(coalesce(qual, '') || ' ' || coalesce(with_check, ''), 'SELECT ' || '${fn}', '', 'g') ~ '${fn}'
     order by 1`)
   assert.deepEqual(bad.map((r) => r.p), [])
+})
+
+test('Arcon membantu mengisi absensi harian di DS yang dipegang (0053), ditolak untuk DS lain, dan tercatat sebagai penginput', async () => {
+  // tes sebelumnya mengubah tautan Arcon, jadi siapkan sendiri: A memegang Galaxy, B memegang Gowa
+  await db.exec(`update ds set arcon_id = '${R_AA}' where id = '${GALAXY}'; update ds set arcon_id = '${R_AB}' where id = '${GOWA}'`)
+  const catat = (rid, st = 'izin') => q(`select catat_actual(today_wib(), $1, '${st}', null, null, ${st === 'izin' ? 'false' : 'null'}, 0, ${st === 'izin' ? 'true' : 'false'})`, [rid])
+  await as(AA, async () => {
+    await catat(R_G) // Galaxy dipegang Arcon A
+    const a = (await q('select status, diinput_oleh from actual_harian where rider_id = $1 and tanggal = today_wib()', [R_G]))[0]
+    assert.deepEqual([a.status, a.diinput_oleh], ['izin', R_AA]) // tercatat siapa yang mengisi
+    await q('select hapus_actual(today_wib(), $1)', [R_G])
+    assert.equal((await q('select * from actual_harian where rider_id = $1 and tanggal = today_wib()', [R_G])).length, 0)
+    await catat(R_G, 'hadir') // kembalikan seperti semula
+    await assert.rejects(catat(R_W), /bukan anggota DS yang Anda pegang/) // Gowa bukan miliknya
+    await assert.rejects(q('select hapus_actual(today_wib(), $1)', [R_W]), /bukan anggota DS yang Anda pegang/)
+    await assert.rejects(q('select konfirmasi_tukar(today_wib(), $1)', [R_W]), /bukan anggota DS yang Anda pegang/)
+    await assert.rejects(catat(id(24)), /belum punya DS/) // rider tanpa DS
+  })
+  await as(AB, async () => await assert.rejects(catat(R_G), /bukan anggota DS yang Anda pegang/)) // Arcon lain
+  await as(CG, async () => await assert.rejects(catat(R_W), /bukan anggota DS Anda/)) // Captain tetap hanya DS-nya (aturan lama)
 })
