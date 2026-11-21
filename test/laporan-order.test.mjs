@@ -67,7 +67,7 @@ test('tidak bisa ditulis langsung lewat API oleh siapa pun (rider menulis lewat 
   assert.deepEqual(await jml(), [7, 12, 0, 5]) // tidak berubah
 })
 
-test('batasan data: jumlah 0 sampai 999, catatan maksimal 500, foto maksimal 10, satu laporan per rider per hari', async () => {
+test('batasan data: jumlah 0 sampai 999, catatan maksimal 500, foto maksimal 10, satu laporan per rider per shift per hari', async () => {
   const tambah = (n, jumlah, catatan = null, fotos = '{}') =>
     q(`insert into laporan_order (tanggal, rider_id, ds_id, jumlah_order, catatan, foto) values (today_wib() - ${n}, $1, $2, $3, $4, $5)`, [R_G, GALAXY, jumlah, catatan, fotos])
   await assert.rejects(tambah(10, -1), /violates check/)
@@ -75,7 +75,12 @@ test('batasan data: jumlah 0 sampai 999, catatan maksimal 500, foto maksimal 10,
   await assert.rejects(tambah(10, 5, 'x'.repeat(501)), /violates check/)
   await assert.rejects(tambah(10, 5, null, `{${Array.from({ length: 11 }, (_, i) => `a${i}`).join(',')}}`), /violates check/)
   await tambah(10, 999, 'x'.repeat(500), `{${Array.from({ length: 10 }, (_, i) => `a${i}`).join(',')}}`) // batas atas masih boleh
-  await assert.rejects(tambah(10, 3), /duplicate key/) // tanggal dan rider yang sama
+  await assert.rejects(tambah(10, 3), /duplicate key/) // tanggal, rider, dan shift yang sama (shift bawaan 'pagi')
+  const shiftLain = (s) => q(`insert into laporan_order (tanggal, rider_id, ds_id, jumlah_order, shift) values (today_wib() - 10, $1, $2, 7, $3)`, [R_G, GALAXY, s])
+  await shiftLain('siang') // shift lain di hari yang sama boleh: satu laporan per shift
+  await shiftLain('tengah')
+  await assert.rejects(shiftLain('siang'), /duplicate key/)
+  await assert.rejects(shiftLain('malam'), /violates check/) // hanya pagi, tengah, siang
   await q('delete from laporan_order where tanggal = today_wib() - 10')
 })
 
@@ -123,6 +128,8 @@ test('validasi.ts: tanggal, isi laporan, berkas, dan kepemilikan foto', async ()
   assert.match(v.cekIsi('12', null, 1), /bilangan bulat/)
   assert.match(v.cekIsi(5, 'x'.repeat(501), 1), /500 karakter/)
   assert.match(v.cekIsi(5, null, 11), /Maksimal 10 foto/)
+  for (const s of ['pagi', 'tengah', 'siang']) assert.equal(v.cekShift(s), null)
+  for (const s of ['malam', 'Pagi', '', null, undefined, 1]) assert.match(v.cekShift(s), /Pilih shift/)
   assert.equal(v.cekBerkas({ type: 'image/jpeg', size: 200_000 }), null)
   assert.match(v.cekBerkas({ type: 'application/pdf', size: 1000 }), /JPEG/)
   assert.match(v.cekBerkas({ type: 'image/png', size: 3 * 1024 * 1024 }), /2 MB/)
