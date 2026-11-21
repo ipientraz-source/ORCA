@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
 import { RiderApp, JadwalSaya } from './rider'
+import { LaporanOrderMenu } from './laporan-order'
 import { AbsensiSemua, Daily } from './daily'
 import { JadwalDs, JadwalSemua } from './jadwal'
 import { Dashboard, Rekap } from './rekap'
@@ -27,6 +28,7 @@ const SUPER: Tab[] = [
   { nama: 'Daftar Jadwal', desc: 'Jadwal tersimpan semua DS per minggu. Hanya Super-admin dan Arcon yang bisa melihatnya.', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
   { nama: 'Laporan Absensi Harian', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya, lihat rekap per rider, dan kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
+  { nama: 'Laporan Order', desc: 'Jumlah order dan screenshot yang dilaporkan rider per hari, di DS mana pun', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
   { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur kuota rider, pilih Captain, dan tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
   { nama: 'Armada', desc: 'Data motor listrik, servis rutin, dan laporan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut tiap DS, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
@@ -39,6 +41,7 @@ const CAPTAIN: Tab[] = [
   { nama: 'Laporan Absensi Harian', desc: 'Tandai rider yang masuk dan tidak masuk hari ini', Icon: ClipboardCheck, View: Daily },
   { nama: 'Jadwal DS', desc: 'Susun jadwal rider di DS Anda per minggu', Icon: CalendarDays, View: JadwalDs },
   { nama: 'Rekap Kehadiran', desc: 'Rekap kehadiran, alpha, dan pengganti di DS Anda', Icon: TrendingUp, View: Rekap },
+  { nama: 'Laporan Order', desc: 'Jumlah order dan screenshot yang dilaporkan rider DS Anda per hari', Icon: Receipt, View: ({ ds }) => <LaporanOrderMenu ds={ds} /> },
   { nama: 'Armada', desc: 'Lihat motor listrik di DS Anda dan laporkan kerusakan', Icon: Bike, View: Armada },
   { nama: 'Rider DS', desc: 'Kelola rider DS Anda dan tarik rider dari DS lain', Icon: Users, View: DataRider },
   { nama: 'Rekrutmen', desc: 'Lihat kandidat rider dan kebutuhan rekrut di DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
@@ -53,6 +56,7 @@ const ARCON: Tab[] = [
   { nama: 'Laporan Absensi Harian', desc: 'Bantu Captain mengisi atau mengoreksi absensi rider di DS yang Anda pegang', Icon: ClipboardCheck, View: ({ dsList }) => <AbsensiSemua dsList={dsList} /> },
   { nama: 'Armada', desc: 'Kelola motor listrik, servis rutin, dan kerusakan di DS yang Anda pegang', Icon: Bike, View: Armada },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya dan kunci absensi mingguan di DS Anda', Icon: ClipboardList, View: Rekap },
+  { nama: 'Laporan Order', desc: 'Jumlah order dan screenshot yang dilaporkan rider di DS yang Anda pegang, per hari', Icon: Receipt, View: ({ dsList }) => <LaporanOrderMenu ds={null} dsList={dsList} /> },
   { nama: 'Kelola DS', desc: 'Atur kebutuhan rider per shift dan tunjuk Captain untuk DS yang Anda pegang', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },
   { nama: 'Impor Data', desc: 'Tambah rider, motor, servis, dan kerusakan di DS yang Anda pegang lewat impor CSV atau input manual. Data dobel dilewati, data lama tidak dihapus.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
   { nama: 'Rekrutmen', desc: 'Lihat kandidat rider dan kebutuhan rekrut di DS yang Anda pegang', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },

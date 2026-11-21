@@ -114,7 +114,7 @@ export function InputRupiah({ nilai, ubah, disabled }: { nilai: string; ubah: (v
 }
 
 // Foto dikecilkan dulu di browser (sisi terpanjang 1280 px, JPEG): 4–6 MB dari kamera jadi sekitar 200 KB
-async function kecilkan(file: File): Promise<Blob> {
+export async function kecilkan(file: File): Promise<Blob> {
   const bmp = await createImageBitmap(file)
   const skala = Math.min(1, 1280 / Math.max(bmp.width, bmp.height))
   const c = document.createElement('canvas')
@@ -128,12 +128,12 @@ async function kecilkan(file: File): Promise<Blob> {
 const pesanFoto = (m: string) => (/bucket not found|not found/i.test(m) ? 'Penyimpanan foto belum aktif. Jalankan migrasi SQL terbaru di Supabase.' : /size|too large|payload/i.test(m) ? 'Ukuran foto terlalu besar.' : `Foto gagal diunggah: ${m}`)
 
 // Daftar foto dari Storage (bucket privat) lewat tautan sementara
-export function FotoGaleri({ paths, kecil }: { paths: string[]; kecil?: boolean }) {
+export function FotoGaleri({ paths, kecil, bucket = 'armada' }: { paths: string[]; kecil?: boolean; bucket?: string }) {
   const [url, setUrl] = useState<Record<string, string>>({})
   useEffect(() => {
     if (!paths.length) return
     let batal = false
-    sb.storage.from('armada').createSignedUrls(paths, 3600).then(({ data }) => {
+    sb.storage.from(bucket).createSignedUrls(paths, 3600).then(({ data }) => {
       if (!batal && data) setUrl(Object.fromEntries(data.filter((d) => d.signedUrl && d.path).map((d) => [d.path as string, d.signedUrl as string])))
     })
     return () => {

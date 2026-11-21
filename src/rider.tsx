@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { sb, today, hari, useRows, Err, Kosong, Logo, TemaToggle, type Me } from './lib'
+import { LaporanOrderRider } from './laporan-order'
 
 const SHIFT: Record<string, string> = { pagi: 'Pagi', tengah: 'Middle', siang: 'Siang', off: 'Libur' }
 
@@ -28,6 +30,7 @@ function List({ rows }: { rows: { tanggal: string; shift: string; ds?: string | 
 
 // Rider: login Kode MTR, lihat jadwal sendiri (pasif)
 export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
+  const [menu, setMenu] = useState<'jadwal' | 'order'>('jadwal')
   const { rows, err } = useRows<{ nama: string; ds_nama: string | null; tanggal: string | null; shift: string }>(
     () => sb.rpc('jadwal_rider', { p_kode: kode }),
     [kode],
@@ -46,8 +49,19 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
         </div>
       </div>
       <main className="rider-isi max-w-md mx-auto px-4 -mt-4 pb-10">
-        <Err msg={err} />
-        <List rows={rows.filter((r) => r.tanggal).map((r) => ({ tanggal: r.tanggal!, shift: r.shift, ds: r.ds_nama }))} />
+        <div role="tablist" aria-label="Menu rider" className="mb-3 flex gap-2">
+          {([['jadwal', 'Jadwal Saya'], ['order', 'Laporan Order']] as const).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={menu === k} onClick={() => setMenu(k)} className={`tab !px-3 flex-1 ${menu === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
+          ))}
+        </div>
+        {menu === 'order' ? (
+          <LaporanOrderRider kode={kode} />
+        ) : (
+          <>
+            <Err msg={err} />
+            <List rows={rows.filter((r) => r.tanggal).map((r) => ({ tanggal: r.tanggal!, shift: r.shift, ds: r.ds_nama }))} />
+          </>
+        )}
       </main>
     </div>
   )
