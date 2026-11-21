@@ -3,16 +3,16 @@
 // service role (kunci itu hanya ada di server). Deploy: npx supabase functions deploy laporan-order-rider
 // Aksi (multipart/form-data atau JSON):
 //   ambil  : kode                                  -> laporan 8 hari terakhir milik rider itu, beserta tautan foto sementara
-//   simpan : kode, tanggal, jumlah, catatan, simpan (JSON daftar alamat foto lama yang dipertahankan), foto (berkas baru, boleh banyak)
+//   simpan : kode, tanggal, shift (pagi|tengah|siang, dipilih rider), jumlah, catatan, simpan (JSON daftar alamat foto lama yang dipertahankan), foto (berkas baru, boleh banyak)
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { cekBerkas, cekIsi, cekTanggal, fotoMilik, geserHari, hariIniWib, HARI_MUNDUR, pathFoto } from './validasi.ts'
+import { cekBerkas, cekIsi, cekShift, cekTanggal, fotoMilik, geserHari, hariIniWib, HARI_MUNDUR, pathFoto } from './validasi.ts'
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' }
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 const tidur = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const BUCKET = 'order-ss'
 
-type Baris = { tanggal: string; jumlah_order: number; catatan: string | null; foto: string[]; diubah: string }
+type Baris = { tanggal: string; shift: string; jumlah_order: number; catatan: string | null; foto: string[]; diubah: string }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     return baris.map((b) => ({ ...b, foto: b.foto.map((p) => ({ path: p, url: url[p] ?? null })) }))
   }
   const ambil = async (dari: string) => {
-    const { data } = await admin.from('laporan_order').select('tanggal,jumlah_order,catatan,foto,diubah').eq('rider_id', rider.id).gte('tanggal', dari).order('tanggal', { ascending: false })
+    const { data } = await admin.from('laporan_order').select('tanggal,shift,jumlah_order,catatan,foto,diubah').eq('rider_id', rider.id).gte('tanggal', dari).order('tanggal', { ascending: false }).order('shift')
     return muat((data ?? []) as Baris[])
   }
   const { data: ds } = rider.ds_id ? await admin.from('ds').select('nama').eq('id', rider.ds_id).maybeSingle() : { data: null }
@@ -67,13 +67,16 @@ Deno.serve(async (req) => {
     const salahTanggal = cekTanggal(tanggal, hariIni)
     if (salahTanggal) return json({ error: salahTanggal }, 400)
     const tgl = tanggal as string
+    const salahShift = cekShift(kolom.shift)
+    if (salahShift) return json({ error: salahShift }, 400)
+    const shift = kolom.shift as string
     if (!rider.ds_id) return json({ error: 'Anda belum masuk DS mana pun. Hubungi Captain.' }, 400)
 
     const jumlah = typeof kolom.jumlah === 'string' && kolom.jumlah.trim() !== '' ? Number(kolom.jumlah) : kolom.jumlah
     const catatan = typeof kolom.catatan === 'string' && kolom.catatan.trim() ? kolom.catatan.trim() : null
     let simpan: unknown = []
     try { simpan = typeof kolom.simpan === 'string' ? JSON.parse(kolom.simpan) : kolom.simpan ?? [] } catch { return json({ error: 'Daftar foto tidak valid' }, 400) }
-    const { data: lama } = await admin.from('laporan_order').select('foto').eq('rider_id', rider.id).eq('tanggal', tgl).maybeSingle()
+    const { data: lama } = await admin.from('laporan_order').select('foto').eq('rider_id', rider.id).eq('tanggal', tgl).eq('shift', shift).maybeSingle()
     const ada: string[] = lama?.foto ?? []
     // hanya foto milik rider ini di tanggal ini yang sudah tersimpan di laporannya yang boleh dipertahankan
     const tahan = (Array.isArray(simpan) ? simpan : []).filter((p): p is string => fotoMilik(p, rider.id, tgl) && ada.includes(p as string))
@@ -97,8 +100,8 @@ Deno.serve(async (req) => {
       baru.push(path)
     }
     const { error } = await admin.from('laporan_order').upsert(
-      { tanggal: tgl, rider_id: rider.id, ds_id: rider.ds_id, jumlah_order: jumlah, catatan, foto: [...tahan, ...baru], diubah: new Date().toISOString() },
-      { onConflict: 'tanggal,rider_id' },
+      { tanggal: tgl, shift, rider_id: rider.id, ds_id: rider.ds_id, jumlah_order: jumlah, catatan, foto: [...tahan, ...baru], diubah: new Date().toISOString() },
+      { onConflict: 'tanggal,rider_id,shift' },
     )
     if (error) {
       if (baru.length) await admin.storage.from(BUCKET).remove(baru)

@@ -5,6 +5,11 @@ export const MAKS_FOTO = 10
 export const MAKS_BYTE = 2 * 1024 * 1024 // sama dengan batas bucket order-ss
 export const HARI_MUNDUR = 7
 export const TIPE_FOTO = ['image/jpeg', 'image/png', 'image/webp']
+export const SHIFT_LAPOR = ['pagi', 'tengah', 'siang'] // rider memilih sendiri, tidak dicocokkan dengan jadwal
+
+export function cekShift(shift: unknown): string | null {
+  return typeof shift === 'string' && SHIFT_LAPOR.includes(shift) ? null : 'Pilih shift: Pagi, Middle, atau Siang'
+}
 
 export const geserHari = (d: string, n: number) => {
   const t = new Date(d + 'T00:00:00Z')
@@ -24,7 +29,7 @@ export function cekTanggal(tanggal: unknown, hariIni: string): string | null {
 export function cekIsi(jumlah: unknown, catatan: unknown, jumlahFoto: number): string | null {
   if (typeof jumlah !== 'number' || !Number.isInteger(jumlah) || jumlah < 0 || jumlah > 999) return 'Jumlah order harus bilangan bulat 0 sampai 999'
   if (catatan != null && (typeof catatan !== 'string' || catatan.length > 500)) return 'Catatan maksimal 500 karakter'
-  if (jumlahFoto > MAKS_FOTO) return `Maksimal ${MAKS_FOTO} foto per hari`
+  if (jumlahFoto > MAKS_FOTO) return `Maksimal ${MAKS_FOTO} foto per laporan`
   if (jumlah > 0 && jumlahFoto === 0) return 'Unggah minimal satu screenshot order sebagai bukti'
   return null
 }
