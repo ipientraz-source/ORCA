@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { sb, hari, useRows, Err, Kosong, usePage, Pagination } from './lib'
 
 const SHIFT: Record<string, string> = { pagi: 'Pagi', tengah: 'Middle', siang: 'Siang' }
+// Pengganti dibedakan: long shift (terjadwal, lanjut menutup shift lain) dan backup (tanpa jadwal hari itu)
+export const JENIS: Record<string, string> = { long_shift: 'Long shift', backup: 'Backup' }
 const STATUS: Record<string, { label: string; cls: string }> = {
   hadir: { label: 'Hadir', cls: 'bg-success-soft text-success' },
   pengganti: { label: 'Pengganti', cls: 'bg-success-soft text-success' },
@@ -23,7 +25,7 @@ const RINGKAS: { label: string; status: string[]; cls: string }[] = [
   { label: 'Belum dicatat', status: ['belum'], cls: 'bg-muted text-muted-foreground' },
 ]
 
-type Baris = { tanggal: string; status: string; shift: string | null }
+type Baris = { tanggal: string; status: string; shift: string | null; jenis?: string | null }
 
 export function RiwayatMasukRider({ kode }: { kode: string }) {
   const [rentang, setRentang] = useState(30)
@@ -56,7 +58,7 @@ export function RiwayatMasukRider({ kode }: { kode: string }) {
                   <span className="text-sm font-semibold">{hari(r.tanggal)}</span>
                   <span className="flex items-center gap-2">
                     {r.shift && <span className="text-xs text-muted-foreground">{SHIFT[r.shift] ?? r.shift}</span>}
-                    <span className={`badge ${s.cls}`}>{s.label}</span>
+                    <span className={`badge ${s.cls}`}>{r.status === 'pengganti' ? JENIS[r.jenis ?? ''] ?? s.label : s.label}</span>
                   </span>
                 </li>
               )

@@ -125,8 +125,8 @@ test('riwayat masuk rider: status per hari beserta shift, hari terjadwal tanpa c
 test('riwayat masuk: pengganti memakai shift yang ia tutup, dan hari ini yang belum dicatat tidak dihitung belum', async () => {
   // Rider Galaxy Dua menggantikan Rider Galaxy (shift pagi) kemarin
   await db.exec(`insert into actual_harian (tanggal, rider_id, ds_id, status, backup_untuk_id) values (today_wib() - 1, '${R_G2}', '${GALAXY}', 'pengganti', '${R_G}')`)
-  const r = await as(null, async () => num(await q(`select status, shift from riwayat_absensi_rider('MTR024', 30)`)))
-  assert.deepEqual(r, [{ status: 'pengganti', shift: 'pagi' }]) // jadwal siang hari ini belum dicatat, tapi hari ini tidak masuk 'belum'
+  const r = await as(null, async () => num(await q(`select status, shift, jenis from riwayat_absensi_rider('MTR024', 30)`)))
+  assert.deepEqual(r, [{ status: 'pengganti', shift: 'pagi', jenis: 'backup' }]) // jadwal siang hari ini belum dicatat, tapi hari ini tidak masuk 'belum'; kemarin ia tanpa jadwal = backup
 })
 
 
@@ -135,10 +135,27 @@ test('penanda pengganti untuk Jadwal Saya: hari ini ke depan saja, shift yang di
   // Rider Galaxy terjadwal siang di hari itu; Rider Galaxy Dua dicatat sebagai pengganti shift siang tersebut
   await db.exec(`insert into jadwal (tanggal, rider_id, shift, ds_id) values (today_wib() + 2, '${R_G}', 'siang', '${GALAXY}');
     insert into actual_harian (tanggal, rider_id, ds_id, status, backup_untuk_id) values (today_wib() + 2, '${R_G2}', '${GALAXY}', 'pengganti', '${R_G}')`)
-  const pg = (kode) => as(null, async () => num(await q('select tanggal::text as tanggal, shift from pengganti_rider($1)', [kode])))
-  assert.deepEqual(await pg('MTR024'), [{ tanggal: t2, shift: 'siang' }]) // pengganti kemarin tidak ikut: hanya hari ini dan ke depan
-  assert.deepEqual(await pg(' mtr024 '), [{ tanggal: t2, shift: 'siang' }])
+  const pg = (kode) => as(null, async () => num(await q('select tanggal::text as tanggal, shift, jenis from pengganti_rider($1)', [kode])))
+  assert.deepEqual(await pg('MTR024'), [{ tanggal: t2, shift: 'siang', jenis: 'backup' }]) // pengganti kemarin tidak ikut: hanya hari ini dan ke depan; tanpa jadwal hari itu = backup
+  assert.deepEqual(await pg(' mtr024 '), [{ tanggal: t2, shift: 'siang', jenis: 'backup' }])
   assert.deepEqual(await pg('MTR021'), []) // yang digantikan tidak punya penanda
   assert.deepEqual(await pg('MTR999'), [])
   await db.exec('delete from actual_harian where tanggal = today_wib() + 2; delete from jadwal where tanggal = today_wib() + 2')
+})
+
+test('jenis pengganti: terjadwal hari itu = long shift, tanpa jadwal = backup (Jadwal Saya dan Riwayat Masuk)', async () => {
+  const t3 = (await q('select (today_wib() + 3)::text as t'))[0].t
+  // Galaxy pagi dan Galaxy Dua siang di hari yang sama; Galaxy Dua menutup pagi Galaxy sambil tetap kerja siangnya = long shift
+  await db.exec(`insert into jadwal (tanggal, rider_id, shift, ds_id) values (today_wib() + 3, '${R_G}', 'pagi', '${GALAXY}'), (today_wib() + 3, '${R_G2}', 'siang', '${GALAXY}');
+    insert into actual_harian (tanggal, rider_id, ds_id, status, backup_untuk_id) values (today_wib() + 3, '${R_G2}', '${GALAXY}', 'pengganti', '${R_G}')`)
+  const pg = await as(null, async () => num(await q(`select tanggal::text as tanggal, shift, jenis from pengganti_rider('MTR024')`)))
+  assert.deepEqual(pg.filter((p) => p.tanggal === t3), [{ tanggal: t3, shift: 'pagi', jenis: 'long_shift' }])
+  await db.exec('delete from actual_harian where tanggal = today_wib() + 3; delete from jadwal where tanggal = today_wib() + 3')
+  // riwayat: hari ini ia terjadwal siang lalu menutup pagi = long shift; jenis hanya terisi untuk baris pengganti
+  await db.exec(`insert into actual_harian (tanggal, rider_id, ds_id, status) values (today_wib(), '${R_G2}', '${GALAXY}', 'hadir');
+    insert into actual_harian (tanggal, rider_id, ds_id, status, backup_untuk_id) values (today_wib(), '${R_G2}', '${GALAXY}', 'pengganti', '${R_G}')`)
+  const rw = await as(null, async () => num(await q(`select tanggal::text as tanggal, status, jenis from riwayat_absensi_rider('MTR024', 1) order by status`)))
+  const t0 = (await q('select today_wib()::text as t'))[0].t
+  assert.deepEqual(rw.filter((r) => r.tanggal === t0).map(({ status, jenis }) => ({ status, jenis })), [{ status: 'hadir', jenis: null }, { status: 'pengganti', jenis: 'long_shift' }])
+  await db.exec('delete from actual_harian where tanggal = today_wib()')
 })

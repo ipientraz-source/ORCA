@@ -210,7 +210,7 @@ export function LaporanOrderMenu({ ds, dsList }: { ds: Ds | null; dsList?: Ds[] 
 }
 
 // PostgREST membatasi 1000 baris per permintaan: ambil berhalaman sampai habis (maksimal 10 halaman).
-async function ambilSemua<T>(buat: (dari: number, sampai: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>) {
+export async function ambilSemua<T>(buat: (dari: number, sampai: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>) {
   const hasil: T[] = []
   for (let i = 0; i < 10; i++) {
     const { data, error } = await buat(i * 1000, i * 1000 + 999)

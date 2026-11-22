@@ -4,6 +4,7 @@ import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
 import { CalendarDays, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
 import { InputTanggal } from './tanggal'
+import { ambilSemua } from './laporan-order'
 
 type DsRow = {
   ds_id: string; ds_nama: string; dijadwalkan: number; terisi: number; patuh: number; alpha: number; tukar: number
@@ -277,12 +278,22 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
   const dsNama = dsl.rows.find((x) => x.id === dsId)?.nama
   const d = useRows<DsRow>(() => sb.rpc('laporan_ds', { p_dari: from, p_sampai: to }), [from, to])
   const r = useRows<RiderRow>(() => sb.rpc('laporan_rider', { p_dari: from, p_sampai: to }), [from, to])
-  const det = useRows<Any>(() => {
+  // Diambil per 1000 baris (batas PostgREST), urutan dikunci supaya halaman tidak tumpang tindih
+  const det = useRows<Any>(() => ambilSemua((a, b) => {
     const base = sb.from('actual_harian')
-      .select('tanggal,status,penjelasan,potongan,insentif,jam_input,tanpa_pengganti,rider_id,backup_untuk_id,rider:riders!actual_harian_rider_id_fkey(nama,kode_mtr),backup:riders!actual_harian_backup_untuk_id_fkey(nama),oleh:riders!actual_harian_diinput_oleh_fkey(nama),ds(nama)')
-      .gte('tanggal', from).lte('tanggal', to).order('tanggal', { ascending: false }).limit(1000)
+      .select('tanggal,status,penjelasan,potongan,insentif,jam_input,tanpa_pengganti,ds_id,rider_id,backup_untuk_id,rider:riders!actual_harian_rider_id_fkey(nama,kode_mtr),backup:riders!actual_harian_backup_untuk_id_fkey(nama),oleh:riders!actual_harian_diinput_oleh_fkey(nama),ds(nama)')
+      .gte('tanggal', from).lte('tanggal', to).order('tanggal', { ascending: false }).order('rider_id').order('status').range(a, b)
     return dsId ? base.eq('ds_id', dsId) : base
-  }, [from, to, dsId])
+  }), [from, to, dsId])
+  // Untuk kolom jenis pengganti: jadwal rider hari itu (ada = long shift, tidak ada = backup) dan shift yang benar-benar dikerjakan (aturan database yang sama dengan Riwayat Masuk rider)
+  const jd = useRows<{ tanggal: string; rider_id: string; shift: string }>(() => ambilSemua((a, b) => {
+    const base = sb.from('jadwal').select('tanggal,rider_id,shift').neq('shift', 'off').gte('tanggal', from).lte('tanggal', to).order('tanggal').order('rider_id').range(a, b)
+    return dsId ? base.eq('ds_id', dsId) : base
+  }), [from, to, dsId])
+  const sd = useRows<{ tanggal: string; rider_id: string; shift: string | null; sumber: string }>(() => ambilSemua((a, b) => {
+    const base = sb.rpc('shift_dikerjakan', { p_dari: from, p_sampai: to }).order('tanggal').order('rider_id').order('sumber').range(a, b)
+    return dsId ? base.eq('ds_id', dsId) : base
+  }), [from, to, dsId])
 
   const dsRows = d.rows.filter((x) => !dsId || x.ds_id === dsId)
   const rRows = r.rows.filter((x) => (!dsNama || x.ds_nama === dsNama) && (x.nama + (x.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()))
@@ -293,10 +304,15 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
     const p = det.rows.find((y: Any) => y.tanggal === tgl && y.rider_id === idRider && y.status === 'pengganti' && y.backup_untuk_id)
     return p ? asal(p.backup_untuk_id, tgl, dalam + 1) : undefined
   }
+  const jadwalMap = new Map(jd.rows.map((j) => [`${j.tanggal}|${j.rider_id}`, j.shift]))
+  const kerjaMap = new Map(sd.rows.map((s) => [`${s.tanggal}|${s.rider_id}|${s.sumber === 'pengganti'}`, s.shift]))
   const flat = det.rows.map((x: Any) => {
     const a = x.backup_untuk_id ? asal(x.backup_untuk_id, x.tanggal) : undefined
+    const terjadwal = jadwalMap.get(`${x.tanggal}|${x.rider_id}`)
     return {
     tanggal: x.tanggal, ds: x.ds?.nama, kode_mtr: x.rider?.kode_mtr, rider: x.rider?.nama, status: x.status,
+    // Pengganti yang terjadwal hari itu = long shift (kerja shiftnya sendiri lalu menutup shift lain); tanpa jadwal = backup
+    jenis_pengganti: x.status === 'pengganti' ? (terjadwal ? 'Long shift' : 'Backup') : '', shift_terjadwal: terjadwal ?? '', shift_dikerjakan: kerjaMap.get(`${x.tanggal}|${x.rider_id}|${x.status === 'pengganti'}`) ?? '',
     pengganti_untuk_atau_backup: x.backup?.nama ?? '', status_yang_digantikan: a?.status ?? '', alasan_yang_digantikan: a?.penjelasan ?? '', tanpa_pengganti: x.tanpa_pengganti ? 'ya' : '', potongan: x.potongan === true ? 'ya' : x.potongan === false ? 'tidak' : '', insentif: x.insentif ?? 0, penjelasan: x.penjelasan ?? '', diinput_oleh: x.oleh?.nama ?? '', jam_input: jamCsv(x.jam_input),
     }
   })
@@ -315,7 +331,7 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
         <button className="btn2 ml-auto" onClick={() => download(`rekap-rider_${from}_${to}.csv`, toCsv(rRows as unknown as Record<string, unknown>[]))}><Download size={14} className="inline mr-1.5 -mt-0.5" />Unduh rekap rider</button>
         <button className="btn2" onClick={() => download(`actual-detail_${from}_${to}.csv`, toCsv(flat))}><Download size={14} className="inline mr-1.5 -mt-0.5" />Unduh detail absensi</button>
       </div>
-      <Err msg={d.err || r.err || det.err} />
+      <Err msg={d.err || r.err || det.err || jd.err || sd.err} />
       <Fulfillment from={from} to={to} dsId={dsId || undefined} />
       <div className="card"><b className="mb-2 block">Ringkasan per DS</b><DsTable rows={dsRows} /></div>
       <div className="card">
