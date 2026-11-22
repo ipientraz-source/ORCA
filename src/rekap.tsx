@@ -312,7 +312,7 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
     return {
     tanggal: x.tanggal, ds: x.ds?.nama, kode_mtr: x.rider?.kode_mtr, rider: x.rider?.nama, status: x.status,
     // Pengganti yang terjadwal hari itu = long shift (kerja shiftnya sendiri lalu menutup shift lain); tanpa jadwal = backup
-    jenis_pengganti: x.status === 'pengganti' ? (terjadwal ? 'Long shift' : 'Backup') : '', shift_terjadwal: terjadwal ?? '', shift_dikerjakan: kerjaMap.get(`${x.tanggal}|${x.rider_id}|${x.status === 'pengganti'}`) ?? '',
+    jenis_pengganti: x.status === 'pengganti' ? (terjadwal ? 'Long shift' : 'Backup') : '', shift_terjadwal: terjadwal ?? '', shift_dikerjakan: kerjaMap.get(`${x.tanggal}|${x.rider_id}|${x.status === 'pengganti'}`) ?? (x.status === 'pengganti' ? 'tidak diketahui' : ''), // pengganti tanpa shift: yang digantikan tukar dan jadwalnya off, jadi shift tidak bisa dihitung
     pengganti_untuk_atau_backup: x.backup?.nama ?? '', status_yang_digantikan: a?.status ?? '', alasan_yang_digantikan: a?.penjelasan ?? '', tanpa_pengganti: x.tanpa_pengganti ? 'ya' : '', potongan: x.potongan === true ? 'ya' : x.potongan === false ? 'tidak' : '', insentif: x.insentif ?? 0, penjelasan: x.penjelasan ?? '', diinput_oleh: x.oleh?.nama ?? '', jam_input: jamCsv(x.jam_input),
     }
   })
