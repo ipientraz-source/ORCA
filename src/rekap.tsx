@@ -30,6 +30,8 @@ const lama = (d: DsRow) => d.pagi_belum_isi === undefined
 const jmlBelum = (d: DsRow) => (lama(d) ? d.hari_belum_isi : d.pagi_belum_isi + d.siang_belum_isi)
 const shiftBelum = (d: DsRow) => lama(d) ? (d.hari_belum_isi ? `${d.hari_belum_isi} hari` : '') : [d.pagi_belum_isi && `pagi ${d.pagi_belum_isi} hari`, d.siang_belum_isi && `siang ${d.siang_belum_isi} hari`].filter(Boolean).join(', ')
 const jam = (s: string | null) => (s ? new Date(s).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'short', timeStyle: 'short' }) : 'belum pernah')
+// Untuk file CSV: jam WIB berformat 2026-11-21 13:20:54 (bukan ISO UTC), langsung dikenali Excel dan Google Sheets sebagai tanggal-waktu
+const jamCsv = (s: string | null) => (s ? new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' }) : '')
 
 function useRange() {
   const [mode, setMode] = useState<'harian' | 'mingguan' | 'bulanan' | 'rentang'>('mingguan')
@@ -212,7 +214,7 @@ export function Dashboard() {
       <div className="card">
         <div className="flex justify-between mb-2">
           <b>Ringkasan per DS</b>
-          <button className="btn2" onClick={() => download(`ringkasan-ds_${from}_${to}.csv`, toCsv(d.rows.map((x) => ({ ...x, kepatuhan: pct(x) }))))}>
+          <button className="btn2" onClick={() => download(`ringkasan-ds_${from}_${to}.csv`, toCsv(d.rows.map((x) => ({ ...x, terakhir_input: jamCsv(x.terakhir_input), kepatuhan: pct(x) }))))}>
             Unduh CSV
           </button>
         </div>
@@ -277,17 +279,27 @@ export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?:
   const r = useRows<RiderRow>(() => sb.rpc('laporan_rider', { p_dari: from, p_sampai: to }), [from, to])
   const det = useRows<Any>(() => {
     const base = sb.from('actual_harian')
-      .select('tanggal,status,penjelasan,potongan,insentif,jam_input,tanpa_pengganti,rider:riders!actual_harian_rider_id_fkey(nama,kode_mtr),backup:riders!actual_harian_backup_untuk_id_fkey(nama),oleh:riders!actual_harian_diinput_oleh_fkey(nama),ds(nama)')
+      .select('tanggal,status,penjelasan,potongan,insentif,jam_input,tanpa_pengganti,rider_id,backup_untuk_id,rider:riders!actual_harian_rider_id_fkey(nama,kode_mtr),backup:riders!actual_harian_backup_untuk_id_fkey(nama),oleh:riders!actual_harian_diinput_oleh_fkey(nama),ds(nama)')
       .gte('tanggal', from).lte('tanggal', to).order('tanggal', { ascending: false }).limit(1000)
     return dsId ? base.eq('ds_id', dsId) : base
   }, [from, to, dsId])
 
   const dsRows = d.rows.filter((x) => !dsId || x.ds_id === dsId)
   const rRows = r.rows.filter((x) => (!dsNama || x.ds_nama === dsNama) && (x.nama + (x.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()))
-  const flat = det.rows.map((x: Any) => ({
+  // Alasan ada di baris rider yang digantikan, bukan di baris penggantinya. Kalau yang digantikan sendiri pengganti (berantai), ikuti sampai rider pertama yang tidak masuk.
+  const asal = (idRider: string, tgl: string, dalam = 0): Any | undefined => {
+    const milik = det.rows.find((y: Any) => y.tanggal === tgl && y.rider_id === idRider && y.status !== 'pengganti')
+    if (milik || dalam > 5) return milik
+    const p = det.rows.find((y: Any) => y.tanggal === tgl && y.rider_id === idRider && y.status === 'pengganti' && y.backup_untuk_id)
+    return p ? asal(p.backup_untuk_id, tgl, dalam + 1) : undefined
+  }
+  const flat = det.rows.map((x: Any) => {
+    const a = x.backup_untuk_id ? asal(x.backup_untuk_id, x.tanggal) : undefined
+    return {
     tanggal: x.tanggal, ds: x.ds?.nama, kode_mtr: x.rider?.kode_mtr, rider: x.rider?.nama, status: x.status,
-    pengganti_untuk_atau_backup: x.backup?.nama ?? '', tanpa_pengganti: x.tanpa_pengganti ? 'ya' : '', potongan: x.potongan === true ? 'ya' : x.potongan === false ? 'tidak' : '', insentif: x.insentif ?? 0, penjelasan: x.penjelasan ?? '', diinput_oleh: x.oleh?.nama ?? '', jam_input: x.jam_input,
-  }))
+    pengganti_untuk_atau_backup: x.backup?.nama ?? '', status_yang_digantikan: a?.status ?? '', alasan_yang_digantikan: a?.penjelasan ?? '', tanpa_pengganti: x.tanpa_pengganti ? 'ya' : '', potongan: x.potongan === true ? 'ya' : x.potongan === false ? 'tidak' : '', insentif: x.insentif ?? 0, penjelasan: x.penjelasan ?? '', diinput_oleh: x.oleh?.nama ?? '', jam_input: jamCsv(x.jam_input),
+    }
+  })
 
   const pgR = usePage(rRows, [q, dsId, from, to])
   const pgD = usePage(det.rows, [from, to, dsId])
