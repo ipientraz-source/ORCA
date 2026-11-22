@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { sb, today, hari, useRows, Err, Kosong, Logo, TemaToggle, type Me } from './lib'
 import { LaporanOrderRider } from './laporan-order'
-import { RiwayatMasukRider } from './riwayat-masuk'
+import { RiwayatMasukRider, JENIS } from './riwayat-masuk'
 
 const SHIFT: Record<string, string> = { pagi: 'Pagi', tengah: 'Middle', siang: 'Siang', off: 'Libur' }
 
-// pengganti: tanggal -> shift yang ditutup (null bila belum diketahui), untuk hari ketika Captain mencatat rider ini sebagai pengganti
-function List({ rows, pengganti = {} }: { rows: { tanggal: string; shift: string; ds?: string | null }[]; pengganti?: Record<string, string | null> }) {
+// pengganti: tanggal -> shift yang ditutup (null bila belum diketahui) dan jenisnya, untuk hari ketika Captain mencatat rider ini sebagai pengganti
+type Png = { shift: string | null; jenis?: string | null }
+function List({ rows, pengganti = {} }: { rows: { tanggal: string; shift: string; ds?: string | null }[]; pengganti?: Record<string, Png> }) {
   if (!rows.length) return <Kosong teks="Belum ada jadwal" hint="Jadwal akan muncul di sini setelah Captain menyusunnya." />
   return (
     <ul className="space-y-3">
@@ -20,7 +21,7 @@ function List({ rows, pengganti = {} }: { rows: { tanggal: string; shift: string
             <div className="font-semibold">
               {SHIFT[r.shift] ?? r.shift}
               {r.tanggal === today() && <span className="badge ml-2 bg-primary-soft text-primary-soft-foreground">Hari ini</span>}
-              {r.tanggal in pengganti && <span className="badge ml-2 bg-primary text-white">Pengganti{pengganti[r.tanggal] ? ` · ${SHIFT[pengganti[r.tanggal]!] ?? pengganti[r.tanggal]}` : ''}</span>}
+              {r.tanggal in pengganti && <span className="badge ml-2 bg-primary text-white">{JENIS[pengganti[r.tanggal].jenis ?? ''] ?? 'Pengganti'}{pengganti[r.tanggal].shift ? ` · ${SHIFT[pengganti[r.tanggal].shift!] ?? pengganti[r.tanggal].shift}` : ''}</span>}
             </div>
             {r.ds && <div className="text-xs text-muted-foreground">{r.ds}</div>}
           </div>
@@ -39,7 +40,7 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
     [kode],
   )
   // Hari ketika Captain mencatat rider ini sebagai pengganti; jadwalnya bisa Libur atau kosong. Kalau fungsinya belum ada di server, daftar kosong dan tampilan biasa.
-  const png = useRows<{ tanggal: string; shift: string | null }>(() => sb.rpc('pengganti_rider', { p_kode: kode }), [kode])
+  const png = useRows<{ tanggal: string; shift: string | null; jenis: string | null }>(() => sb.rpc('pengganti_rider', { p_kode: kode }), [kode])
   const jadwal = rows.filter((r) => r.tanggal).map((r) => ({ tanggal: r.tanggal!, shift: r.shift, ds: r.ds_nama }))
   const tambahan = png.rows.filter((p) => !jadwal.some((j) => j.tanggal === p.tanggal)).map((p) => ({ tanggal: p.tanggal, shift: 'off', ds: null as string | null }))
   const daftar = [...jadwal, ...tambahan].sort((a, b) => a.tanggal.localeCompare(b.tanggal))
@@ -69,7 +70,7 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
         ) : (
           <>
             <Err msg={err} />
-            <List rows={daftar} pengganti={Object.fromEntries(png.rows.map((p) => [p.tanggal, p.shift]))} />
+            <List rows={daftar} pengganti={Object.fromEntries(png.rows.map((p) => [p.tanggal, { shift: p.shift, jenis: p.jenis }]))} />
           </>
         )}
       </main>
