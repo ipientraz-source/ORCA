@@ -78,6 +78,12 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
   )
 }
 
+// Captain yang juga ikut jadwal sebagai rider: laporan order dan riwayat masuk dirinya sendiri, lewat Kode MTR di data riders-nya
+export function SayaRider({ me, menu }: { me: Me; menu: 'order' | 'masuk' }) {
+  if (!me.kode_mtr) return <Kosong teks="Akun Anda belum punya Kode MTR" hint="Minta Super-admin mengisi Kode MTR Anda di Data Rider supaya bisa melapor order sebagai rider." />
+  return <div className="max-w-md">{menu === 'order' ? <LaporanOrderRider kode={me.kode_mtr} /> : <RiwayatMasukRider kode={me.kode_mtr} />}</div>
+}
+
 // Topi rider untuk Captain / admin: jadwal dirinya sendiri
 export function JadwalSaya({ me }: { me: Me }) {
   const { rows, err } = useRows<{ tanggal: string; shift: string; ds: { nama: string } | null }>(

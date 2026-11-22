@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactElement } from '
 import type { Session } from '@supabase/supabase-js'
 import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
-import { RiderApp, JadwalSaya } from './rider'
+import { RiderApp, JadwalSaya, SayaRider } from './rider'
 import { LaporanOrderMenu } from './laporan-order'
 import { AbsensiSemua, Daily } from './daily'
 import { JadwalDs, JadwalSemua } from './jadwal'
@@ -38,6 +38,8 @@ const SUPER: Tab[] = [
 ]
 const CAPTAIN: Tab[] = [
   { nama: 'Jadwal Saya', desc: 'Jadwal kerja Anda sebagai rider', Icon: CalendarCheck, View: JadwalSaya },
+  { nama: 'Laporan Order Saya', desc: 'Laporkan jumlah order dan screenshot yang Anda bawa sendiri sebagai rider', Icon: Receipt, View: ({ me }) => <SayaRider me={me} menu="order" /> },
+  { nama: 'Riwayat Masuk Saya', desc: 'Status absensi Anda sendiri sebagai rider per hari', Icon: History, View: ({ me }) => <SayaRider me={me} menu="masuk" /> },
   { nama: 'Laporan Absensi Harian', desc: 'Tandai rider yang masuk dan tidak masuk hari ini', Icon: ClipboardCheck, View: Daily },
   { nama: 'Jadwal DS', desc: 'Susun jadwal rider di DS Anda per minggu', Icon: CalendarDays, View: JadwalDs },
   { nama: 'Rekap Kehadiran', desc: 'Rekap kehadiran, alpha, dan pengganti di DS Anda', Icon: TrendingUp, View: Rekap },
@@ -319,7 +321,7 @@ function AdminApp({ email }: { email: string }) {
 
   useEffect(() => {
     ;(async () => {
-      const { data, error } = await sb.from('riders').select('id,nama,peran,ds_id,email').eq('email', email.toLowerCase()).maybeSingle()
+      const { data, error } = await sb.from('riders').select('id,nama,peran,ds_id,email,kode_mtr').eq('email', email.toLowerCase()).maybeSingle()
       // gagal memuat (mis. sinyal HP putus) bukan berarti akun tidak terdaftar
       if (error) return setGalat(error.message)
       // DS dimuat lebih dulu daripada me, supaya Captain tidak sempat melihat "belum ditunjuk" sebelum DS-nya terbaca
