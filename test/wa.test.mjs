@@ -119,10 +119,10 @@ test('DS tanpa kebutuhan dan tanpa rider tidak dilaporkan, DS tanpa grup tetap d
 })
 
 // ───────── pesan gabungan (migrasi 0060): DS dengan ID grup yang sama dijadikan satu pesan ringkas ─────────
-const KEMBAR = id(103), SENDIRI = id(104), [K1, K2, X1] = [id(26), id(27), id(28)]
+const KEMBAR = id(103), SENDIRI = id(104), [K1, K2, X1, K3] = [id(26), id(27), id(28), id(29)]
 const gabung = (sesi, n, ds = null) => q(`select * from laporan_wa_gabung($1, ${tgl(n)}, 'https://orca.test', $2) order by ds_namas[1]`, [sesi, ds])
 
-test('gabungan: DS satu grup jadi satu pesan ringkas (satu baris per DS) dengan tautan rekap hari itu; DS dengan grup sendiri tetap rinci', async () => {
+test('gabungan: DS satu grup jadi satu pesan ringkas dengan penanda status, urut dari yang bermasalah, dan tautan rekap hari itu; DS dengan grup sendiri tetap rinci', async () => {
   await db.exec(`
     insert into ds (id, nama, kuota_pagi, kuota_siang, group_wa_id) values ('${KEMBAR}', 'Kembar', 2, 0, '120363000@g.us'), ('${SENDIRI}', 'Sendiri', 1, 0, '120363999@g.us');
     insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
@@ -134,10 +134,11 @@ test('gabungan: DS satu grup jadi satu pesan ringkas (satu baris per DS) dengan 
   const r = await gabung('laporan_pagi', 7)
   const grup = r.find((x) => x.group_wa_id === '120363000@g.us')
   assert.deepEqual(grup.ds_namas, ['Galaxy', 'Kembar'])
-  assert.match(grup.pesan, /^\*Laporan Absensi Shift Pagi\*\n.* · 2 DS\n/)
-  assert.match(grup.pesan, /\*Galaxy\* · 1 dari 2 \(50%\) · 1 belum diabsen/) // DS yang captain-nya belum mengisi tampak jelas
-  assert.match(grup.pesan, /\*Kembar\* · 1 dari 2 \(50%\) · 1 belum diabsen/)
-  assert.ok(grup.pesan.includes(`Detail per rider: https://orca.test/?tab=rekap&tgl=${tanggal}`))
+  assert.ok(grup.pesan.startsWith('📋 *LAPORAN ABSENSI · SHIFT PAGI*\n'))
+  assert.ok(grup.pesan.includes('*Ringkasan:* 2 dari 4 (50%) · 2 DS\n2 rider belum diabsen')) // total semua DS di grup, dan berapa yang belum diisi captain
+  assert.ok(grup.pesan.includes('⚠️ *Galaxy*\n    1 dari 2 (50%)\n    1 belum diabsen')) // DS yang captain-nya belum mengisi tampak jelas
+  assert.ok(grup.pesan.includes('⚠️ *Kembar*\n    1 dari 2 (50%)\n    1 belum diabsen'))
+  assert.ok(grup.pesan.endsWith(`🔗 Detail per rider:\nhttps://orca.test/?tab=rekap&tgl=${tanggal}`))
   assert.doesNotMatch(grup.pesan, /Hadir:/) // ringkas, tanpa rincian per DS
   const sendiri = r.find((x) => x.group_wa_id === '120363999@g.us')
   assert.deepEqual(sendiri.ds_namas, ['Sendiri'])
@@ -147,10 +148,26 @@ test('gabungan: DS satu grup jadi satu pesan ringkas (satu baris per DS) dengan 
 
 test('gabungan: pengingat satu pesan memuat jumlah rider belum diabsen per DS dan tautan halaman absensi', async () => {
   const p = (await gabung('ingat_pagi', 7)).find((x) => x.group_wa_id === '120363000@g.us')
-  assert.match(p.pesan, /^\*Pengingat Absensi Shift Pagi\*\n/)
-  assert.match(p.pesan, /Belum diabsen:\n\*Galaxy\* · 1 rider\n\n\*Kembar\* · 1 rider/)
-  assert.ok(p.pesan.endsWith('Isi absensi: https://orca.test/?tab=absensi'))
+  assert.ok(p.pesan.startsWith('⏰ *PENGINGAT ABSENSI · SHIFT PAGI*\n'))
+  assert.ok(p.pesan.includes('*Belum diabsen:* 2 rider di 2 DS'))
+  assert.ok(p.pesan.includes('⚠️ *Galaxy*\n    1 rider belum diabsen\n\n⚠️ *Kembar*\n    1 rider belum diabsen'))
+  assert.ok(p.pesan.endsWith('🔗 Isi absensi:\nhttps://orca.test/?tab=absensi'))
   assert.equal((await gabung('ingat_pagi', 7)).find((x) => x.group_wa_id === '120363999@g.us'), undefined) // Sendiri semuanya sudah diabsen
+})
+
+test('gabungan: laporan siang (shift terakhir) menampilkan proses fulfillment seharian, pagi dan siang, per DS dan total', async () => {
+  await db.exec(`
+    update ds set kuota_siang = 1 where id in ('${GALAXY}', '${KEMBAR}');
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values ('${K3}', 'M9', 'Kembar Tiga', '${KEMBAR}', 'rider', null, 'aktif')`)
+  await jadwal(7, S, 'siang'); await jadwal(7, K3, 'siang', KEMBAR)
+  await catat(7, S, 'hadir'); await catat(7, K3, 'hadir')
+  const s = (await gabung('laporan_siang', 7)).find((x) => x.group_wa_id === '120363000@g.us')
+  assert.ok(s.pesan.startsWith('📋 *LAPORAN ABSENSI · SHIFT SIANG*\n'))
+  assert.ok(s.pesan.includes('*Fulfillment hari ini:* 4 dari 6 (67%) · 2 DS\nPagi 2/4 · Siang 2/2')) // pagi 1+1 dari 2+2, siang 1+1 dari 1+1
+  assert.ok(s.pesan.includes('⚠️ *Galaxy*\n    2 dari 3 (67%)\n    Pagi 1/2 · Siang 1/1'))
+  assert.ok(s.pesan.includes('⚠️ *Kembar*\n    2 dari 3 (67%)\n    Pagi 1/2 · Siang 1/1'))
+  const pagi = (await gabung('laporan_pagi', 7)).find((x) => x.group_wa_id === '120363000@g.us')
+  assert.doesNotMatch(pagi.pesan, /Fulfillment hari ini/) // laporan pagi hanya menilai shift pagi
 })
 
 test('gabungan: dibatasi ke satu DS (tombol kirim manual) memakai pesan rinci DS itu saja', async () => {

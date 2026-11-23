@@ -5,7 +5,7 @@
 drop function if exists laporan_wa(text, date);
 
 create or replace function laporan_wa(p_sesi text, p_tanggal date default today_wib())
-returns table (ds_id uuid, ds_nama text, group_wa_id text, pesan text, n_terpenuhi int, n_kebutuhan int, n_belum int)
+returns table (ds_id uuid, ds_nama text, group_wa_id text, pesan text, n_terpenuhi int, n_kebutuhan int, n_belum int, n_pagi int, k_pagi int, n_siang int, k_siang int)
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_jenis text := split_part(p_sesi, '_', 1);
@@ -90,6 +90,7 @@ begin
 
     ds_id := d.id; ds_nama := d.nama; group_wa_id := nullif(trim(d.group_wa_id), ''); pesan := v_teks;
     n_terpenuhi := v_terpenuhi; n_kebutuhan := v_keb; n_belum := coalesce(cardinality(v_belum), 0);
+    n_pagi := v_tpagi; k_pagi := v_kpagi; n_siang := v_tsiang; k_siang := v_ksiang;
     return next;
   end loop;
 end $$;
@@ -105,9 +106,13 @@ returns table (group_wa_id text, ds_ids uuid[], ds_namas text[], pesan text)
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_jenis text := split_part(p_sesi, '_', 1);
-  v_label text := initcap(split_part(p_sesi, '_', 2));
+  v_shift text := split_part(p_sesi, '_', 2);
+  v_label text := upper(split_part(p_sesi, '_', 2));
   v_hari text;
   v_tautan text;
+  v_garis text := '━━━━━━━━━━━━━━';
+  v_judul text;
+  v_ringkas text;
   g record;
 begin
   v_hari := (array['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'])[extract(dow from p_tanggal)::int + 1] || ', '
@@ -115,33 +120,56 @@ begin
          || (array['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'])[extract(month from p_tanggal)::int] || ' '
          || extract(year from p_tanggal)::int;
   -- laporan: rekap kehadiran hari itu; pengingat: halaman absensi untuk mengisi
-  v_tautan := case when v_jenis = 'laporan' then 'Detail per rider: ' || p_url || '/?tab=rekap&tgl=' || p_tanggal
-                   else 'Isi absensi: ' || p_url || '/?tab=absensi' end;
+  v_tautan := case when v_jenis = 'laporan' then '🔗 Detail per rider:' || E'\n' || p_url || '/?tab=rekap&tgl=' || p_tanggal
+                   else '🔗 Isi absensi:' || E'\n' || p_url || '/?tab=absensi' end;
   for g in
-    with k as (select coalesce(l.group_wa_id, l.ds_id::text) as kunci, l.* from laporan_wa(p_sesi, p_tanggal) l where p_ds is null or l.ds_id = p_ds)
-    select k.kunci,
-           max(k.group_wa_id) as gid,
-           array_agg(k.ds_id order by k.ds_nama) as ids,
-           array_agg(k.ds_nama order by k.ds_nama) as namas,
+    with k as (
+      select coalesce(l.group_wa_id, l.ds_id::text) as kunci, l.*,
+             -- yang dinilai: shift ini (laporan pagi, pengingat), atau seharian bila laporan siang (shift terakhir = proses fulfillment hari itu)
+             case when v_jenis = 'laporan' and v_shift = 'siang' then l.n_pagi + l.n_siang else l.n_terpenuhi end as t,
+             case when v_jenis = 'laporan' and v_shift = 'siang' then l.k_pagi + l.k_siang else l.n_kebutuhan end as b
+      from laporan_wa(p_sesi, p_tanggal) l
+      where p_ds is null or l.ds_id = p_ds
+    ), r as (
+      select k.*, (k.b > 0 and k.t >= k.b and k.n_belum = 0) as penuh, case when k.b > 0 then k.t::numeric / k.b else 0 end as laju
+      from k
+    )
+    select r.kunci,
+           max(r.group_wa_id) as gid,
+           array_agg(r.ds_id order by r.ds_nama) as ids,
+           array_agg(r.ds_nama order by r.ds_nama) as namas,
            count(*) as n,
-           min(k.pesan) as satu,
-           string_agg(case when v_jenis = 'laporan'
-                           then '*' || k.ds_nama || '* · ' || k.n_terpenuhi || ' dari ' || k.n_kebutuhan
-                                || case when k.n_kebutuhan > 0 then ' (' || round(100.0 * k.n_terpenuhi / k.n_kebutuhan) || '%)' else '' end
-                                || case when k.n_belum > 0 then ' · ' || k.n_belum || ' belum diabsen' else '' end
-                           else '*' || k.ds_nama || '* · ' || k.n_belum || ' rider' end,
-                      E'\n\n' order by k.ds_nama) as baris
-    from k group by k.kunci order by min(k.ds_nama)
+           min(r.pesan) as satu,
+           sum(r.t) as sum_t, sum(r.b) as sum_b,
+           sum(r.n_pagi) as sum_np, sum(r.k_pagi) as sum_kp, sum(r.n_siang) as sum_ns, sum(r.k_siang) as sum_ks,
+           sum(r.n_belum) as sum_belum,
+           -- yang bermasalah di atas (belum penuh, laju terendah dulu), yang penuh di bawah
+           string_agg(case when v_jenis = 'laporan' then
+                             (case when r.penuh then '✅ ' else '⚠️ ' end) || '*' || r.ds_nama || '*' || E'\n    '
+                             || r.t || ' dari ' || r.b || case when r.b > 0 then ' (' || round(100.0 * r.laju) || '%)' else '' end
+                             || case when v_shift = 'siang' then E'\n    Pagi ' || r.n_pagi || '/' || r.k_pagi || ' · Siang ' || r.n_siang || '/' || r.k_siang else '' end
+                             || case when r.n_belum > 0 then E'\n    ' || r.n_belum || ' belum diabsen' else '' end
+                           else '⚠️ *' || r.ds_nama || '*' || E'\n    ' || r.n_belum || ' rider belum diabsen' end,
+                      E'\n\n' order by r.penuh, r.laju, r.ds_nama) as baris
+    from r
+    group by r.kunci
+    order by min(r.ds_nama)
   loop
     group_wa_id := g.gid; ds_ids := g.ids; ds_namas := g.namas;
     if g.gid is null then
-      pesan := g.satu;                                  -- tanpa grup: tidak dikirim, hanya dicatat dilewati
+      pesan := g.satu;                                   -- tanpa grup: tidak dikirim, hanya dicatat dilewati
     elsif g.n = 1 then
       pesan := g.satu || E'\n\n' || v_tautan;            -- satu DS di grupnya sendiri: pesan rinci
     elsif v_jenis = 'laporan' then
-      pesan := '*Laporan Absensi Shift ' || v_label || E'*\n' || v_hari || ' · ' || g.n || E' DS\n\n' || g.baris || E'\n\n' || v_tautan;
+      v_judul := '📋 *LAPORAN ABSENSI · SHIFT ' || v_label || '*';
+      v_ringkas := case when v_shift = 'siang' then '*Fulfillment hari ini:* ' else '*Ringkasan:* ' end
+                   || g.sum_t || ' dari ' || g.sum_b || case when g.sum_b > 0 then ' (' || round(100.0 * g.sum_t / g.sum_b) || '%)' else '' end || ' · ' || g.n || ' DS'
+                   || case when v_shift = 'siang' then E'\nPagi ' || g.sum_np || '/' || g.sum_kp || ' · Siang ' || g.sum_ns || '/' || g.sum_ks else '' end
+                   || case when g.sum_belum > 0 then E'\n' || g.sum_belum || ' rider belum diabsen' else '' end;
+      pesan := v_judul || E'\n' || v_hari || E'\n\n' || v_ringkas || E'\n' || v_garis || E'\n\n' || g.baris || E'\n\n' || v_garis || E'\n' || v_tautan;
     else
-      pesan := '*Pengingat Absensi Shift ' || v_label || E'*\n' || v_hari || E'\n\nBelum diabsen:\n' || g.baris || E'\n\n' || v_tautan;
+      pesan := '⏰ *PENGINGAT ABSENSI · SHIFT ' || v_label || '*' || E'\n' || v_hari || E'\n\n*Belum diabsen:* ' || g.sum_belum || ' rider di ' || g.n || ' DS'
+               || E'\n' || v_garis || E'\n\n' || g.baris || E'\n\n' || v_garis || E'\n' || v_tautan;
     end if;
     return next;
   end loop;
