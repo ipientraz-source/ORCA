@@ -117,3 +117,57 @@ test('DS tanpa kebutuhan dan tanpa rider tidak dilaporkan, DS tanpa grup tetap d
   await db.exec(`update ds set kuota_pagi = 0, kuota_siang = 0 where id = '${ALSUT}'`)
   assert.equal(await pesan('laporan_pagi', 6, 'Alam Sutera'), undefined)
 })
+
+// ───────── pesan gabungan (migrasi 0060): DS dengan ID grup yang sama dijadikan satu pesan ringkas ─────────
+const KEMBAR = id(103), SENDIRI = id(104), [K1, K2, X1] = [id(26), id(27), id(28)]
+const gabung = (sesi, n, ds = null) => q(`select * from laporan_wa_gabung($1, ${tgl(n)}, 'https://orca.test', $2) order by ds_namas[1]`, [sesi, ds])
+
+test('gabungan: DS satu grup jadi satu pesan ringkas (satu baris per DS) dengan tautan rekap hari itu; DS dengan grup sendiri tetap rinci', async () => {
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang, group_wa_id) values ('${KEMBAR}', 'Kembar', 2, 0, '120363000@g.us'), ('${SENDIRI}', 'Sendiri', 1, 0, '120363999@g.us');
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${K1}', 'M6', 'Kembar Satu', '${KEMBAR}', 'rider', null, 'aktif'), ('${K2}', 'M7', 'Kembar Dua', '${KEMBAR}', 'rider', null, 'aktif'),
+      ('${X1}', 'M8', 'Sendiri Satu', '${SENDIRI}', 'rider', null, 'aktif')`)
+  await jadwal(7, P, 'pagi'); await jadwal(7, P2, 'pagi'); await jadwal(7, K1, 'pagi', KEMBAR); await jadwal(7, K2, 'pagi', KEMBAR); await jadwal(7, X1, 'pagi', SENDIRI)
+  await catat(7, P, 'hadir'); await catat(7, K1, 'hadir'); await catat(7, X1, 'hadir') // P2 dan K2 belum diabsen
+  const tanggal = (await q(`select (${tgl(7)})::text as t`))[0].t
+  const r = await gabung('laporan_pagi', 7)
+  const grup = r.find((x) => x.group_wa_id === '120363000@g.us')
+  assert.deepEqual(grup.ds_namas, ['Galaxy', 'Kembar'])
+  assert.match(grup.pesan, /^\*Laporan Absensi Shift Pagi\*\n.* · 2 DS\n/)
+  assert.match(grup.pesan, /\*Galaxy\* · 1 dari 2 \(50%\) · 1 belum diabsen/) // DS yang captain-nya belum mengisi tampak jelas
+  assert.match(grup.pesan, /\*Kembar\* · 1 dari 2 \(50%\) · 1 belum diabsen/)
+  assert.ok(grup.pesan.includes(`Detail per rider: https://orca.test/?tab=rekap&tgl=${tanggal}`))
+  assert.doesNotMatch(grup.pesan, /Hadir:/) // ringkas, tanpa rincian per DS
+  const sendiri = r.find((x) => x.group_wa_id === '120363999@g.us')
+  assert.deepEqual(sendiri.ds_namas, ['Sendiri'])
+  assert.match(sendiri.pesan, /Terpenuhi: 1 dari 1 rider/) // DS sendirian di grupnya: pesan rinci
+  assert.ok(sendiri.pesan.includes(`https://orca.test/?tab=rekap&tgl=${tanggal}`))
+})
+
+test('gabungan: pengingat satu pesan memuat jumlah rider belum diabsen per DS dan tautan halaman absensi', async () => {
+  const p = (await gabung('ingat_pagi', 7)).find((x) => x.group_wa_id === '120363000@g.us')
+  assert.match(p.pesan, /^\*Pengingat Absensi Shift Pagi\*\n/)
+  assert.match(p.pesan, /Belum diabsen:\n\*Galaxy\* · 1 rider\n\n\*Kembar\* · 1 rider/)
+  assert.ok(p.pesan.endsWith('Isi absensi: https://orca.test/?tab=absensi'))
+  assert.equal((await gabung('ingat_pagi', 7)).find((x) => x.group_wa_id === '120363999@g.us'), undefined) // Sendiri semuanya sudah diabsen
+})
+
+test('gabungan: dibatasi ke satu DS (tombol kirim manual) memakai pesan rinci DS itu saja', async () => {
+  const r = await gabung('laporan_pagi', 7, GALAXY)
+  assert.equal(r.length, 1)
+  assert.deepEqual(r[0].ds_namas, ['Galaxy'])
+  assert.match(r[0].pesan, /Terpenuhi: 1 dari 2 rider/)
+  assert.doesNotMatch(r[0].pesan, /Kembar/)
+})
+
+test('gabungan: tidak bisa dipanggil lewat API, dan DS tanpa grup dikembalikan tanpa pesan yang akan dikirim', async () => {
+  await db.exec(`reset role; set role authenticated`)
+  await assert.rejects(q(`select * from laporan_wa_gabung('laporan_pagi')`), /permission denied/)
+  await db.exec(`reset role; set role anon`)
+  await assert.rejects(q(`select * from laporan_wa_gabung('laporan_pagi')`), /permission denied/)
+  await db.exec('reset role')
+  await db.exec(`update ds set group_wa_id = null where id = '${SENDIRI}'`)
+  const r = (await gabung('laporan_pagi', 7)).find((x) => x.ds_namas[0] === 'Sendiri')
+  assert.equal(r.group_wa_id, null) // fungsi kirim-laporan melewatinya
+})

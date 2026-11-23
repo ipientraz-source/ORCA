@@ -2,7 +2,7 @@
 // Dua pemanggil:
 //   1. pg_cron (lihat supabase/jalankan_wa_cron.sql) dengan header x-cron-secret.
 //   2. Tombol "Kirim sekarang" di menu Kelola DS & Captain, dengan login Super-admin (Authorization: Bearer <JWT>).
-// Teks pesan disusun di database (fungsi laporan_wa).
+// Teks pesan disusun di database (fungsi laporan_wa dan laporan_wa_gabung).
 // Secret yang harus diisi (Supabase Dashboard > Edge Functions > Secrets, atau `npx supabase secrets set ...`), jangan ditulis di kode:
 //   FONNTE_TOKEN  token device Fonnte
 //   CRON_SECRET   kata sandi acak yang sama dengan yang dipakai pg_cron di header x-cron-secret (hanya untuk jalur cron)
@@ -67,17 +67,18 @@ Deno.serve(async (req) => {
   const tgl: string = tanggal ?? hariIniWib()
   const kirimUlang = dariSuper && ulang === true
 
-  const { data: rows, error } = await admin.rpc('laporan_wa', { p_sesi: sesi, p_tanggal: tgl })
+  // laporan_wa_gabung: DS yang memakai ID grup yang sama digabung jadi satu pesan ringkas; DS dengan grup sendiri dapat pesan rinci. Keduanya memuat tautan Orca.
+  const { data: rows, error } = await admin.rpc('laporan_wa_gabung', { p_sesi: sesi, p_tanggal: tgl, p_ds: ds_id ?? null })
   if (error) return json({ error: error.message }, 500)
 
   const hasil: { ds: string; status: string; alasan?: string }[] = []
-  const daftar = ((rows ?? []) as { ds_id: string; ds_nama: string; group_wa_id: string | null; pesan: string }[]).filter((r) => !ds_id || r.ds_id === ds_id)
-  for (const r of daftar) {
-    if (!r.group_wa_id) { hasil.push({ ds: r.ds_nama, status: 'dilewati', alasan: 'group_wa_id belum diisi di Kelola DS' }); continue }
-    if (!kirimUlang) {
-      const { data: sudah } = await admin.from('log_wa').select('id').eq('tanggal', tgl).eq('ds_id', r.ds_id).eq('sesi', sesi).eq('status', 'terkirim').maybeSingle()
-      if (sudah) { hasil.push({ ds: r.ds_nama, status: 'dilewati', alasan: 'sudah terkirim' }); continue }
-    }
+  for (const r of (rows ?? []) as { group_wa_id: string | null; ds_ids: string[]; ds_namas: string[]; pesan: string }[]) {
+    const nama = r.ds_namas.join(', ')
+    if (!r.group_wa_id) { hasil.push({ ds: nama, status: 'dilewati', alasan: 'group_wa_id belum diisi di Kelola DS' }); continue }
+    // DS yang sudah tercatat terkirim untuk sesi ini tidak dicatat dua kali; bila semuanya sudah, pesan tidak dikirim lagi
+    const { data: sudah } = await admin.from('log_wa').select('ds_id').eq('tanggal', tgl).eq('sesi', sesi).eq('status', 'terkirim').in('ds_id', r.ds_ids)
+    const sudahId = new Set((sudah ?? []).map((x: { ds_id: string }) => x.ds_id))
+    if (!kirimUlang && r.ds_ids.every((id) => sudahId.has(id))) { hasil.push({ ds: nama, status: 'dilewati', alasan: 'sudah terkirim' }); continue }
 
     let ok = false
     let respons = ''
@@ -93,9 +94,9 @@ Deno.serve(async (req) => {
       respons = String(e).slice(0, 500)
     }
     // Kirim ulang: catatan terkirim yang lama diganti, karena hanya satu baris terkirim per DS per sesi per hari yang diizinkan
-    if (ok && kirimUlang) await admin.from('log_wa').delete().eq('tanggal', tgl).eq('ds_id', r.ds_id).eq('sesi', sesi).eq('status', 'terkirim')
-    await admin.from('log_wa').insert({ tanggal: tgl, ds_id: r.ds_id, sesi, status: ok ? 'terkirim' : 'gagal', respons })
-    hasil.push(ok ? { ds: r.ds_nama, status: 'terkirim' } : { ds: r.ds_nama, status: 'gagal', alasan: respons })
+    if (ok && kirimUlang) await admin.from('log_wa').delete().eq('tanggal', tgl).eq('sesi', sesi).eq('status', 'terkirim').in('ds_id', r.ds_ids)
+    await admin.from('log_wa').insert(r.ds_ids.filter((id) => !(ok && !kirimUlang && sudahId.has(id))).map((ds_id) => ({ tanggal: tgl, ds_id, sesi, status: ok ? 'terkirim' : 'gagal', respons })))
+    hasil.push(ok ? { ds: nama, status: 'terkirim' } : { ds: nama, status: 'gagal', alasan: respons })
     await tidur(JEDA_MS)
   }
   return json({ sesi, tanggal: tgl, hasil })

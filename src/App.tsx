@@ -311,6 +311,8 @@ function PasswordBaru({ selesai }: { selesai: () => void }) {
   )
 }
 
+const tabsDari = (peran: Me['peran']) => peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
+
 function AdminApp({ email }: { email: string }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined)
   const [ds, setDs] = useState<Ds | null>(null)
@@ -336,6 +338,15 @@ function AdminApp({ email }: { email: string }) {
       setMe(data as Me | null)
     })()
   }, [email])
+
+  // Tautan dari pesan WhatsApp: ?tab=rekap&tgl=YYYY-MM-DD membuka Rekap Kehadiran, ?tab=absensi membuka Laporan Absensi Harian
+  useEffect(() => {
+    if (!me) return
+    const t = new URLSearchParams(location.search).get('tab')
+    const nama = t === 'rekap' ? 'Rekap Kehadiran' : t === 'absensi' ? 'Laporan Absensi Harian' : ''
+    const i = tabsDari(me.peran).findIndex((x) => x.nama === nama)
+    if (i >= 0) setTab(i)
+  }, [me])
 
   // Ganti menu: halaman kembali ke atas dan tab yang aktif digeser ke tengah bar tab (di HP bar-nya bisa digulir)
   useEffect(() => {
@@ -365,7 +376,7 @@ function AdminApp({ email }: { email: string }) {
       </div>
     )
 
-  const tabs = me.peran === 'super_admin' ? SUPER : me.peran === 'captain' ? CAPTAIN : me.peran === 'arcon' ? ARCON : me.peran === 'recruiter' ? RECRUITER : RIDER
+  const tabs = tabsDari(me.peran)
   const lokasi = ds ? ds.nama : me.peran === 'arcon' ? `${dsList.length} DS` : ''
   const cur = tabs[tab] ?? tabs[0]
   const peran = me.peran.replace('_', '-')

@@ -35,8 +35,11 @@ const jam = (s: string | null) => (s ? new Date(s).toLocaleString('id-ID', { tim
 const jamCsv = (s: string | null) => (s ? new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' }) : '')
 
 function useRange() {
-  const [mode, setMode] = useState<'harian' | 'mingguan' | 'bulanan' | 'rentang'>('mingguan')
-  const [ref, setRef] = useState(today())
+  // Tautan dari pesan WhatsApp (?tgl=YYYY-MM-DD) membuka tampilan harian di tanggal itu
+  const tglUrl = new URLSearchParams(location.search).get('tgl')
+  const dariTautan = tglUrl && /^\d{4}-\d{2}-\d{2}$/.test(tglUrl) ? tglUrl : null
+  const [mode, setMode] = useState<'harian' | 'mingguan' | 'bulanan' | 'rentang'>(dariTautan ? 'harian' : 'mingguan')
+  const [ref, setRef] = useState(dariTautan ?? today())
   const [akhir, setAkhir] = useState(today()) // ujung rentang sendiri
   const [from, to] =
     mode === 'harian' ? [ref, ref]
