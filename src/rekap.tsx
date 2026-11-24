@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
-import { CalendarDays, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
 import { InputTanggal } from './tanggal'
 import { ambilSemua } from './laporan-order'
+import { DashboardBo } from './dashboard-bo'
 
 type DsRow = {
   ds_id: string; ds_nama: string; dijadwalkan: number; terisi: number; patuh: number; alpha: number; tukar: number
@@ -126,8 +127,8 @@ function Top({ title, rows, k }: { title: string; rows: RiderRow[]; k: 'alpha' |
   )
 }
 
-// Super-admin: ringkasan + jejak
-export function Dashboard() {
+// Ringkasan + jejak berdasarkan absensi Captain
+function DashboardCaptain() {
   const { from, to, ui } = useRange()
   const [semuaPindah, setSemuaPindah] = useState(false)
   const [semuaLog, setSemuaLog] = useState(false)
@@ -265,6 +266,28 @@ export function Dashboard() {
           </ul>
           {log.rows.length > 5 && <button type="button" className="btn2 mt-3 w-full" onClick={() => setSemuaLog(!semuaLog)}>{semuaLog ? 'Tampilkan lebih sedikit' : `Lihat semua (${log.rows.length})`}</button>}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Dashboard Super-admin dan Arcon: dua halaman, absensi Captain dan On-time Performance (clock-in BO, aktual). Satu tombol menggeser ke halaman lainnya.
+export function Dashboard() {
+  const [bo, setBo] = useState(false)
+  const [geser, setGeser] = useState(false) // animasi hanya setelah tombol ditekan, bukan saat Dashboard pertama dibuka
+  const Ikon = bo ? ChevronLeft : ChevronRight
+  return (
+    <div className="overflow-x-clip">
+      <div className="mb-3 flex items-center gap-3">
+        <b className="flex-1 text-base">{bo ? 'On-time Performance' : 'Absensi Captain'}</b>
+        <button type="button" onClick={() => { setGeser(true); setBo(!bo) }} className="btn2 inline-flex items-center gap-1.5" title={bo ? 'Kembali ke dashboard absensi Captain' : 'Geser ke On-time Performance (clock-in BO)'} aria-label={bo ? 'Geser ke dashboard absensi Captain' : 'Geser ke On-time Performance'}>
+          {bo && <Ikon size={16} />}
+          {bo ? 'Absensi Captain' : 'On-time Performance'}
+          {!bo && <Ikon size={16} />}
+        </button>
+      </div>
+      <div key={bo ? 'bo' : 'captain'} className={!geser ? '' : bo ? 'geser-kanan' : 'geser-kiri'}>
+        {bo ? <DashboardBo /> : <DashboardCaptain />}
       </div>
     </div>
   )
