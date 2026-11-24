@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
 import { RiderApp, JadwalSaya, SayaRider } from './rider'
 import { LaporanOrderMenu } from './laporan-order'
+import { PengaturanWa } from './pengaturan-wa'
 import { AbsensiSemua, Daily } from './daily'
 import { JadwalDs, JadwalSemua } from './jadwal'
 import { Dashboard, Rekap } from './rekap'
@@ -29,6 +30,7 @@ const SUPER: Tab[] = [
   { nama: 'Laporan Absensi Harian', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya, lihat rekap per rider, dan kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
   { nama: 'Laporan Order', desc: 'Jumlah order dan screenshot yang dilaporkan rider per hari, di DS mana pun', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
+  { nama: 'Laporan WhatsApp', desc: 'Atur pesan WhatsApp otomatis: isi pesan, jam, hari, DS yang dicakup, dan grup tujuan, lalu lihat riwayat pengiriman', Icon: Send, View: () => <PengaturanWa /> },
   { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur kuota rider, pilih Captain, dan tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
   { nama: 'Armada', desc: 'Data motor listrik, servis rutin, dan laporan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut tiap DS, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
@@ -311,6 +313,8 @@ function PasswordBaru({ selesai }: { selesai: () => void }) {
   )
 }
 
+const tabsDari = (peran: Me['peran']) => peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
+
 function AdminApp({ email }: { email: string }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined)
   const [ds, setDs] = useState<Ds | null>(null)
@@ -336,6 +340,15 @@ function AdminApp({ email }: { email: string }) {
       setMe(data as Me | null)
     })()
   }, [email])
+
+  // Tautan dari pesan WhatsApp: ?tab=rekap&tgl=YYYY-MM-DD membuka Rekap Kehadiran, ?tab=absensi membuka Laporan Absensi Harian
+  useEffect(() => {
+    if (!me) return
+    const t = new URLSearchParams(location.search).get('tab')
+    const nama = t === 'rekap' ? 'Rekap Kehadiran' : t === 'absensi' ? 'Laporan Absensi Harian' : ''
+    const i = tabsDari(me.peran).findIndex((x) => x.nama === nama)
+    if (i >= 0) setTab(i)
+  }, [me])
 
   // Ganti menu: halaman kembali ke atas dan tab yang aktif digeser ke tengah bar tab (di HP bar-nya bisa digulir)
   useEffect(() => {
@@ -365,7 +378,7 @@ function AdminApp({ email }: { email: string }) {
       </div>
     )
 
-  const tabs = me.peran === 'super_admin' ? SUPER : me.peran === 'captain' ? CAPTAIN : me.peran === 'arcon' ? ARCON : me.peran === 'recruiter' ? RECRUITER : RIDER
+  const tabs = tabsDari(me.peran)
   const lokasi = ds ? ds.nama : me.peran === 'arcon' ? `${dsList.length} DS` : ''
   const cur = tabs[tab] ?? tabs[0]
   const peran = me.peran.replace('_', '-')

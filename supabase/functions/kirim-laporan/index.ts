@@ -1,22 +1,22 @@
-// Edge function: kirim laporan absensi dan pengingat ke grup WhatsApp tiap DS lewat Fonnte (https://fonnte.com).
-// Dua pemanggil:
-//   1. pg_cron (lihat supabase/jalankan_wa_cron.sql) dengan header x-cron-secret.
-//   2. Tombol "Kirim sekarang" di menu Kelola DS & Captain, dengan login Super-admin (Authorization: Bearer <JWT>).
-// Teks pesan disusun di database (fungsi laporan_wa).
+// Edge function: kirim pesan WhatsApp (laporan absensi, fulfillment, pengingat captain, budget) lewat Fonnte (https://fonnte.com).
+// Pemanggil:
+//   1. pg_cron tiap 5 menit dengan header x-cron-secret dan body { sesi: 'auto' }: mengirim pesan terjadwal (tabel pesan_wa) yang jamnya sudah tiba.
+//   2. Menu Laporan WhatsApp dan Kelola DS di Orca, dengan login Super-admin (Authorization: Bearer <JWT>).
+// Teks pesan disusun di database (laporan_wa_gabung dan laporan_budget_wa); fungsi ini hanya mengirim dan mencatat ke log_wa.
 // Secret yang harus diisi (Supabase Dashboard > Edge Functions > Secrets, atau `npx supabase secrets set ...`), jangan ditulis di kode:
 //   FONNTE_TOKEN  token device Fonnte
 //   CRON_SECRET   kata sandi acak yang sama dengan yang dipakai pg_cron di header x-cron-secret (hanya untuk jalur cron)
 // Deploy tanpa verifikasi JWT bawaan, karena pengamannya dicek di sini (CRON_SECRET atau Super-admin):
 //   npx supabase functions deploy kirim-laporan --no-verify-jwt
 //
-// Body JSON: { sesi, tanggal?, ds_id?, ulang? }
-//   sesi     ingat_pagi | laporan_pagi | ingat_siang | laporan_siang
-//   tanggal  YYYY-MM-DD, bawaan hari ini (WIB)
-//   ds_id    kirim hanya untuk satu DS (dipakai tombol manual dan untuk uji coba)
-//   ulang    true = kirim lagi walau sesi itu sudah terkirim hari itu (hanya untuk Super-admin, bukan cron)
+// Body JSON (salah satu):
+//   { sesi: 'auto' }                      cron: kirim pesan terjadwal yang jamnya tiba (hanya bila saklar utama dan pesannya hidup)
+//   { pesan_id, tanggal?, ulang? }        Super-admin: kirim satu pesan terjadwal sekarang ('ulang' = kirim lagi walau sudah terkirim)
+//   { aksi: 'daftar_grup' }               Super-admin: daftar grup WhatsApp dari akun Fonnte (untuk dipilih di Orca)
+//   { sesi, tanggal?, ds_id?, ulang? }    cara lama: sesi ingat_/laporan_ untuk grup tiap DS; ds_id = satu DS saja (tombol Kirim manual di Kelola DS)
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-const SESI = ['ingat_pagi', 'laporan_pagi', 'ingat_siang', 'laporan_siang']
+const SESI = ['ingat_pagi', 'laporan_pagi', 'ingat_tengah', 'laporan_tengah', 'ingat_siang', 'laporan_siang']
 const JEDA_MS = 1500 // jeda antar pesan supaya tidak terkesan spam ke WhatsApp
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret' }
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
@@ -32,6 +32,10 @@ function samaPersis(a: string, b: string) {
   for (let i = 0; i < Math.max(x.length, y.length); i++) beda |= (x[i] ?? 0) ^ (y[i] ?? 0)
   return beda === 0
 }
+
+type Baris = { group_wa_id: string | null; ds_ids: string[]; ds_namas: string[]; pesan: string }
+type Pesan = { id: string; nama: string; jenis: string; shift: string | null; cakupan: string; cakupan_ids: string[]; grup: string[] }
+type Hasil = { ds: string; status: string; alasan?: string }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -60,43 +64,119 @@ Deno.serve(async (req) => {
   }
   if (!dariCron && !dariSuper) return json({ error: 'Unauthorized' }, 401)
 
-  const { sesi, tanggal, ds_id, ulang } = await req.json().catch(() => ({}))
-  if (!SESI.includes(sesi)) return json({ error: `sesi harus salah satu dari: ${SESI.join(', ')}` }, 400)
+  const { sesi, tanggal, ds_id, ulang, pesan_id, aksi } = await req.json().catch(() => ({}))
   if (tanggal !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return json({ error: 'tanggal harus berformat YYYY-MM-DD' }, 400)
   if (ds_id !== undefined && ds_id !== null && !(typeof ds_id === 'string' && UUID.test(ds_id))) return json({ error: 'ds_id tidak valid' }, 400)
+  if (pesan_id !== undefined && !(typeof pesan_id === 'string' && UUID.test(pesan_id))) return json({ error: 'pesan_id tidak valid' }, 400)
   const tgl: string = tanggal ?? hariIniWib()
   const kirimUlang = dariSuper && ulang === true
 
-  const { data: rows, error } = await admin.rpc('laporan_wa', { p_sesi: sesi, p_tanggal: tgl })
-  if (error) return json({ error: error.message }, 500)
-
-  const hasil: { ds: string; status: string; alasan?: string }[] = []
-  const daftar = ((rows ?? []) as { ds_id: string; ds_nama: string; group_wa_id: string | null; pesan: string }[]).filter((r) => !ds_id || r.ds_id === ds_id)
-  for (const r of daftar) {
-    if (!r.group_wa_id) { hasil.push({ ds: r.ds_nama, status: 'dilewati', alasan: 'group_wa_id belum diisi di Kelola DS' }); continue }
-    if (!kirimUlang) {
-      const { data: sudah } = await admin.from('log_wa').select('id').eq('tanggal', tgl).eq('ds_id', r.ds_id).eq('sesi', sesi).eq('status', 'terkirim').maybeSingle()
-      if (sudah) { hasil.push({ ds: r.ds_nama, status: 'dilewati', alasan: 'sudah terkirim' }); continue }
-    }
-
-    let ok = false
-    let respons = ''
+  // ── Daftar grup dari Fonnte, untuk dipilih di Orca ──
+  if (aksi === 'daftar_grup') {
+    if (!dariSuper) return json({ error: 'Hanya Super-admin' }, 403)
     try {
-      const f = new FormData()
-      f.append('target', r.group_wa_id)
-      f.append('message', r.pesan)
-      const res = await fetch('https://api.fonnte.com/send', { method: 'POST', headers: { Authorization: token }, body: f })
+      const res = await fetch('https://api.fonnte.com/get-whatsapp-group', { method: 'POST', headers: { Authorization: token } })
       const teks = await res.text()
-      respons = teks.slice(0, 500)
-      try { ok = res.ok && JSON.parse(teks).status === true } catch { ok = false }
+      let j: Record<string, unknown> = {}
+      try { j = JSON.parse(teks) } catch { /* bukan JSON */ }
+      const mentah = (Array.isArray(j.data) ? j.data : Array.isArray(j.groups) ? j.groups : []) as Record<string, unknown>[]
+      const grup = mentah
+        .map((g) => ({ id: String(g.id ?? g.groupId ?? g.jid ?? ''), nama: String(g.name ?? g.subject ?? g.nama ?? '') }))
+        .filter((g) => g.id.endsWith('@g.us'))
+      return json({ grup, ...(grup.length ? {} : { keterangan: 'Fonnte tidak mengembalikan daftar grup. Isi ID grup secara manual.', respons: teks.slice(0, 300) }) })
     } catch (e) {
-      respons = String(e).slice(0, 500)
+      return json({ grup: [], keterangan: 'Daftar grup tidak bisa diambil dari Fonnte. Isi ID grup secara manual.', respons: String(e).slice(0, 200) })
     }
-    // Kirim ulang: catatan terkirim yang lama diganti, karena hanya satu baris terkirim per DS per sesi per hari yang diizinkan
-    if (ok && kirimUlang) await admin.from('log_wa').delete().eq('tanggal', tgl).eq('ds_id', r.ds_id).eq('sesi', sesi).eq('status', 'terkirim')
-    await admin.from('log_wa').insert({ tanggal: tgl, ds_id: r.ds_id, sesi, status: ok ? 'terkirim' : 'gagal', respons })
-    hasil.push(ok ? { ds: r.ds_nama, status: 'terkirim' } : { ds: r.ds_nama, status: 'gagal', alasan: respons })
-    await tidur(JEDA_MS)
   }
-  return json({ sesi, tanggal: tgl, hasil })
+
+  // ── Kirim baris pesan ke tujuan, catat ke log_wa ──
+  // tujuan tetap (grup yang dipilih di pesan) menggantikan grup tiap DS. Terkirim bila SEMUA grup tujuan menerima; bila ada yang gagal, dicatat gagal
+  // dan percobaan berikutnya mengulang ke semua grup (ponytail: belum dicatat per grup).
+  const kirimBaris = async (rows: Baris[], o: { tgl: string; sesi: string; pesanId: string | null; tujuan: string[]; ulang: boolean }): Promise<Hasil[]> => {
+    const hasil: Hasil[] = []
+    for (const r of rows) {
+      const nama = r.ds_namas.join(', ')
+      const tujuan = o.tujuan.length ? o.tujuan : r.group_wa_id ? [r.group_wa_id] : []
+      if (!tujuan.length) { hasil.push({ ds: nama, status: 'dilewati', alasan: 'grup tujuan belum diisi' }); continue }
+      // DS yang sudah tercatat terkirim tidak dicatat dua kali; bila semuanya sudah, pesan tidak dikirim lagi
+      const dasar = admin.from('log_wa').select('ds_id').eq('tanggal', o.tgl).eq('status', 'terkirim').in('ds_id', r.ds_ids)
+      const { data: sudah } = await (o.pesanId ? dasar.eq('pesan_id', o.pesanId) : dasar.eq('sesi', o.sesi).is('pesan_id', null))
+      const sudahId = new Set((sudah ?? []).map((x: { ds_id: string }) => x.ds_id))
+      if (!o.ulang && r.ds_ids.every((id) => sudahId.has(id))) { hasil.push({ ds: nama, status: 'dilewati', alasan: 'sudah terkirim' }); continue }
+
+      let ok = true
+      const respons: string[] = []
+      for (const t of tujuan) {
+        try {
+          const f = new FormData()
+          f.append('target', t)
+          f.append('message', r.pesan)
+          const res = await fetch('https://api.fonnte.com/send', { method: 'POST', headers: { Authorization: token }, body: f })
+          const teks = await res.text()
+          let sukses = false
+          try { sukses = res.ok && JSON.parse(teks).status === true } catch { sukses = false }
+          if (!sukses) { ok = false; respons.push(`${t}: ${teks.slice(0, 200)}`) }
+        } catch (e) {
+          ok = false
+          respons.push(`${t}: ${String(e).slice(0, 200)}`)
+        }
+      }
+      // Kirim ulang: catatan terkirim yang lama diganti, karena hanya satu baris terkirim per DS per pesan (atau sesi) per hari yang diizinkan
+      if (ok && o.ulang) {
+        const hapus = admin.from('log_wa').delete().eq('tanggal', o.tgl).eq('status', 'terkirim').in('ds_id', r.ds_ids)
+        await (o.pesanId ? hapus.eq('pesan_id', o.pesanId) : hapus.eq('sesi', o.sesi).is('pesan_id', null))
+      }
+      await admin.from('log_wa').insert(
+        r.ds_ids.filter((id) => !(ok && !o.ulang && sudahId.has(id))).map((ds_id) => ({ tanggal: o.tgl, ds_id, sesi: o.sesi, pesan_id: o.pesanId, status: ok ? 'terkirim' : 'gagal', respons: respons.join(' | ') || null })),
+      )
+      hasil.push(ok ? { ds: nama, status: 'terkirim' } : { ds: nama, status: 'gagal', alasan: respons.join(' | ') })
+      await tidur(JEDA_MS)
+    }
+    return hasil
+  }
+
+  // ── Satu pesan terjadwal (tabel pesan_wa) untuk satu tanggal ──
+  const kirimPesan = async (id: string, tgl: string, ulang: boolean) => {
+    const { data: p } = await admin.from('pesan_wa').select('id,nama,jenis,shift,cakupan,cakupan_ids,grup').eq('id', id).maybeSingle()
+    if (!p) return { error: 'Pesan tidak ditemukan' }
+    const m = p as Pesan
+    const sesiPesan = m.jenis === 'fulfillment_shift' ? `laporan_${m.shift}` : m.jenis === 'pengingat_captain' ? `ingat_${m.shift}` : m.jenis === 'fulfillment_hari' ? 'laporan_hari' : 'budget'
+    // cakupan DS: semua (null), DS tertentu, atau semua DS milik Arcon tertentu
+    let dsIds: string[] | null = null
+    if (m.cakupan === 'ds') dsIds = m.cakupan_ids
+    if (m.cakupan === 'arcon') dsIds = ((await admin.from('ds').select('id').in('arcon_id', m.cakupan_ids)).data ?? []).map((x: { id: string }) => x.id)
+    if (dsIds && !dsIds.length) return { pesan: m.nama, tanggal: tgl, hasil: [], dilewati: 'Cakupan pesan ini tidak punya DS' }
+    const grup = (m.grup ?? []).map((x) => x.trim()).filter(Boolean)
+    const { data: rows, error } = m.jenis === 'budget'
+      ? await admin.rpc('laporan_budget_wa', { p_tanggal: tgl, p_ds_ids: dsIds, p_grup: grup[0] ?? null })
+      : await admin.rpc('laporan_wa_gabung', { p_sesi: sesiPesan, p_tanggal: tgl, p_ds_ids: dsIds, p_grup_semua: grup[0] ?? null })
+    if (error) return { error: error.message }
+    return { pesan: m.nama, tanggal: tgl, hasil: await kirimBaris((rows ?? []) as Baris[], { tgl, sesi: sesiPesan, pesanId: m.id, tujuan: grup, ulang }) }
+  }
+
+  // ── 'auto': dipanggil cron tiap 5 menit. Database (pesan_wa_jatuh_tempo) menjawab pesan mana yang jamnya sudah tiba; saklar utama mati = tidak ada ──
+  if (sesi === 'auto') {
+    const { data: jatuh, error: e } = await admin.rpc('pesan_wa_jatuh_tempo')
+    if (e) return json({ error: e.message }, 500)
+    const semua = []
+    for (const d of (jatuh ?? []) as { id: string; tanggal: string }[]) semua.push(await kirimPesan(d.id, d.tanggal, false))
+    return json({ sesi: 'auto', jatuh_tempo: semua.length, hasil: semua })
+  }
+
+  // ── Kirim sekarang satu pesan terjadwal (tombol di menu Laporan WhatsApp) ──
+  if (pesan_id) {
+    if (!dariSuper) return json({ error: 'Hanya Super-admin' }, 403)
+    const h = await kirimPesan(pesan_id, tgl, kirimUlang)
+    return json(h, 'error' in h ? 500 : 200)
+  }
+
+  // ── Cara lama: sesi untuk grup tiap DS (cron lama dan tombol Kirim manual di Kelola DS). Saklar utama mati menghentikan cron, bukan tombol manual ──
+  if (!SESI.includes(sesi)) return json({ error: `sesi harus salah satu dari: auto, ${SESI.join(', ')}` }, 400)
+  if (dariCron) {
+    const { data: cfg } = await admin.from('pengaturan_wa').select('aktif').eq('id', 1).maybeSingle()
+    if (cfg?.aktif === false) return json({ sesi, tanggal: tgl, hasil: [], dilewati: 'Pengiriman otomatis dimatikan di menu Laporan WhatsApp' })
+  }
+  const { data: rows, error } = await admin.rpc('laporan_wa_gabung', { p_sesi: sesi, p_tanggal: tgl, p_ds: ds_id ?? null })
+  if (error) return json({ error: error.message }, 500)
+  return json({ sesi, tanggal: tgl, hasil: await kirimBaris((rows ?? []) as Baris[], { tgl, sesi, pesanId: null, tujuan: [], ulang: kirimUlang }) })
 })
