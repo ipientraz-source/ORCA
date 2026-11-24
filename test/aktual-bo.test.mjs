@@ -123,8 +123,34 @@ test('toleransi dan batas shift mengikuti pengaturan_kehadiran', async () => {
   } finally { await q(`update pengaturan_kehadiran set toleransi_menit = 2, batas_pagi = '08:55' where id = 1`) }
 })
 
+test('rider dua shift (long shift): dibaca per mitra dan per shift, clock-in ulang singkat dan shift yang sama diabaikan', async () => {
+  const T = '2026-11-23'
+  await q(`insert into jadwal (tanggal, rider_id, shift, ds_id) values ($1, $2, 'pagi', $4), ($1, $3, 'siang', $4)`, [T, rid(1), rid(3), DSA])
+  // R1 terjadwal pagi: 05:58 lalu 14:00 = pagi dan siang, dua-duanya tepat waktu
+  await masuk(HUB_A, DSA, kode(1), '05:58', T); await masuk(HUB_A, DSA, kode(1), '14:00', T)
+  // R2 tidak terjadwal: 06:00 lalu 06:01 = clock-in ulang, hanya satu kali pagi
+  await masuk(HUB_A, DSA, kode(2), '06:00', T); await masuk(HUB_A, DSA, kode(2), '06:01', T)
+  // R3 terjadwal siang tetapi clock-in 05:30 dan 14:05: dua kali clock-in, jadi dibaca dari jam (pagi tepat, siang telat), bukan dari jadwal
+  await masuk(HUB_A, DSA, kode(3), '05:30', T); await masuk(HUB_A, DSA, kode(3), '14:05', T)
+  // R4: 13:52 lalu 23:34, dua-duanya siang = satu kali siang (clock-in paling awal, tepat)
+  await masuk(HUB_A, DSA, kode(4), '13:52', T); await masuk(HUB_A, DSA, kode(4), '23:34', T)
+  // R5: 08:39 lalu 13:49 = pagi (telat) dan siang (tepat)
+  await masuk(HUB_A, DSA, kode(5), '08:39', T); await masuk(HUB_A, DSA, kode(5), '13:49', T)
+  // R6: 14:00 lalu 14:06 = clock-in ulang, satu kali siang
+  await masuk(HUB_A, DSA, kode(6), '14:00', T); await masuk(HUB_A, DSA, kode(6), '14:06', T)
+  // mitra yang belum terdaftar di Orca, dua shift: dihitung di kedua shift tetapi satu rider di "belum terdaftar"
+  await masuk(HUB_A, DSA, 'MTR0000999', '06:00', T); await masuk(HUB_A, DSA, 'MTR0000999', '14:00', T)
+  const a = (await aktual(T, T)).find((x) => x.ds_id === DSA)
+  // pagi: R1, R2, R3, R5, mitra baru = 5 (tepat: R1, R2, R3, mitra baru = 4). Siang: R1, R3, R4, R5, R6, mitra baru = 6 (tepat: R1, R4, R5, R6, mitra baru = 5)
+  assert.deepEqual({ p: [a.h_pagi, a.t_pagi], t: [a.h_tengah, a.t_tengah], s: [a.h_siang, a.t_siang] }, { p: [5, 4], t: [0, 0], s: [6, 5] })
+  assert.equal(a.hadir, 11)
+  assert.equal(a.tepat, 9)
+  assert.equal(a.tanpa_orca, 1) // satu rider, walau clock-in di dua shift
+  assert.equal(a.terpenuhi, 5) // min(5,3) + min(0,1) + min(6,2): kelebihan rider tidak menambah
+})
+
 test('total per hari untuk tren dijumlahkan dari data per DS', async () => {
-  const h = await sebagaiSuper(() => q(`select * from aktual_bo_harian($1, $2)`, [TGL, '2026-11-22']))
+  const h = await sebagaiSuper(() => q(`select * from aktual_bo_harian($1, $2)`, [TGL, '2026-11-23']))
   const hari = h.find((x) => String(x.tanggal.toISOString?.() ?? x.tanggal).startsWith(TGL))
   const per = await aktual()
   assert.equal(hari.kebutuhan, per.reduce((s, x) => s + x.kebutuhan, 0))
@@ -132,7 +158,7 @@ test('total per hari untuk tren dijumlahkan dari data per DS', async () => {
   assert.equal(hari.hadir, per.reduce((s, x) => s + x.hadir, 0))
   assert.equal(hari.tepat, per.reduce((s, x) => s + x.tepat, 0))
   assert.equal(hari.ds_aktif, per.length)
-  assert.equal(h.length, 3) // 20, 21, dan 22 November: tiap hari ada data
+  assert.equal(h.length, 4) // 20, 21, 22, dan 23 November: tiap hari ada data
 })
 
 test('hari yang belum terjadi dan rentang terlalu panjang tidak menghasilkan baris', async () => {
