@@ -48,8 +48,8 @@ const ALASAN: [string, string][] = [
 export const WARNA: Record<string, string> = {
   hadir: 'bg-foreground text-background',
   alpha: 'bg-danger-soft text-danger',
-  izin: 'bg-border text-foreground/80',
-  sakit: 'bg-border text-foreground/80',
+  izin: 'bg-warning-soft text-warning',
+  sakit: 'bg-warning-soft text-warning',
   tukar: 'bg-primary-soft text-primary-soft-foreground',
   tukar_libur: 'bg-primary-soft text-primary-soft-foreground',
   pengganti: 'bg-primary text-white',
@@ -128,7 +128,12 @@ function DailyInner({ ds }: { ds: Ds }) {
   const tab = pilihTab ?? tabAwal
   const dicari = q.trim().length > 0
   // Mencari rider menelusuri semua shift sekaligus; tanpa kata kunci, hanya shift yang sedang dibuka
-  const shown = listed.filter((r) => (dicari || shiftTab(r.id) === tab) && (r.nama + (r.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()))
+  // Pengganti tanpa jadwal cukup tampil di baris rider yang digantikan (badge "Pengganti: …"), jadi barisnya sendiri disembunyikan; saat dicari tetap muncul
+  const diBarisLain = (r: Rider) => {
+    const a = act(r.id)
+    return !shift(r.id) && a?.status === 'pengganti' && !!a.backup_untuk_id && listed.some((x) => x.id === a.backup_untuk_id)
+  }
+  const shown = listed.filter((r) => (dicari || (shiftTab(r.id) === tab && !diBarisLain(r))) && (r.nama + (r.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()))
   const total = hitung(tab).total
   const terisiTab = hitung(tab).terisi
   const pg = usePage(shown, [q, tgl, tab])
@@ -208,6 +213,7 @@ function DailyInner({ ds }: { ds: Ds }) {
             shiftDari={shift}
             shiftKerja={shiftKerja}
             calon={calonPengganti(r.id)}
+            perlu={riders.rows.filter((x) => ['alpha', 'izin', 'sakit', 'tukar_libur'].includes(act(x.id)?.status ?? '') && !penggantiDari(x.id))}
             locked={locked}
             catat={catat}
             hapus={hapus}
@@ -228,7 +234,7 @@ function DailyInner({ ds }: { ds: Ds }) {
 }
 
 function Baris({
-  r, shift, act, nama, rekan, pengganti, longShift, shiftDari, shiftKerja, calon, locked, catat, hapus, konfirmasi,
+  r, shift, act, nama, rekan, pengganti, longShift, shiftDari, shiftKerja, calon, perlu, locked, catat, hapus, konfirmasi,
 }: {
   r: Rider
   shift?: string
@@ -240,9 +246,10 @@ function Baris({
   shiftDari: (id: string) => string | undefined // shift terjadwal seorang rider pada tanggal ini
   shiftKerja: (id: string) => string | undefined // shift yang benar-benar dikerjakan (rider yang bertukar mengerjakan shift rekannya)
   calon: Rider[] // calon rider pengganti
+  perlu: Rider[] // rider tidak hadir yang belum punya pengganti: pilihan untuk "Jadikan pengganti"
   locked: boolean
   catat: Catat
-  hapus: (id: string) => void
+  hapus: (id: string) => Promise<void> | void
   konfirmasi: (id: string, hadir: boolean) => void
 }) {
   // Form "Tidak hadir" memuat isian yang sudah tersimpan, jadi mengoreksi tidak mengulang dari awal.
@@ -267,6 +274,20 @@ function Baris({
   const [potongan, setPotongan] = useState(awal ? (awal.potongan === true || (awal.potongan == null && awal.status === 'alpha') ? 'ya' : 'tidak') : 'ya') // saran awal: Alpha = Ya, Izin/Sakit = Tidak; Captain bisa mengubah
   const [ins, setIns] = useState(!!pengganti?.insentif)
   const [nominal, setNominal] = useState(pengganti?.insentif ? String(pengganti.insentif) : '')
+  // Rider tanpa jadwal yang hanya tercatat "Hadir": tidak jelas ia menggantikan siapa, shift-nya pun tidak bisa dihitung. Captain diminta memilih.
+  const hadirTanpaJadwal = !shift && act?.status === 'hadir'
+  const butuhPengganti = ['alpha', 'izin', 'sakit', 'tukar_libur'].includes(act?.status ?? '') && !pengganti && !act?.tanpa_pengganti
+  const [bukaGanti, setBukaGanti] = useState(false)
+  const [gantiId, setGantiId] = useState('')
+  const [insG, setInsG] = useState(false)
+  const [nominalG, setNominalG] = useState('')
+  const jadikanPengganti = async () => {
+    if (!gantiId) return toast('Pilih rider yang digantikan')
+    if (insG && angka(nominalG) <= 0) return toast('Isi nominal insentif lebih dari 0')
+    await hapus(r.id) // isian "Hadir" diganti isian pengganti (aturan database: satu isian per rider tanpa jadwal)
+    if (await catat(r.id, 'pengganti', gantiId, undefined, null, insG ? angka(nominalG) : 0)) setBukaGanti(false)
+    else await catat(r.id, 'hadir') // gagal: kembalikan isian semula supaya tidak hilang
+  }
 
   const gantiAlasan = (v: string) => {
     setAlasan(v)
@@ -302,7 +323,7 @@ function Baris({
             {act.status === 'pengganti' && act.backup_untuk_id ? ` untuk ${nama(act.backup_untuk_id)}` : ''}
           </span>
         )}
-        {pengganti && act && act.status !== 'pengganti' && <span className="badge bg-primary-soft text-primary-soft-foreground">Pengganti: {nama(pengganti.rider_id)}</span>}
+        {pengganti && act && act.status !== 'pengganti' && <span className="badge bg-primary-soft text-primary-soft-foreground">Pengganti: {nama(pengganti.rider_id)}{pengganti.insentif ? ` · + Insentif ${rupiah(pengganti.insentif)}` : ''}</span>}
         {act?.status === 'tukar' && act.backup_untuk_id && (
           <span className="badge bg-primary-soft text-primary-soft-foreground">
             Tukar dengan {nama(act.backup_untuk_id)}{shiftDari(act.backup_untuk_id) ? ` (kerja ${shiftDari(act.backup_untuk_id)})` : ''}
@@ -318,6 +339,8 @@ function Baris({
           </span>
         )}
         {act?.tanpa_pengganti && <span className="badge bg-warning-soft text-warning">Tanpa pengganti</span>}
+        {butuhPengganti && <span className="badge bg-warning-soft text-warning">Belum ada pengganti</span>}
+        {hadirTanpaJadwal && <span className="badge bg-warning-soft text-warning">Hadir tanpa jadwal: menggantikan siapa?</span>}
         {act?.potongan === true && <span className="badge bg-danger-soft text-danger">Potongan: Ya</span>}
         {act?.potongan === false && <span className="badge bg-muted text-muted-foreground">Tanpa potongan</span>}
         {!!act?.insentif && <span className="badge bg-success-soft text-success">+ Insentif {rupiah(act.insentif)}</span>}
@@ -340,6 +363,11 @@ function Baris({
           >
             {tukarDua ? 'Tidak hadir' : act?.status === 'tukar' ? '✓ Tukar shift' : act?.status === 'tukar_libur' ? '✓ Tukar libur' : lama ? '✓ Tidak hadir' : 'Tidak hadir'}
           </button>
+          {hadirTanpaJadwal && (
+            <button className="btn2 btn-lg flex-1 whitespace-nowrap md:flex-none" disabled={locked} aria-expanded={bukaGanti} onClick={() => setBukaGanti(!bukaGanti)}>
+              Jadikan pengganti
+            </button>
+          )}
           {tukarDua && !shiftPertama && <span className="self-center text-xs text-muted-foreground">Batalkan tukar lewat shift {shift}</span>}
           {(act || longShift) && shiftPertama && (
             <button className="btn2 w-full md:w-auto" disabled={locked} onClick={() => hapus(r.id)} title={act ? 'Hapus isian, kembali ke belum diabsen' : 'Hapus isian pengganti tambahan'}>
@@ -348,6 +376,24 @@ function Baris({
           )}
         </div>
       </div>
+      {bukaGanti && hadirTanpaJadwal && (
+        <div className="mt-2 pt-2 border-t flex flex-wrap gap-2 items-center">
+          <span className="basis-full text-xs text-muted-foreground">{r.nama} tidak ada di jadwal hari ini. Pilih rider tidak hadir yang ia gantikan, supaya terhitung sebagai pengganti di shift yang benar.</span>
+          {perlu.length ? (
+            <>
+              <RiderPick riders={perlu} value={gantiId} onChange={setGantiId} placeholder="Menggantikan siapa?" />
+              <div className="flex basis-full flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Insentif untuk pengganti?</span>
+                <Pilih nilai={insG ? 'ya' : 'tidak'} ubah={(v) => { setInsG(v === 'ya'); if (v !== 'ya') setNominalG('') }} opsi={[['tidak', 'Tanpa insentif', true], ['ya', '+ Insentif']]} />
+                {insG && <Nominal nilai={nominalG} ubah={setNominalG} />}
+              </div>
+              <button className="btn" disabled={!gantiId || locked} onClick={jadikanPengganti}>Simpan</button>
+            </>
+          ) : (
+            <span className="text-xs text-warning">Belum ada rider tidak hadir yang butuh pengganti. Catat dulu rider yang tidak hadir, lalu pilih pengganti dari barisnya.</span>
+          )}
+        </div>
+      )}
       {buka && (
         <div className="mt-2 pt-2 border-t flex flex-wrap gap-2 items-center">
           <Select className="w-72 max-w-full" value={alasan} onChange={gantiAlasan} opsi={ALASAN.map(([value, label]) => ({ value, label }))} />
