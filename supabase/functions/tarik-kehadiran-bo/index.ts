@@ -1,11 +1,11 @@
 // Sinkron kehadiran dari API backoffice Dash (BO) ke tabel kehadiran_bo. Dipanggil dua cara:
 //   - tombol "Sinkron sekarang" di menu Kehadiran BO (Super-admin yang sedang login), mis. saat sinkron otomatis terputus
 //   - jadwal otomatis (pg_cron) dengan header x-cron-secret = CRON_SECRET dan body {"otomatis":true}
-// Token BO ada di secret BO_API_TOKEN (BO_PROVIDER_ID opsional, bawaan 446 = Alfagift). Yang disimpan hanya kode mitra, hub, jam masuk dan keluar:
-// NIK, nama, selfie, dan GPS dari BO tidak pernah dibawa keluar dari fungsi ini.
+// Token BO ada di secret BO_API_TOKEN (BO_PROVIDER_ID opsional, bawaan 446 = Alfagift). Yang dibawa hanya kode mitra, hub, jam masuk dan keluar, serta NAMA rider
+// (dipakai menambah rider baru ke Orca, migrasi 0068). NIK, selfie, dan GPS dari BO tidak pernah dibawa keluar dari fungsi ini.
 // Deploy: npx supabase functions deploy tarik-kehadiran-bo --no-verify-jwt
 // Body JSON (semua opsional):
-//   dari, sampai  YYYY-MM-DD menurut hari WIB; bawaan kemarin sampai hari ini (kemarin ikut ditarik supaya clock-out yang telat terisi), maksimal 62 hari
+//   dari, sampai  YYYY-MM-DD menurut hari WIB; bawaan 3 hari ke belakang sampai hari ini (clock-out yang telat ikut terisi), maksimal 62 hari
 //   peta          { "nama hub": "id DS" } memasangkan hub baru ke DS yang sudah ada; hub yang tidak dipetakan dibuatkan DS baru
 //   otomatis      true: hub baru langsung dibuatkan DS (jadwal otomatis tidak bisa bertanya). Tanpa ini dan tanpa peta, hub baru ditanyakan dulu ({perlu_pasangan})
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -43,7 +43,7 @@ function bacaZona(tz: unknown): { zona: keyof typeof OFFSET; kenal: boolean } {
   return { zona: 'WIB', kenal: false }
 }
 
-type Baris = { hub: string; kode_mtr: string; tanggal: string; masuk_lokal: string; zona: string; masuk_wib: string; keluar_wib: string | null; sumber: 'api' }
+type Baris = { hub: string; kode_mtr: string; nama: string; tanggal: string; masuk_lokal: string; zona: string; masuk_wib: string; keluar_wib: string | null; sumber: 'api' }
 
 // Satu baris BO -> baris kehadiran, atau null bila tidak lengkap. Waktu dibulatkan ke menit ke bawah, sama dengan data yang dulu diunggah dari CSV
 // (jam clock-in yang sama tidak tercatat dua kali).
@@ -59,7 +59,7 @@ function ubah(x: Record<string, unknown>): { baris: Baris; zonaKenal: boolean } 
   return {
     zonaKenal: kenal,
     baris: {
-      hub, kode_mtr: kode, tanggal: lokal.slice(0, 10), masuk_lokal: lokal.slice(11, 16), zona,
+      hub, kode_mtr: kode, nama: typeof x.driverName === 'string' ? x.driverName.trim() : '', tanggal: lokal.slice(0, 10), masuk_lokal: lokal.slice(11, 16), zona,
       masuk_wib: new Date(menit(masuk)).toISOString(), keluar_wib: Number.isNaN(keluar) ? null : new Date(menit(keluar)).toISOString(), sumber: 'api',
     },
   }
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
   const provider = (Deno.env.get('BO_PROVIDER_ID') ?? '446').trim()
 
   const b = await req.json().catch(() => ({})) as { dari?: string; sampai?: string; peta?: Record<string, string>; otomatis?: boolean }
-  const dari = b.dari ?? hariWib(-1)
+  const dari = b.dari ?? hariWib(-3)
   const sampai = b.sampai ?? hariWib()
   const tgl = /^\d{4}-\d{2}-\d{2}$/
   if (!tgl.test(dari) || !tgl.test(sampai) || dari > sampai) return json({ error: 'Rentang tanggal tidak valid' })
@@ -164,14 +164,14 @@ Deno.serve(async (req) => {
     }
 
     // 4. Simpan lewat impor_kehadiran_bo (satu aturan pencocokan hub, sama untuk semua sumber)
-    const total = { baris_baru: 0, baris_diperbarui: 0, ds_dibuat: 0, ds_dipasang: 0 }
+    const total = { baris_baru: 0, baris_diperbarui: 0, ds_dibuat: 0, ds_dipasang: 0, rider_baru: 0 }
     for (let i = 0; i < baris.length; i += 1000) {
       const { data, error } = await admin.rpc('impor_kehadiran_bo', { p_baris: baris.slice(i, i + 1000), p_peta: b.peta ?? {} })
       if (error) throw new Error(`Gagal menyimpan: ${error.message}`)
       const r = data as typeof total
-      total.baris_baru += r.baris_baru; total.baris_diperbarui += r.baris_diperbarui; total.ds_dibuat += r.ds_dibuat; total.ds_dipasang += r.ds_dipasang
+      total.baris_baru += r.baris_baru; total.baris_diperbarui += r.baris_diperbarui; total.ds_dibuat += r.ds_dibuat; total.ds_dipasang += r.ds_dipasang; total.rider_baru += r.rider_baru ?? 0
     }
-    const ringkas = `${dari} s/d ${sampai}: ${baris.length} baris dari BO, ${total.baris_baru} baru, ${total.baris_diperbarui} diperbarui, ${Math.max(0, baris.length - total.baris_baru - total.baris_diperbarui)} tanpa perubahan${zonaTakDikenal ? `, ${zonaTakDikenal} zona waktu tidak dikenal (dianggap WIB)` : ''}`
+    const ringkas = `${dari} s/d ${sampai}: ${baris.length} baris dari BO, ${total.baris_baru} baru, ${total.baris_diperbarui} diperbarui, ${Math.max(0, baris.length - total.baris_baru - total.baris_diperbarui)} tanpa perubahan, ${total.rider_baru} rider baru${zonaTakDikenal ? `, ${zonaTakDikenal} zona waktu tidak dikenal (dianggap WIB)` : ''}`
     await catat('berhasil', ringkas)
     return json({ rentang: { dari, sampai }, ditarik: baris.length, dilewati, hub: hubs.length, zona_tak_dikenal: zonaTakDikenal, ...total })
   } catch (e) {

@@ -11,11 +11,10 @@ const BARU = '__baru__'
 type Ds = { id: string; nama: string; hub_bo: string | null }
 type Atur = { mulai_pagi: string; mulai_tengah: string; mulai_siang: string; toleransi_menit: number; batas_pagi: string; batas_tengah: string }
 type Sinkron = { sinkron_terakhir: string | null; sinkron_status: 'berhasil' | 'gagal' | null; sinkron_pesan: string | null }
-type Hasil = { rentang?: { dari: string; sampai: string }; ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number }
+type Hasil = { rentang?: { dari: string; sampai: string }; ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number; rider_baru?: number }
 type Perlu = { hub: string; baris: number }
 type HasilHp = { butuh: number; dibaca: number; ditemukan: number; terisi: number }
 
-const RENTANG = [{ value: '1', label: 'Kemarin dan hari ini' }, { value: '7', label: '7 hari terakhir' }, { value: '30', label: '30 hari terakhir' }]
 const waktuWib = (iso: string) => new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 const kunci = (s: string) => new Set((s.toLowerCase().replace(/dark store|toko sapa|alfagift|^ds /g, ' ').match(/[a-z]+/g) ?? []).filter((x) => !['ds', 'kso', 'store'].includes(x)))
@@ -30,7 +29,6 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
   const dsl = useRows<Ds>(() => sb.from('ds').select('id,nama,hub_bo').order('nama'), [])
   const st = useRows<Sinkron>(() => sb.from('pengaturan_kehadiran').select('sinkron_terakhir,sinkron_status,sinkron_pesan').eq('id', 1), [])
   const status = st.rows[0]
-  const [rentang, setRentang] = useState('1')
   const [sibuk, setSibuk] = useState(false)
   const [perlu, setPerlu] = useState<Perlu[] | null>(null)
   const [peta, setPeta] = useState<Record<string, string>>({})
@@ -59,7 +57,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
   const sinkron = async (pasang?: Record<string, string>) => {
     setSibuk(true)
     setHasil(null)
-    const { data, error } = await sb.functions.invoke('tarik-kehadiran-bo', { body: { dari: addDays(today(), -Number(rentang)), sampai: today(), ...(pasang ? { peta: pasang } : {}) } })
+    const { data, error } = await sb.functions.invoke('tarik-kehadiran-bo', { body: pasang ? { peta: pasang } : {} })
     setSibuk(false)
     st.reload()
     if (error || data?.error) return toast(data?.error ?? 'Sinkron belum bisa dijalankan. Coba lagi.')
@@ -97,9 +95,8 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
         </div>
         {!bacaSaja && (
           <>
-            <p className="text-xs text-muted-foreground">Data ditarik otomatis berkala. Bila sinkron otomatis terputus (status di atas gagal atau sudah lama), tarik manual di sini. Aman diulang: baris yang sama tidak tercatat dua kali.</p>
+            <p className="text-xs text-muted-foreground">Data ditarik otomatis berkala. Bila sinkron otomatis terputus (status di atas gagal atau sudah lama), tarik manual di sini: 3 hari ke belakang sampai hari ini. Aman diulang: baris yang sama tidak tercatat dua kali. Rider yang clock-in di BO tetapi belum ada di Orca ditambahkan otomatis sebagai rider aktif; Captain tinggal menonaktifkan yang sudah resign.</p>
             <div className="flex flex-wrap items-center gap-3">
-              <Select className="w-56" value={rentang} onChange={setRentang} opsi={RENTANG} />
               <button className="btn" disabled={sibuk || !!perlu} onClick={() => void sinkron()}>{sibuk ? 'Menarik data…' : 'Sinkron sekarang'}</button>
             </div>
             <div className="space-y-2 border-t border-border pt-3">
@@ -147,6 +144,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             <p>
               {hasil.ditarik.toLocaleString('id-ID')} clock-in ditarik dari BO: <b>{hasil.baris_baru.toLocaleString('id-ID')} baru</b> disimpan, {hasil.baris_diperbarui.toLocaleString('id-ID')} diperbarui (jam clock-out terisi), {Math.max(0, hasil.ditarik - hasil.baris_baru - hasil.baris_diperbarui).toLocaleString('id-ID')} sudah ada dan tidak berubah.
             </p>
+            {(hasil.rider_baru ?? 0) > 0 && <p><b>{hasil.rider_baru} rider baru</b> ditambahkan sebagai rider aktif di DS hub-nya. Captain: nonaktifkan yang sudah resign di Data Rider.</p>}
             <p>
               Hub BO: {hasil.ds_dipasang} dicocokkan ke DS lama, <b>{hasil.ds_dibuat} DS baru dibuat</b>.
               {hasil.ds_dibuat > 0 ? ' DS baru budget-nya masih 0: isi di Kelola DS, dan cek apakah itu memang DS baru, bukan DS lama dengan nama berbeda.' : ''}
