@@ -1,16 +1,17 @@
-// Menu Kehadiran BO: sinkron clock-in rider dari API backoffice Dash (otomatis berkala; tombol "Sinkron sekarang" untuk menarik manual bila sinkron terputus),
+// Menu Clock-in BO: sinkron clock-in rider dari API backoffice Dash (otomatis berkala; tombol "Sinkron sekarang" untuk menarik manual bila sinkron terputus),
 // pasangkan hub baru ke DS (atau buat DS baru), lihat ringkasan, dan atur jam shift untuk menilai tepat waktu. BO adalah sumber daftar DS.
 // Yang disimpan hanya kode mitra, hub, jam masuk dan keluar (NIK, nama, selfie, dan GPS tidak dibawa). Penilaian shift dan tepat waktu dilakukan Orca, bukan BO.
 import { useEffect, useMemo, useState } from 'react'
-import { sb, today, addDays, hari, useRows, ok, toast, Err, Field, Kosong, Select, usePage, Pagination } from './lib'
+import { sb, today, addDays, hari, tanggal, useRows, ok, toast, Err, Field, Kosong, Select, usePage, Pagination } from './lib'
 import { persenBo, teksPersen, type AktualBo } from './aktual-bo'
+import { SelShift } from './aktual-bo-ui'
 
 const BARU = '__baru__'
 
 type Ds = { id: string; nama: string; hub_bo: string | null }
 type Atur = { mulai_pagi: string; mulai_tengah: string; mulai_siang: string; toleransi_menit: number; batas_pagi: string; batas_tengah: string }
 type Sinkron = { sinkron_terakhir: string | null; sinkron_status: 'berhasil' | 'gagal' | null; sinkron_pesan: string | null }
-type Hasil = { ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number }
+type Hasil = { rentang?: { dari: string; sampai: string }; ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number }
 type Perlu = { hub: string; baris: number }
 
 const RENTANG = [{ value: '1', label: 'Kemarin dan hari ini' }, { value: '7', label: '7 hari terakhir' }, { value: '30', label: '30 hari terakhir' }]
@@ -62,7 +63,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
     if (data.perlu_pasangan) return setPerlu(data.perlu_pasangan as Perlu[])
     setPerlu(null)
     setHasil(data as Hasil)
-    toast.ok('Kehadiran BO tersinkron')
+    toast.ok('Clock-in BO tersinkron')
     dsl.reload()
     ring.reload()
   }
@@ -73,7 +74,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
       <Err msg={dsl.err || ring.err || st.err} />
       <div className="card !mb-0 space-y-3">
         <div>
-          <b className="block">Sinkron kehadiran dari BO</b>
+          <b className="block">Sinkron clock-in dari BO</b>
           <p className="text-xs text-muted-foreground">
             {status?.sinkron_terakhir
               ? <>Sinkron terakhir {waktuWib(status.sinkron_terakhir)}: <span className={status.sinkron_status === 'gagal' ? 'text-danger' : 'text-success'}>{status.sinkron_status === 'gagal' ? 'gagal' : 'berhasil'}</span>{status.sinkron_pesan ? ` · ${status.sinkron_pesan}` : ''}</>
@@ -119,10 +120,16 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
           </div>
         )}
         {hasil && (
-          <p className="rounded-md bg-success-soft p-3 text-sm text-success">
-            Selesai: {hasil.ditarik} baris dari BO, {hasil.baris_baru} baru, {hasil.baris_diperbarui} diperbarui · {hasil.ds_dipasang} DS dipasangkan, {hasil.ds_dibuat} DS baru dibuat.
-            {hasil.ds_dibuat > 0 ? ' DS baru belum punya budget, isi di Kelola DS.' : ''}
-          </p>
+          <div className="space-y-1 rounded-md bg-success-soft p-3 text-sm text-success">
+            <b className="block">Selesai{hasil.rentang ? ` · ${tanggal(hasil.rentang.dari)} s/d ${tanggal(hasil.rentang.sampai)}` : ''}</b>
+            <p>
+              {hasil.ditarik.toLocaleString('id-ID')} clock-in ditarik dari BO: <b>{hasil.baris_baru.toLocaleString('id-ID')} baru</b> disimpan, {hasil.baris_diperbarui.toLocaleString('id-ID')} diperbarui (jam clock-out terisi), {Math.max(0, hasil.ditarik - hasil.baris_baru - hasil.baris_diperbarui).toLocaleString('id-ID')} sudah ada dan tidak berubah.
+            </p>
+            <p>
+              Hub BO: {hasil.ds_dipasang} dicocokkan ke DS lama, <b>{hasil.ds_dibuat} DS baru dibuat</b>.
+              {hasil.ds_dibuat > 0 ? ' DS baru budget-nya masih 0: isi di Kelola DS, dan cek apakah itu memang DS baru, bukan DS lama dengan nama berbeda.' : ''}
+            </p>
+          </div>
         )}
       </div>
 
@@ -140,7 +147,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             </p>
             <div className="overflow-x-auto">
               <table className="tbl w-full text-sm">
-                <thead><tr><th>DS</th><th>Pagi</th><th>Middle</th><th>Siang</th><th>Tepat waktu</th><th>Catatan</th></tr></thead>
+                <thead><tr><th>DS</th><th className="text-center">Pagi</th><th className="text-center">Middle</th><th className="text-center">Siang</th><th>Tepat waktu</th><th>Catatan</th></tr></thead>
                 <tbody>
                   {pg.rows.map((r) => (
                     <tr key={r.ds_id}>
@@ -169,12 +176,6 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
       <JamShift bacaSaja={bacaSaja} />
     </div>
   )
-}
-
-// Sel satu shift: "hadir/budget" dan jumlah tepat waktunya; kosong bila shift itu tidak dipakai hari itu
-function SelShift({ b, h, t }: { b: number; h: number; t: number }) {
-  if (!b && !h) return <td className="text-muted-foreground">–</td>
-  return <td>{h}/{b}{h > 0 && <span className="ml-1 text-xs text-muted-foreground">· {t} tepat</span>}</td>
 }
 
 // Jam mulai tiap shift dan toleransi untuk menilai tepat waktu; batas jam untuk menentukan shift rider yang tidak terjadwal

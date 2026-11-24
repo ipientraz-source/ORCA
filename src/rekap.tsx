@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
-import { CalendarDays, ChevronLeft, ChevronRight, ClipboardX, Download, TrendingUp, UserX } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, ClipboardX, Download, Gauge, TrendingUp, UserX } from 'lucide-react'
 import { InputTanggal } from './tanggal'
 import { ambilSemua } from './laporan-order'
 import { DashboardBo } from './dashboard-bo'
@@ -275,15 +275,15 @@ function DashboardCaptain() {
 export function Dashboard() {
   const [bo, setBo] = useState(false)
   const [geser, setGeser] = useState(false) // animasi hanya setelah tombol ditekan, bukan saat Dashboard pertama dibuka
-  const Ikon = bo ? ChevronLeft : ChevronRight
+  const Ikon = bo ? ClipboardCheck : Gauge // ikon halaman tujuan
+  const tujuan = bo ? 'Absensi Captain' : 'On-time Performance'
   return (
     <div className="overflow-x-clip">
       <div className="mb-3 flex items-center gap-3">
         <b className="flex-1 text-base">{bo ? 'On-time Performance' : 'Absensi Captain'}</b>
-        <button type="button" onClick={() => { setGeser(true); setBo(!bo) }} className="btn2 inline-flex items-center gap-1.5" title={bo ? 'Kembali ke dashboard absensi Captain' : 'Geser ke On-time Performance (clock-in BO)'} aria-label={bo ? 'Geser ke dashboard absensi Captain' : 'Geser ke On-time Performance'}>
-          {bo && <Ikon size={16} />}
-          {bo ? 'Absensi Captain' : 'On-time Performance'}
-          {!bo && <Ikon size={16} />}
+        <button type="button" onClick={() => { setGeser(true); setBo(!bo) }} className="inline-flex items-center gap-1.5 rounded-md border border-primary/50 bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary-soft-foreground transition-colors hover:bg-primary hover:text-primary-foreground" title={`Geser ke ${tujuan}`} aria-label={`Geser ke ${tujuan}`}>
+          <Ikon size={15} />
+          {bo ? 'Absensi' : 'On-time'}
         </button>
       </div>
       <div key={bo ? 'bo' : 'captain'} className={!geser ? '' : bo ? 'geser-kanan' : 'geser-kiri'}>

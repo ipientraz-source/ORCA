@@ -92,6 +92,7 @@ test('fulfillment aktual: terpenuhi per shift dibatasi budget, kelebihan rider t
 test('versi captain berdampingan dan rider yang belum terdaftar di Orca', async () => {
   const a = (await aktual()).find((x) => x.ds_id === DSA)
   assert.equal(a.captain, 2) // R1 dan R2 hadir menurut captain, R3 alpha
+  assert.equal(a.diabsen, 3) // tiga isian absensi (hadir, hadir, alpha): Captain sudah mengisi
   assert.equal(a.tanpa_orca, 1)
 })
 
@@ -99,6 +100,7 @@ test('DS tanpa budget tetap tampil (kebutuhan 0); DS tanpa jadwal dan tanpa cloc
   const hari = await aktual()
   const b = hari.find((x) => x.ds_id === DSB)
   assert.deepEqual({ kebutuhan: b.kebutuhan, terpenuhi: b.terpenuhi, hadir: b.hadir, siang: [b.h_siang, b.t_siang] }, { kebutuhan: 0, terpenuhi: 0, hadir: 1, siang: [1, 1] }) // 13:50 WITA <= 14:02
+  assert.equal(b.diabsen, 0) // Captain belum mengisi apa pun: layar menulis "belum diabsen", bukan 0 hadir
   assert.ok(!hari.some((x) => x.ds_id === DSC || x.ds_id === DSD))
   const d = (await aktual('2026-11-22', '2026-11-22')).find((x) => x.ds_id === DSD)
   assert.deepEqual({ kebutuhan: d.kebutuhan, terpenuhi: d.terpenuhi, hadir: d.hadir }, { kebutuhan: 4, terpenuhi: 0, hadir: 0 })

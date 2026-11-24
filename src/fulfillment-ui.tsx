@@ -52,7 +52,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Persen rider yang benar-benar bekerja dari yang diminta client. Contoh: diminta 10, bekerja 9 = 90%. Rider lebih dan shift yang belum dilaporkan tidak dihitung.
+        Persen rider yang benar-benar bekerja dari budget (jumlah rider yang diminta client per shift). Contoh: budget 10, bekerja 9 = 90%. Rider lebih dan shift yang belum dilaporkan tidak dihitung.
       </p>
       <Err msg={f.err} />
       {!harian.length ? (
@@ -70,7 +70,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
                 {total.terpenuhi}
                 <span className="text-base text-muted-foreground">/{total.kebutuhan}</span>
               </div>
-              <div className="text-xs text-muted-foreground">Bekerja / diminta</div>
+              <div className="text-xs text-muted-foreground">Bekerja / budget</div>
             </div>
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">{total.kelebihan}</div>
@@ -113,7 +113,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             <div className="mb-4 overflow-x-auto rounded-xl border border-border">
               <table className="tbl">
                 <thead>
-                  <tr><th>DS</th><th>Rider bekerja</th><th>Rider diminta</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Hari laporan belum lengkap</th></tr>
+                  <tr><th>DS</th><th>Rider bekerja</th><th>Budget</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Hari laporan belum lengkap</th></tr>
                 </thead>
                 <tbody>
                   {perDs.map((d) => (
@@ -135,7 +135,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             <div className="overflow-x-auto">
               <table className="tbl">
                 <thead>
-                  <tr><th>Tanggal</th><th>Rider diminta</th><th>Rider bekerja</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Catatan</th></tr>
+                  <tr><th>Tanggal</th><th>Budget</th><th>Rider bekerja</th><th>Rider lebih</th><th>Persen terpenuhi</th><th>Catatan</th></tr>
                 </thead>
                 <tbody>
                   {pg.rows.map((h) => (

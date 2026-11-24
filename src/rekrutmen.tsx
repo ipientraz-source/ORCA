@@ -132,7 +132,7 @@ function DaftarKandidat({ me }: { me: Me }) {
         <div className="p-4 pb-2">
           <div className="lbl !mb-0">Kebutuhan rekrut per DS</div>
           <p className="text-xs text-muted-foreground">
-            Dibutuhkan = kuota harian × 7 ÷ rata-rata hari kerja (HK) per rider. Dengan {porsi}% rider 6 HK dan {100 - porsi}% rider 5 HK, rata-rata {(5 + porsi / 100).toLocaleString('id-ID')} HK, jadi kuota × {(7 / (5 + porsi / 100)).toFixed(2).replace('.', ',')}. "Perlu dicari" = kekurangan yang belum tertutup kandidat yang sedang diproses.
+            Dibutuhkan = budget harian × 7 ÷ rata-rata hari kerja (HK) per rider. Dengan {porsi}% rider 6 HK dan {100 - porsi}% rider 5 HK, rata-rata {(5 + porsi / 100).toLocaleString('id-ID')} HK, jadi budget × {(7 / (5 + porsi / 100)).toFixed(2).replace('.', ',')}. "Perlu dicari" = kekurangan yang belum tertutup kandidat yang sedang diproses.
           </p>
           {me.peran === 'super_admin' && (
             <div className="mt-2 flex items-center gap-2 text-xs">
@@ -144,7 +144,7 @@ function DaftarKandidat({ me }: { me: Me }) {
         </div>
         <div className="overflow-x-auto">
           <table className="tbl">
-            <thead><tr><th className="text-left">DS</th><th>Kuota/hari</th><th>Dibutuhkan</th><th>Rider aktif</th><th>Kurang</th><th>Diproses</th><th>Perlu dicari</th></tr></thead>
+            <thead><tr><th className="text-left">DS</th><th>Budget/hari</th><th>Dibutuhkan</th><th>Rider aktif</th><th>Kurang</th><th>Diproses</th><th>Perlu dicari</th></tr></thead>
             <tbody>
               {kb.rows.map((d) => {
                 const sisa = Math.max(0, d.kurang - d.kandidat_proses)

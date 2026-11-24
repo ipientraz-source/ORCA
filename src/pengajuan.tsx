@@ -127,7 +127,7 @@ function FormDsBaru({ selesai }: { selesai: () => void }) {
   const [sibuk, setSibuk] = useState(false)
   const kirim = async (e: FormEvent) => {
     e.preventDefault()
-    if (f.pagi === '' || f.siang === '') return toast('Isi kebutuhan rider pagi dan siang')
+    if (f.pagi === '' || f.siang === '') return toast('Isi budget rider pagi dan siang')
     setSibuk(true)
     if (await ok(sb.rpc('ajukan_ds_baru', { p_nama: f.nama, p_pagi: Number(f.pagi), p_siang: Number(f.siang), p_alasan: f.alasan }))) {
       toast.ok('Pengajuan DS baru terkirim, menunggu Super-admin')

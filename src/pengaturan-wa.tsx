@@ -6,10 +6,10 @@ import { sb, useRows, ok, toast, konfirmasi, Err, Field, Kosong, Select, usePage
 
 const FORMAT_GRUP = /^\d+(-\d+)?@g\.us$/
 const JENIS = [
-  { value: 'fulfillment_shift', label: 'Fulfillment rate per shift', perShift: true, ket: 'Terpenuhi dari kebutuhan rider di satu shift, per DS (✅ penuh, ⚠️ belum), yang bermasalah di atas.' },
+  { value: 'fulfillment_shift', label: 'Fulfillment rate per shift', perShift: true, ket: 'Terpenuhi dari budget di satu shift, per DS (✅ penuh, ⚠️ belum), yang bermasalah di atas.' },
   { value: 'fulfillment_hari', label: 'Fulfillment seharian (pagi + Middle + siang)', perShift: false, ket: 'Proses fulfillment satu hari penuh: total dan rincian pagi, Middle, siang per DS.' },
   { value: 'pengingat_captain', label: 'Pengingat captain yang belum mengisi absensi', perShift: true, ket: 'Daftar DS dan jumlah rider yang absensinya belum diisi captain di shift itu.' },
-  { value: 'budget', label: 'Budget (kebutuhan rider per shift)', perShift: false, ket: 'Kebutuhan rider per shift untuk tiap DS hari ini. Wajib memilih grup.' },
+  { value: 'budget', label: 'Budget (jumlah rider per shift)', perShift: false, ket: 'Budget rider per shift untuk tiap DS hari ini. Wajib memilih grup.' },
   { value: 'ringkasan_mingguan', label: 'Ringkasan mingguan (budget, fulfillment, rider baru, churn)', perShift: false, ket: 'Minggu Senin–Minggu yang baru lewat, dibanding minggu sebelumnya, dengan tanda ▲▼. Biasanya dikirim hari Senin.' },
   { value: 'ringkasan_bulanan', label: 'Ringkasan bulanan (budget, fulfillment, rider baru, churn)', perShift: false, ket: 'Bulan yang baru lewat, dibanding bulan sebelumnya, dengan tanda ▲▼. Dikirim pada tanggal yang dipilih tiap bulan.' },
 ]
