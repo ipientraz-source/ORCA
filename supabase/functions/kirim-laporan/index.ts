@@ -140,22 +140,33 @@ Deno.serve(async (req) => {
     const { data: p } = await admin.from('pesan_wa').select('id,nama,jenis,shift,cakupan,cakupan_ids,grup').eq('id', id).maybeSingle()
     if (!p) return { error: 'Pesan tidak ditemukan' }
     const m = p as Pesan
-    const sesiPesan = m.jenis === 'fulfillment_shift' ? `laporan_${m.shift}` : m.jenis === 'pengingat_captain' ? `ingat_${m.shift}` : m.jenis === 'fulfillment_hari' ? 'laporan_hari' : 'budget'
+    // Pesan terjadwal dikirim sekali per tanggal. Sebelumnya hanya dicek per DS, jadi DS yang baru ikut di tick berikutnya (jendela 30 menit,
+    // cron tiap 5 menit) memicu pesan kedua ke grup yang sama. "Kirim sekarang" (ulang) sengaja melewati pengecekan ini.
+    if (!ulang) {
+      const { count } = await admin.from('log_wa').select('id', { count: 'exact', head: true }).eq('pesan_id', id).eq('tanggal', tgl).eq('status', 'terkirim')
+      if ((count ?? 0) > 0) return { pesan: m.nama, tanggal: tgl, hasil: [], dilewati: 'Sudah terkirim hari ini' }
+    }
+    const sesiPesan = m.jenis === 'fulfillment_shift' ? `laporan_${m.shift}` : m.jenis === 'pengingat_captain' ? `ingat_${m.shift}` : m.jenis === 'fulfillment_hari' ? 'laporan_hari' : m.jenis
     // cakupan DS: semua (null), DS tertentu, atau semua DS milik Arcon tertentu
     let dsIds: string[] | null = null
     if (m.cakupan === 'ds') dsIds = m.cakupan_ids
     if (m.cakupan === 'arcon') dsIds = ((await admin.from('ds').select('id').in('arcon_id', m.cakupan_ids)).data ?? []).map((x: { id: string }) => x.id)
     if (dsIds && !dsIds.length) return { pesan: m.nama, tanggal: tgl, hasil: [], dilewati: 'Cakupan pesan ini tidak punya DS' }
     const grup = (m.grup ?? []).map((x) => x.trim()).filter(Boolean)
+    // budget dan ringkasan satu pesan untuk semua DS terpilih; selebihnya laporan_wa_gabung (grup tiap DS bila tidak ada grup pilihan)
     const { data: rows, error } = m.jenis === 'budget'
       ? await admin.rpc('laporan_budget_wa', { p_tanggal: tgl, p_ds_ids: dsIds, p_grup: grup[0] ?? null })
-      : await admin.rpc('laporan_wa_gabung', { p_sesi: sesiPesan, p_tanggal: tgl, p_ds_ids: dsIds, p_grup_semua: grup[0] ?? null })
+      : m.jenis === 'ringkasan_mingguan' || m.jenis === 'ringkasan_bulanan'
+        ? await admin.rpc('laporan_ringkasan_wa', { p_periode: m.jenis === 'ringkasan_mingguan' ? 'mingguan' : 'bulanan', p_tanggal: tgl, p_ds_ids: dsIds, p_grup: grup[0] ?? null })
+        : await admin.rpc('laporan_wa_gabung', { p_sesi: sesiPesan, p_tanggal: tgl, p_ds_ids: dsIds, p_grup_semua: grup[0] ?? null })
     if (error) return { error: error.message }
     return { pesan: m.nama, tanggal: tgl, hasil: await kirimBaris((rows ?? []) as Baris[], { tgl, sesi: sesiPesan, pesanId: m.id, tujuan: grup, ulang }) }
   }
 
   // ── 'auto': dipanggil cron tiap 5 menit. Database (pesan_wa_jatuh_tempo) menjawab pesan mana yang jamnya sudah tiba; saklar utama mati = tidak ada ──
   if (sesi === 'auto') {
+    // Foto budget harian (kuota efektif hari ini) untuk riwayat naik-turun budget di ringkasan; hanya menulis bila berubah, jadi murah dipanggil tiap 5 menit
+    await admin.rpc('catat_budget_snapshot')
     const { data: jatuh, error: e } = await admin.rpc('pesan_wa_jatuh_tempo')
     if (e) return json({ error: e.message }, 500)
     const semua = []

@@ -328,3 +328,121 @@ test('budget: kebutuhan rider per shift per DS (kuota khusus hari itu menang), h
   await assert.rejects(q(`select * from laporan_budget_wa()`), /permission denied/)
   await db.exec('reset role')
 })
+
+// ───────── ringkasan mingguan dan bulanan (migrasi 0061) ─────────
+test('ringkasan mingguan: budget rata-rata, fulfillment, rider baru dan churn dengan tanda naik/turun dibanding minggu sebelumnya', async () => {
+  const [RD, R1, R2, R3, R4] = [id(50), id(51), id(52), id(53), id(54)]
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang, group_wa_id) values ('${RD}', 'Ringkas', 2, 1, null);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${R1}', 'N1', 'Ring Satu', '${RD}', 'rider', null, 'aktif'), ('${R2}', 'N2', 'Ring Dua', '${RD}', 'rider', null, 'aktif'),
+      ('${R3}', 'N3', 'Ring Tiga', '${RD}', 'rider', null, 'aktif'), ('${R4}', 'N4', 'Ring Empat', '${RD}', 'rider', null, 'aktif')`)
+  // Senin minggu lalu (P) dan minggu sebelumnya (Q)
+  const { p, q: qq } = (await q(`select (date_trunc('week', today_wib())::date - 7)::text as p, (date_trunc('week', today_wib())::date - 14)::text as q`))[0]
+  const hari = (tgl, rider, shift, status) => db.exec(`
+    insert into jadwal (tanggal, rider_id, shift, ds_id) values ('${tgl}', '${rider}', '${shift}', '${RD}');
+    ${status ? `insert into actual_harian (tanggal, rider_id, ds_id, status) values ('${tgl}', '${rider}', '${RD}', '${status}')` : ''}`)
+  // P: pagi 1 dari 2 (Ring Dua belum hadir), siang 1 dari 1  => 2 dari 3 = 67%
+  await hari(p, R1, 'pagi', 'hadir'); await hari(p, R2, 'pagi', null); await hari(p, R3, 'siang', 'hadir')
+  // Q: semua hadir => 3 dari 3 = 100%
+  await hari(qq, R1, 'pagi', 'hadir'); await hari(qq, R2, 'pagi', 'hadir'); await hari(qq, R3, 'siang', 'hadir')
+  // rider: satu bergabung dan satu berhenti (mengundurkan diri) di minggu P
+  await db.exec(`
+    insert into rider_peristiwa (rider_id, jenis, tanggal) values ('${R4}', 'bergabung', '${p}'::date + 1);
+    insert into rider_peristiwa (rider_id, jenis, tanggal, kategori) values ('${R1}', 'berhenti', '${p}'::date + 2, 'mengundurkan_diri')`)
+  const ringkas = async (periode = 'mingguan') => (await q(`select * from laporan_ringkasan_wa($1, today_wib(), 'https://orca.test', array['${RD}']::uuid[], '120363555@g.us')`, [periode]))[0]
+
+  const m = await ringkas()
+  assert.equal(m.group_wa_id, '120363555@g.us')
+  assert.deepEqual(m.ds_namas, ['Ringkas'])
+  assert.ok(m.pesan.startsWith('📊 *RINGKASAN MINGGUAN*\n'))
+  assert.ok(m.pesan.includes('*Budget* (kebutuhan rider per hari, rata-rata)\n  Pagi 2 = sama · Siang 1 = sama\n  Total 3 = sama (+0,0%)'))
+  assert.ok(m.pesan.includes('*Fulfillment rate*\n  67% ▼ -33 poin (sebelumnya 100%)\n  Pagi 50% · Siang 100%'))
+  assert.ok(m.pesan.includes('  Baru 1 · Kembali 0 · Berhenti 1 ▲ +1\n  Bersih = 0'))
+  assert.ok(m.pesan.includes('Berhenti: mengundurkan diri 1, diberhentikan 0, kontrak selesai 0'))
+  assert.ok(m.pesan.includes('⚠️ *Perlu perhatian* (fulfillment di bawah 95%)\n  Ringkas · 67% ▼ -33 poin'))
+  assert.ok(m.pesan.endsWith(`🔗 Detail lengkap:\nhttps://orca.test/?tab=rekap&tgl=${(await q(`select ('${p}'::date + 6)::text as t`))[0].t}`))
+  assert.doesNotMatch(m.pesan, /Middle/) // DS tanpa Middle: tidak ditampilkan
+
+  // Budget naik: foto harian untuk hari di minggu P (pagi 4) dipakai menggantikan kuota DS saat ini
+  await db.exec(`insert into budget_snapshot (tanggal, ds_id, kuota_pagi, kuota_tengah, kuota_siang) values ('${p}', '${RD}', 4, 0, 1)`)
+  const n = await ringkas()
+  assert.ok(n.pesan.includes('  Pagi 4 ▲ +2 · Siang 1 = sama\n  Total 5 ▲ +2 (+66,7%)'))
+  assert.ok(n.pesan.includes('  40% ▼ -60 poin (sebelumnya 100%)')) // 2 terpenuhi dari kebutuhan 5
+
+  // Bulanan: bulan lalu tidak punya jadwal untuk DS ini, jadi tidak ada pesan; periode tidak dikenal ditolak
+  assert.equal(await ringkas('bulanan'), undefined)
+  await assert.rejects(ringkas('tahunan'), /Periode tidak dikenal/)
+})
+
+test('ringkasan bulanan: judul bulan, pembanding bulan sebelumnya, dan ditandai bila data rider berhenti belum lengkap', async () => {
+  const RB = id(60), RR = id(61)
+  await db.exec(`
+    insert into ds (id, nama, kuota_pagi, kuota_siang, group_wa_id) values ('${RB}', 'Bulanan', 1, 1, null);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values ('${RR}', 'B1', 'Bulan Satu', '${RB}', 'rider', null, 'aktif')`)
+  const { awal, akhir } = (await q(`select (date_trunc('month', today_wib()) - interval '1 month')::date::text as awal, (date_trunc('month', today_wib())::date - 1)::text as akhir`))[0]
+  await db.exec(`
+    insert into jadwal (tanggal, rider_id, shift, ds_id) values ('${awal}', '${RR}', 'pagi', '${RB}');
+    insert into actual_harian (tanggal, rider_id, ds_id, status) values ('${awal}', '${RR}', '${RB}', 'hadir')`)
+  const r = (await q(`select * from laporan_ringkasan_wa('bulanan', today_wib(), 'https://orca.test', array['${RB}']::uuid[], '120363555@g.us')`))[0]
+  assert.match(r.pesan, /^📊 \*RINGKASAN BULANAN · [A-Z]+ \d{4}\*\ndibanding [A-Za-z]+ \d{4}\n/)
+  assert.ok(r.pesan.includes('  Pagi 1 · Siang 1')) // tanpa pembanding: bulan sebelumnya tidak punya data, jadi tidak ada tanda naik/turun
+  assert.ok(r.pesan.includes('  50%' + String.fromCharCode(10)) && !r.pesan.includes('sebelumnya')) // pagi hadir 1 dari 1, siang 0 dari 1
+  assert.ok(r.pesan.includes('ℹ️ Data rider berhenti lengkap sejak')) // pencatatan berhenti baru dimulai setelah periode itu
+  assert.ok(r.pesan.endsWith(`tgl=${akhir}`))
+})
+
+test('foto budget harian: dicatat dari kuota efektif, hanya menulis bila berubah, dan hanya Super-admin yang bisa membaca', async () => {
+  const SB = id(70)
+  await db.exec(`insert into ds (id, nama, kuota_pagi, kuota_siang, group_wa_id) values ('${SB}', 'Foto Budget', 3, 2, null)`)
+  assert.ok((await q(`select catat_budget_snapshot() as n`))[0].n >= 1) // DS baru ini belum punya foto hari ini
+  assert.equal((await q(`select catat_budget_snapshot() as n`))[0].n, 0) // tidak ada perubahan: tidak menulis
+  await db.exec(`update ds set kuota_pagi = 5 where id = '${SB}'`)
+  assert.equal((await q(`select catat_budget_snapshot() as n`))[0].n, 1)
+  assert.deepEqual((await q(`select kuota_pagi, kuota_siang from budget_snapshot where ds_id = '${SB}' and tanggal = today_wib()`))[0], { kuota_pagi: 5, kuota_siang: 2 })
+  // kuota khusus hari itu menang atas kuota bawaan DS
+  await db.exec(`insert into kuota_harian (ds_id, tanggal, kuota_pagi, kuota_siang, kuota_tengah) values ('${SB}', today_wib(), 7, 2, 0)`)
+  await q(`select catat_budget_snapshot()`)
+  assert.equal((await q(`select kuota_pagi from budget_snapshot where ds_id = '${SB}' and tanggal = today_wib()`))[0].kuota_pagi, 7)
+  // hanya Super-admin yang membaca; tidak bisa dipanggil lewat API
+  assert.ok((await sebagaiSuper(() => q(`select * from budget_snapshot where ds_id = '${SB}'`))).length >= 1)
+  await db.exec(`reset role; set role authenticated`)
+  assert.deepEqual(await q(`select * from budget_snapshot`), [])
+  await assert.rejects(q(`select catat_budget_snapshot()`), /permission denied/)
+  await db.exec('reset role')
+})
+
+test('pesan terjadwal: ringkasan mingguan dan bulanan punya jadwal sendiri (bulanan memakai tanggal dalam bulan), dengan batasan data', async () => {
+  const ins = (sql) => db.exec(sql)
+  await ins(`insert into pesan_wa (nama, jenis, jam, hari, aktif) values ('Ringkasan mingguan', 'ringkasan_mingguan', '09:00', '{1}', true)`)
+  await ins(`insert into pesan_wa (nama, jenis, jam, tanggal_bulan, aktif) values ('Ringkasan bulanan', 'ringkasan_bulanan', '09:00', 1, true)`)
+  const jatuh = async (utc) => (await q(`select p.nama from pesan_wa_jatuh_tempo($1::timestamptz) j join pesan_wa p on p.id = j.id order by p.nama`, [utc])).map((x) => x.nama)
+  // Senin 23 Nov 2026 jam 09.00 WIB: mingguan jatuh tempo, bulanan tidak (bukan tanggal 1)
+  assert.deepEqual(await jatuh('2026-11-23T02:00:00Z'), ['Ringkasan mingguan'])
+  // Selasa 24 Nov: tidak ada
+  assert.deepEqual(await jatuh('2026-11-24T02:00:00Z'), [])
+  // Selasa 1 Des 2026 jam 09.00: bulanan jatuh tempo walau bukan hari terpilih untuk mingguan
+  assert.deepEqual(await jatuh('2026-12-01T02:00:00Z'), ['Ringkasan bulanan'])
+  // batasan: bulanan wajib tanggal, tanggal hanya 1-28, mingguan tidak boleh punya tanggal bulan
+  await assert.rejects(ins(`insert into pesan_wa (nama, jenis, jam) values ('x', 'ringkasan_bulanan', '09:00')`), /check constraint/i)
+  await assert.rejects(ins(`insert into pesan_wa (nama, jenis, jam, tanggal_bulan) values ('x', 'ringkasan_bulanan', '09:00', 29)`), /check constraint/i)
+  await assert.rejects(ins(`insert into pesan_wa (nama, jenis, jam, tanggal_bulan) values ('x', 'ringkasan_mingguan', '09:00', 1)`), /check constraint/i)
+  await assert.rejects(ins(`insert into pesan_wa (nama, jenis, shift, jam) values ('x', 'ringkasan_mingguan', 'pagi', '09:00')`), /check constraint/i)
+  await ins(`delete from pesan_wa where nama in ('Ringkasan mingguan', 'Ringkasan bulanan')`)
+})
+
+test('perapian 0063: satu pemformat tanggal untuk semua pesan, dan pesan berjam malam tetap terkirim', async () => {
+  // satu pemformat "Senin, 23 Nov 2026" dipakai laporan, budget, dan ringkasan
+  assert.equal((await q(`select wa_hari_tgl('2026-11-23') as t`))[0].t, 'Senin, 23 Nov 2026')
+  assert.equal((await q(`select wa_hari_tgl('2026-12-06') as t`))[0].t, 'Minggu, 6 Des 2026')
+  const b = (await q(`select * from laporan_budget_wa(${tgl(7)}, 'https://orca.test', null, '120363555@g.us')`))[0]
+  assert.ok(b.pesan.includes((await q(`select wa_hari_tgl(${tgl(7)}) as t`))[0].t)) // budget memakai pemformat yang sama
+  // pesan jam 23.50: jatuh tempo 23.50-00.00 (jendela terpotong tengah malam), tidak lagi hilang karena jam berputar
+  await db.exec(`insert into pesan_wa (nama, jenis, jam, aktif) values ('Pesan malam', 'budget', '23:50', true)`)
+  const jatuh = async (utc) => (await q(`select p.nama from pesan_wa_jatuh_tempo($1::timestamptz) j join pesan_wa p on p.id = j.id`, [utc])).map((x) => x.nama)
+  assert.deepEqual(await jatuh('2026-11-23T16:50:00Z'), ['Pesan malam']) // 23.50 WIB
+  assert.deepEqual(await jatuh('2026-11-23T16:59:00Z'), ['Pesan malam']) // 23.59 WIB
+  assert.deepEqual(await jatuh('2026-11-23T16:49:00Z'), []) // 23.49: belum
+  assert.deepEqual(await jatuh('2026-11-23T17:05:00Z'), []) // 00.05 hari berikutnya: sudah lewat, tidak ikut hari baru
+  await db.exec(`delete from pesan_wa where nama = 'Pesan malam'`)
+})
