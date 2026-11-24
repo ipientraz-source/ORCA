@@ -54,7 +54,7 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
       <div className="flex flex-wrap gap-2 mb-3">
         <input className="inp" placeholder="cari nama / Kode MTR" value={q} onChange={(e) => setQ(e.target.value)} />
         {(sup || me.peran === 'arcon') && (
-          <Select className="w-56" value={fds} onChange={setFds} opsi={[{ value: '', label: 'Semua DS' }, ...(sup ? [{ value: '-', label: 'Belum punya DS' }] : []), ...(sup ? dsl.rows : dsList).map((d) => ({ value: d.id, label: d.nama }))]} />
+          <Select className="w-[28rem] min-w-80" value={fds} onChange={setFds} opsi={[{ value: '', label: 'Semua DS' }, ...(sup ? [{ value: '-', label: 'Belum punya DS' }] : []), ...(sup ? dsl.rows : dsList).map((d) => ({ value: d.id, label: d.nama }))]} />
         )}
         {sup && (
           <button className="btn2 ml-auto" onClick={() => download('rider.csv', toCsv(shown.map((r) => ({ kode_mtr: r.kode_mtr, nama: r.nama, no_hp: r.no_hp, ds: dsNama(r.ds_id) === '—' ? '' : dsNama(r.ds_id), status: r.status, peran: r.peran }))))}>
@@ -81,9 +81,9 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
                 <td>{r.kode_mtr}</td><td>{r.nama}</td><td>{r.no_hp}</td>
                 <td>
                   {sup ? (
-                    <Select className="w-52" value={r.ds_id ?? ''} onChange={(v) => setDs(r, v)} opsi={[{ value: '', label: '— belum punya DS —' }, ...dsl.rows.map((d) => ({ value: d.id, label: d.nama }))]} />
+                    <Select className="w-[28rem] min-w-80" value={r.ds_id ?? ''} onChange={(v) => setDs(r, v)} opsi={[{ value: '', label: '— belum punya DS —' }, ...dsl.rows.map((d) => ({ value: d.id, label: d.nama }))]} />
                   ) : me.peran === 'arcon' && r.peran === 'rider' && r.ds_id && dsList.length > 1 ? (
-                    <Select className="w-52" value={r.ds_id} onChange={(v) => pindah(r, v)} opsi={dsList.map((d) => ({ value: d.id, label: d.nama }))} />
+                    <Select className="w-[28rem] min-w-80" value={r.ds_id} onChange={(v) => pindah(r, v)} opsi={dsList.map((d) => ({ value: d.id, label: d.nama }))} />
                   ) : (
                     dsNama(r.ds_id)
                   )}

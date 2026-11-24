@@ -394,7 +394,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
     const vv = window.visualViewport
     const bawah = (vv ? vv.height + vv.offsetTop : window.innerHeight) - r.bottom
     const keAtas = bawah < 280 && r.top > bawah
-    const width = Math.max(r.width, 224)
+    const width = Math.max(r.width, 320)
     return {
       left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
       width,
@@ -469,7 +469,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
         onKeyDown={(e) => { if (!buka && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); bukaDaftar() } }}
         className={`inp inline-flex items-center justify-between gap-2 text-left ${buka ? '!border-primary ring-[length:var(--ring-width)] ring-ring/25' : ''} ${className}`}
       >
-        <span className={`truncate ${terpilih ? '' : 'text-muted-foreground/70'}`}>{terpilih?.label ?? placeholder}</span>
+        <span className={`truncate ${terpilih ? '' : 'text-muted-foreground/70'}`} title={terpilih?.label}>{terpilih?.label ?? placeholder}</span>
         <ChevronDown size={16} className={`shrink-0 text-muted-foreground transition-transform ${buka ? 'rotate-180' : ''}`} />
       </button>
       {buka &&
@@ -506,7 +506,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
                   onClick={() => pilih(o.value)}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ${i === aktif ? 'bg-primary-soft text-primary-soft-foreground' : ''} ${o.value === value ? 'font-semibold' : ''}`}
                 >
-                  <span className="flex-1 truncate">{o.label}</span>
+                  <span className="flex-1 break-words">{o.label}</span>
                   {o.value === value && <Check size={14} className="shrink-0 text-primary" />}
                 </li>
               ))}
