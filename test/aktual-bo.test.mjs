@@ -1,0 +1,151 @@
+// Uji fulfillment aktual dan tepat waktu dari clock-in BO (migrasi 0065): penentuan shift, toleransi, budget, batas akses. Database PGlite.
+import { test, before, after } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync, readdirSync } from 'node:fs'
+import { PGlite } from '@electric-sql/pglite'
+
+const db = new PGlite()
+const id = (n) => '00000000-0000-0000-0000-' + String(n).padStart(12, '0')
+const [SUPER, CAP, ARC, ARC2] = [id(1), id(2), id(3), id(4)]
+const [DSA, DSB, DSC, DSD] = [id(101), id(102), id(103), id(104)]
+const HUB_A = 'Dark Store Alfagift - Alfa - Bandung'
+const HUB_B = 'Dark Store Alfagift - Beta - Makassar'
+const TGL = '2026-11-20'
+const rid = (n) => id(200 + n)
+const kode = (n) => 'MTR000000' + n
+const q = async (sql, p) => (await db.query(sql, p)).rows
+
+const sebagai = async (email, fn) => {
+  await db.exec(`reset role; select set_config('request.jwt.claims', '{"email":"${email}"}', false); set role authenticated`)
+  try { return await fn() } finally { await db.exec(`reset role; select set_config('request.jwt.claims', '', false)`) }
+}
+const sebagaiSuper = (fn) => sebagai('super@test.local', fn)
+// jam masuk lokal "HH:MM" pada tanggal t di hub; masuk_wib hanya untuk keunikan baris
+const masuk = (hub, dsId, kodeMtr, jam, t = TGL, zona = 'WIB') =>
+  q(`insert into kehadiran_bo (hub, ds_id, kode_mtr, tanggal, masuk_lokal, zona, masuk_wib, sumber)
+     values ($1, $2, $3, $4::date, $5::time, $6, ($4::date + $5::time)::timestamptz, 'api')`, [hub, dsId, kodeMtr, t, jam, zona])
+const aktual = (dari = TGL, sampai = TGL) => sebagaiSuper(() => q(`select * from aktual_bo($1, $2)`, [dari, sampai]))
+
+before(async () => {
+  await db.exec(`
+    create role anon nologin; create role authenticated nologin; create schema auth;
+    create function auth.jwt() returns jsonb language sql stable as $$
+      select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+    grant usage on schema public, auth to anon, authenticated;
+    grant execute on function auth.jwt() to anon, authenticated;`)
+  for (const f of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync(`supabase/migrations/${f}`, 'utf8'))
+  await db.exec('grant select, insert, update, delete on all tables in schema public to authenticated')
+  await db.exec(`
+    insert into ds (id, nama, hub_bo, kuota_pagi, kuota_tengah, kuota_siang) values
+      ('${DSA}', '${HUB_A}', '${HUB_A}', 3, 1, 2),
+      ('${DSB}', '${HUB_B}', '${HUB_B}', 0, 0, 0),
+      ('${DSC}', 'DS TANPA JADWAL', null, 4, 0, 4),
+      ('${DSD}', 'DS JADWAL SAJA', null, 2, 0, 2);
+    insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
+      ('${SUPER}', null, 'Super', null, 'super_admin', 'super@test.local', 'aktif'),
+      ('${CAP}', null, 'Cap', '${DSA}', 'captain', 'cap@test.local', 'aktif'),
+      ('${ARC}', null, 'Arcon Satu', null, 'arcon', 'arc@test.local', 'aktif'),
+      ('${ARC2}', null, 'Arcon Dua', null, 'arcon', 'arc2@test.local', 'aktif');
+    update ds set arcon_id = '${ARC}' where id = '${DSA}';`)
+  for (let n = 1; n <= 9; n++) {
+    await q(`insert into riders (id, kode_mtr, nama, ds_id, peran, status) values ($1, $2, $3, $4, 'rider', 'aktif')`, [rid(n), kode(n), 'Rider ' + n, DSA])
+  }
+  await db.exec(`
+    -- terjadwal di DS Alfa: R1 dan R2 pagi, R3 siang. Selain itu tidak terjadwal.
+    insert into jadwal (tanggal, rider_id, shift, ds_id) values
+      ('${TGL}', '${rid(1)}', 'pagi', '${DSA}'), ('${TGL}', '${rid(2)}', 'pagi', '${DSA}'), ('${TGL}', '${rid(3)}', 'siang', '${DSA}'),
+      ('2026-11-22', '${rid(1)}', 'pagi', '${DSD}');
+    -- absensi captain: R1 dan R2 hadir, R3 alpha
+    insert into actual_harian (tanggal, rider_id, ds_id, status) values
+      ('${TGL}', '${rid(1)}', '${DSA}', 'hadir'), ('${TGL}', '${rid(2)}', '${DSA}', 'hadir'), ('${TGL}', '${rid(3)}', '${DSA}', 'alpha')`)
+  // clock-in BO di hub Alfa, tanggal TGL
+  await masuk(HUB_A, DSA, kode(1), '05:58')
+  await masuk(HUB_A, DSA, kode(1), '07:30') // clock-in kedua rider yang sama: hanya yang paling awal dihitung
+  await masuk(HUB_A, DSA, kode(2), '06:02') // tepat di batas jam mulai + toleransi 2 menit
+  await masuk(HUB_A, DSA, kode(3), '07:00') // terjadwal shift siang: shift mengikuti jadwal, bukan jam masuk
+  await masuk(HUB_A, DSA, kode(5), '06:03') // tidak terjadwal, pagi, telat
+  await masuk(HUB_A, DSA, kode(6), '08:55') // batas pagi
+  await masuk(HUB_A, DSA, kode(7), '08:56') // Middle (sebelum jam mulai Middle, jadi tepat waktu)
+  await masuk(HUB_A, DSA, kode(8), '11:59') // batas Middle, telat
+  await masuk(HUB_A, DSA, kode(9), '12:00') // siang
+  await masuk(HUB_A, DSA, 'MTR0000999', '06:00') // kode mitra belum terdaftar di Orca
+  // hub Beta (WITA), budget belum diisi: tetap tampil dengan kebutuhan 0
+  await masuk(HUB_B, DSB, 'MTR0000888', '13:50', TGL, 'WITA')
+})
+after(() => db.close())
+
+test('shift: terjadwal mengikuti jadwal, tidak terjadwal dari jam masuk; satu rider dihitung sekali; tepat waktu = jam mulai + 2 menit', async () => {
+  const a = (await aktual()).find((x) => x.ds_id === DSA)
+  assert.deepEqual({ p: [a.b_pagi, a.h_pagi, a.t_pagi], t: [a.b_tengah, a.h_tengah, a.t_tengah], s: [a.b_siang, a.h_siang, a.t_siang] },
+    { p: [3, 5, 3], t: [1, 2, 1], s: [2, 2, 2] })
+  // pagi: R1, R2, R5, R6, kode belum terdaftar (hadir 5; tepat R1, R2, kode belum terdaftar). Middle: R7 tepat, R8 telat. Siang: R3 (jadwal) dan R9.
+  assert.equal(a.hadir, 9)
+  assert.equal(a.tepat, 6)
+})
+
+test('fulfillment aktual: terpenuhi per shift dibatasi budget, kelebihan rider tidak menambah', async () => {
+  const a = (await aktual()).find((x) => x.ds_id === DSA)
+  assert.equal(a.kebutuhan, 6) // 3 + 1 + 2
+  assert.equal(a.terpenuhi, 6) // min(5,3) + min(2,1) + min(2,2)
+})
+
+test('versi captain berdampingan dan rider yang belum terdaftar di Orca', async () => {
+  const a = (await aktual()).find((x) => x.ds_id === DSA)
+  assert.equal(a.captain, 2) // R1 dan R2 hadir menurut captain, R3 alpha
+  assert.equal(a.tanpa_orca, 1)
+})
+
+test('DS tanpa budget tetap tampil (kebutuhan 0); DS tanpa jadwal dan tanpa clock-in tidak dihitung; DS berjadwal tanpa clock-in tampil dengan 0 hadir', async () => {
+  const hari = await aktual()
+  const b = hari.find((x) => x.ds_id === DSB)
+  assert.deepEqual({ kebutuhan: b.kebutuhan, terpenuhi: b.terpenuhi, hadir: b.hadir, siang: [b.h_siang, b.t_siang] }, { kebutuhan: 0, terpenuhi: 0, hadir: 1, siang: [1, 1] }) // 13:50 WITA <= 14:02
+  assert.ok(!hari.some((x) => x.ds_id === DSC || x.ds_id === DSD))
+  const d = (await aktual('2026-11-22', '2026-11-22')).find((x) => x.ds_id === DSD)
+  assert.deepEqual({ kebutuhan: d.kebutuhan, terpenuhi: d.terpenuhi, hadir: d.hadir }, { kebutuhan: 4, terpenuhi: 0, hadir: 0 })
+})
+
+test('budget harian khusus menggantikan kuota DS', async () => {
+  await q(`insert into kuota_harian (ds_id, tanggal, kuota_pagi, kuota_siang, kuota_tengah) values ($1, '2026-11-21', 1, 0, 0)`, [DSA])
+  await masuk(HUB_A, DSA, kode(1), '06:00', '2026-11-21')
+  await masuk(HUB_A, DSA, kode(2), '06:01', '2026-11-21')
+  const a = (await aktual('2026-11-21', '2026-11-21')).find((x) => x.ds_id === DSA)
+  assert.deepEqual({ kebutuhan: a.kebutuhan, terpenuhi: a.terpenuhi, hadir: a.hadir, tepat: a.tepat }, { kebutuhan: 1, terpenuhi: 1, hadir: 2, tepat: 2 })
+})
+
+test('toleransi dan batas shift mengikuti pengaturan_kehadiran', async () => {
+  await q(`update pengaturan_kehadiran set toleransi_menit = 5, batas_pagi = '08:50' where id = 1`)
+  try {
+    const a = (await aktual()).find((x) => x.ds_id === DSA)
+    // R5 06:03 kini tepat; R6 08:55 melewati batas pagi baru sehingga masuk Middle (tepat, sebelum 10:05)
+    assert.deepEqual({ p: [a.h_pagi, a.t_pagi], t: [a.h_tengah, a.t_tengah] }, { p: [4, 4], t: [3, 2] })
+  } finally { await q(`update pengaturan_kehadiran set toleransi_menit = 2, batas_pagi = '08:55' where id = 1`) }
+})
+
+test('total per hari untuk tren dijumlahkan dari data per DS', async () => {
+  const h = await sebagaiSuper(() => q(`select * from aktual_bo_harian($1, $2)`, [TGL, '2026-11-22']))
+  const hari = h.find((x) => String(x.tanggal.toISOString?.() ?? x.tanggal).startsWith(TGL))
+  const per = await aktual()
+  assert.equal(hari.kebutuhan, per.reduce((s, x) => s + x.kebutuhan, 0))
+  assert.equal(hari.terpenuhi, per.reduce((s, x) => s + x.terpenuhi, 0))
+  assert.equal(hari.hadir, per.reduce((s, x) => s + x.hadir, 0))
+  assert.equal(hari.tepat, per.reduce((s, x) => s + x.tepat, 0))
+  assert.equal(hari.ds_aktif, per.length)
+  assert.equal(h.length, 3) // 20, 21, dan 22 November: tiap hari ada data
+})
+
+test('hari yang belum terjadi dan rentang terlalu panjang tidak menghasilkan baris', async () => {
+  assert.deepEqual(await aktual('2099-01-01', '2099-01-02'), [])
+  assert.deepEqual(await aktual('2026-01-01', '2026-11-20'), [])
+})
+
+test('akses: Super-admin semua DS, Arcon hanya DS yang dipegangnya, captain dan Arcon tanpa DS tidak melihat apa pun, anon ditolak', async () => {
+  const arc = await sebagai('arc@test.local', () => q(`select distinct ds_id from aktual_bo($1, $1)`, [TGL]))
+  assert.deepEqual(arc.map((x) => x.ds_id), [DSA])
+  assert.ok((await aktual()).length >= 2)
+  assert.deepEqual(await sebagai('arc2@test.local', () => q(`select * from aktual_bo($1, $1)`, [TGL])), [])
+  assert.deepEqual(await sebagai('cap@test.local', () => q(`select * from aktual_bo($1, $1)`, [TGL])), [])
+  assert.deepEqual(await sebagai('cap@test.local', () => q(`select * from aktual_bo_harian($1, $1)`, [TGL])), [])
+  await db.exec(`reset role; set role anon`)
+  await assert.rejects(q(`select * from aktual_bo($1, $1)`, [TGL]), /permission denied/)
+  await db.exec('reset role')
+})

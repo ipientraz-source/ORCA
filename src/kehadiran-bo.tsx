@@ -2,19 +2,18 @@
 // pasangkan hub baru ke DS (atau buat DS baru), lihat ringkasan, dan atur jam shift untuk menilai tepat waktu. BO adalah sumber daftar DS.
 // Yang disimpan hanya kode mitra, hub, jam masuk dan keluar (NIK, nama, selfie, dan GPS tidak dibawa). Penilaian shift dan tepat waktu dilakukan Orca, bukan BO.
 import { useEffect, useMemo, useState } from 'react'
-import { sb, useRows, ok, toast, Err, Field, Kosong, Select, usePage, Pagination } from './lib'
+import { sb, today, addDays, hari, useRows, ok, toast, Err, Field, Kosong, Select, usePage, Pagination } from './lib'
+import { persenBo, teksPersen, type AktualBo } from './aktual-bo'
 
 const BARU = '__baru__'
 
 type Ds = { id: string; nama: string; hub_bo: string | null }
-type Ringkas = { tanggal: string; hub: string; ds_id: string | null; rider: number; terdaftar: number }
 type Atur = { mulai_pagi: string; mulai_tengah: string; mulai_siang: string; toleransi_menit: number; batas_pagi: string; batas_tengah: string }
 type Sinkron = { sinkron_terakhir: string | null; sinkron_status: 'berhasil' | 'gagal' | null; sinkron_pesan: string | null }
 type Hasil = { ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number }
 type Perlu = { hub: string; baris: number }
 
 const RENTANG = [{ value: '1', label: 'Kemarin dan hari ini' }, { value: '7', label: '7 hari terakhir' }, { value: '30', label: '30 hari terakhir' }]
-const hariWib = (selisih = 0) => new Date(Date.now() + 7 * 3600e3 + selisih * 864e5).toISOString().slice(0, 10)
 const waktuWib = (iso: string) => new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 const kunci = (s: string) => new Set((s.toLowerCase().replace(/dark store|toko sapa|alfagift|^ds /g, ' ').match(/[a-z]+/g) ?? []).filter((x) => !['ds', 'kso', 'store'].includes(x)))
@@ -44,21 +43,19 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
   const dipilih = Object.values(peta).filter((v) => v !== BARU)
   const ganda = dipilih.length !== new Set(dipilih).size
 
-  // Ringkasan 14 hari terakhir yang ada datanya
-  const dari = hariWib(-13)
-  const sampai = hariWib()
-  const ring = useRows<Ringkas>(() => sb.rpc('ringkasan_kehadiran_bo', { p_dari: dari, p_sampai: sampai }), [dari])
-  const tglOpsi = [...new Set(ring.rows.map((r) => r.tanggal))].sort().reverse()
-  const [tgl, setTgl] = useState('')
-  const tglAktif = tgl && tglOpsi.includes(tgl) ? tgl : tglOpsi[0] ?? ''
-  const barisTgl = ring.rows.filter((r) => r.tanggal === tglAktif)
-  const pg = usePage(barisTgl, [tglAktif])
+  // Ringkasan per DS dan per shift untuk satu hari (14 hari terakhir), dinilai Orca dari clock-in BO (aktual_bo, migrasi 0065)
+  const hariIni = today()
+  const [tgl, setTgl] = useState(hariIni)
+  const tglOpsi = Array.from({ length: 14 }, (_, i) => addDays(hariIni, -i))
+  const ring = useRows<AktualBo>(() => sb.rpc('aktual_bo', { p_dari: tgl, p_sampai: tgl }), [tgl])
+  const barisTgl = ring.rows
+  const pg = usePage(barisTgl, [tgl])
 
   // Tanpa pasangan: hub baru ditanyakan dulu. Dengan pasangan (peta): hub dipasangkan atau dibuatkan DS baru, lalu data disimpan.
   const sinkron = async (pasang?: Record<string, string>) => {
     setSibuk(true)
     setHasil(null)
-    const { data, error } = await sb.functions.invoke('tarik-kehadiran-bo', { body: { dari: hariWib(-Number(rentang)), sampai: hariWib(), ...(pasang ? { peta: pasang } : {}) } })
+    const { data, error } = await sb.functions.invoke('tarik-kehadiran-bo', { body: { dari: addDays(today(), -Number(rentang)), sampai: today(), ...(pasang ? { peta: pasang } : {}) } })
     setSibuk(false)
     st.reload()
     if (error || data?.error) return toast(data?.error ?? 'Sinkron belum bisa dijalankan. Coba lagi.')
@@ -131,31 +128,40 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
 
       <div className="card !mb-0">
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <b className="flex-1">Ringkasan clock-in</b>
-          {tglOpsi.length > 0 && <Select className="w-56" value={tglAktif} onChange={setTgl} opsi={tglOpsi.map((t) => ({ value: t, label: t }))} />}
+          <b className="flex-1">Ringkasan clock-in per shift</b>
+          <Select className="w-56" value={tgl} onChange={setTgl} opsi={tglOpsi.map((t) => ({ value: t, label: t === hariIni ? `${hari(t)} (hari ini)` : hari(t) }))} />
         </div>
         {!barisTgl.length ? (
-          <Kosong teks="Belum ada data kehadiran BO" hint="Tekan Sinkron sekarang di atas. Ringkasan menampilkan 14 hari terakhir yang ada datanya." />
+          <Kosong teks="Belum ada data kehadiran BO di tanggal ini" hint="Tekan Sinkron sekarang di atas, atau pilih tanggal lain (14 hari terakhir)." />
         ) : (
           <>
             <p className="mb-2 text-xs text-muted-foreground">
-              {barisTgl.length} hub · {barisTgl.reduce((a, r) => a + r.rider, 0)} rider unik clock-in · {barisTgl.reduce((a, r) => a + r.terdaftar, 0)} terdaftar di Orca
+              {barisTgl.length} DS · {barisTgl.reduce((a, r) => a + r.hadir, 0)} rider clock-in · tepat waktu {teksPersen(persenBo(barisTgl.reduce((a, r) => a + r.tepat, 0), barisTgl.reduce((a, r) => a + r.hadir, 0)))}
             </p>
             <div className="overflow-x-auto">
               <table className="tbl w-full text-sm">
-                <thead><tr><th>Hub</th><th>Rider clock-in</th><th>Terdaftar di Orca</th></tr></thead>
+                <thead><tr><th>DS</th><th>Pagi</th><th>Middle</th><th>Siang</th><th>Tepat waktu</th><th>Catatan</th></tr></thead>
                 <tbody>
                   {pg.rows.map((r) => (
-                    <tr key={r.hub}>
-                      <td>{r.hub}</td>
-                      <td>{r.rider}</td>
-                      <td>{r.terdaftar}{r.terdaftar < r.rider ? <span className="ml-2 text-xs text-warning">{r.rider - r.terdaftar} belum ada di Orca</span> : null}</td>
+                    <tr key={r.ds_id}>
+                      <td>{r.ds_nama}</td>
+                      <SelShift b={r.b_pagi} h={r.h_pagi} t={r.t_pagi} />
+                      <SelShift b={r.b_tengah} h={r.h_tengah} t={r.t_tengah} />
+                      <SelShift b={r.b_siang} h={r.h_siang} t={r.t_siang} />
+                      <td>{teksPersen(persenBo(r.tepat, r.hadir))}</td>
+                      <td className="text-xs text-warning">
+                        {r.kebutuhan === 0 && <span className="mr-2">budget belum diisi</span>}
+                        {r.tanpa_orca > 0 && <span>{r.tanpa_orca} belum ada di Orca</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="mt-3"><Pagination {...pg} /></div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Tiap shift: rider clock-in / budget, dan berapa yang tepat waktu. Rider terjadwal mengikuti jadwalnya; yang tidak terjadwal ditentukan dari jam masuk memakai jam shift di bawah.
+            </p>
           </>
         )}
       </div>
@@ -163,6 +169,12 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
       <JamShift bacaSaja={bacaSaja} />
     </div>
   )
+}
+
+// Sel satu shift: "hadir/budget" dan jumlah tepat waktunya; kosong bila shift itu tidak dipakai hari itu
+function SelShift({ b, h, t }: { b: number; h: number; t: number }) {
+  if (!b && !h) return <td className="text-muted-foreground">–</td>
+  return <td>{h}/{b}{h > 0 && <span className="ml-1 text-xs text-muted-foreground">· {t} tepat</span>}</td>
 }
 
 // Jam mulai tiap shift dan toleransi untuk menilai tepat waktu; batas jam untuk menentukan shift rider yang tidak terjadwal

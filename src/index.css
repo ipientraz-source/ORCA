@@ -152,6 +152,12 @@ body {
 h1, h2, h3 { font-family: var(--font-display); }
 ::selection { background: color-mix(in srgb, var(--primary) 25%, transparent); }
 
+/* Geser antar halaman Dashboard: halaman baru masuk dari kanan (ke On-time Performance) atau dari kiri (kembali) */
+@keyframes geser-dari-kanan { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+@keyframes geser-dari-kiri { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+.geser-kanan { animation: geser-dari-kanan 0.3s ease-out; }
+.geser-kiri { animation: geser-dari-kiri 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .geser-kanan, .geser-kiri { animation: none; } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise 0.28s ease-out both; }
 /* Layar sentuh: iOS Safari memperbesar halaman saat mengisi kolom berfont di bawah 16px dan tidak mengecilkannya lagi.

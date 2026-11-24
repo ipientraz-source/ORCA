@@ -1,0 +1,81 @@
+-- Fulfillment aktual dan tepat waktu dari clock-in BO, dinilai Orca (BO tidak membaca shift Middle dan tidak punya budget).
+-- Satu rider dihitung sekali per DS per hari (clock-in paling awal). Aturan, memakai pengaturan_kehadiran dan jam lokal hub:
+--   shift   rider terjadwal di DS itu hari itu: mengikuti jadwalnya. Tidak terjadwal: dari jam masuk, sampai batas_pagi = pagi, sampai batas_tengah = Middle, selebihnya siang.
+--   tepat   jam masuk paling lambat jam mulai shift + toleransi_menit.
+--   budget  kebutuhan per shift dari kuota_harian bila ada, kalau tidak dari kuota DS. Terpenuhi per shift dibatasi budget (kelebihan rider tidak menambah).
+-- DS yang hari itu tidak punya jadwal di Orca dan tidak ada clock-in BO tidak ikut dihitung. Hari yang belum terjadi tidak dihitung.
+-- Super-admin melihat semua DS; Arcon hanya DS yang dipegangnya. Menggantikan ringkasan_kehadiran_bo (0062): ringkasannya kini per DS dan per shift.
+-- ringkasan_kehadiran_bo sengaja belum dihapus di sini: UI lama masih memanggilnya sampai UI baru live. Hapus di migrasi berikutnya.
+
+create or replace function aktual_bo(p_dari date, p_sampai date)
+returns table (tanggal date, ds_id uuid, ds_nama text, kebutuhan int, terpenuhi int, hadir int, tepat int, captain int, tanpa_orca int,
+               b_pagi int, h_pagi int, t_pagi int, b_tengah int, h_tengah int, t_tengah int, b_siang int, h_siang int, t_siang int)
+language sql stable security definer set search_path = public as $$
+  with a as (select * from pengaturan_kehadiran where id = 1),
+  izin as (
+    select d.id, d.nama, d.kuota_pagi, d.kuota_tengah, d.kuota_siang from ds d
+    where is_super() or (my_peran() = 'arcon' and d.id = any(my_ds_ids()))
+  ),
+  k as (
+    select distinct on (b.tanggal, b.ds_id, b.kode_mtr) b.tanggal, b.ds_id, b.kode_mtr, b.masuk_lokal
+    from kehadiran_bo b join izin on izin.id = b.ds_id
+    where b.tanggal between p_dari and least(p_sampai, today_wib())
+    order by b.tanggal, b.ds_id, b.kode_mtr, b.masuk_lokal
+  ),
+  s as (
+    select k.tanggal, k.ds_id, sh.shift,
+           k.masuk_lokal <= (case sh.shift when 'pagi' then a.mulai_pagi when 'tengah' then a.mulai_tengah else a.mulai_siang end)::time + make_interval(mins => a.toleransi_menit) as tepat,
+           not exists (select 1 from riders r where r.kode_mtr = k.kode_mtr) as tanpa
+    from k cross join a
+    cross join lateral (
+      select coalesce(
+        (select j.shift::text from riders r join jadwal j on j.rider_id = r.id
+          where r.kode_mtr = k.kode_mtr and j.tanggal = k.tanggal and j.ds_id = k.ds_id and j.shift <> 'off' limit 1),
+        case when k.masuk_lokal <= a.batas_pagi::time then 'pagi' when k.masuk_lokal <= a.batas_tengah::time then 'tengah' else 'siang' end
+      ) as shift
+    ) sh
+  ),
+  h as (
+    select s.tanggal, s.ds_id,
+           (count(*) filter (where s.shift = 'pagi'))::int as hp, (count(*) filter (where s.shift = 'pagi' and s.tepat))::int as tp,
+           (count(*) filter (where s.shift = 'tengah'))::int as ht, (count(*) filter (where s.shift = 'tengah' and s.tepat))::int as tt,
+           (count(*) filter (where s.shift = 'siang'))::int as hs, (count(*) filter (where s.shift = 'siang' and s.tepat))::int as ts,
+           (count(*) filter (where s.tanpa))::int as tanpa
+    from s group by s.tanggal, s.ds_id
+  ),
+  c as (
+    select sd.tanggal, sd.ds_id, count(*)::int as n
+    from shift_dikerjakan(p_dari, least(p_sampai, today_wib())) sd join izin on izin.id = sd.ds_id
+    group by sd.tanggal, sd.ds_id
+  ),
+  hari as (
+    select g::date as tanggal from generate_series(p_dari::timestamp, least(p_sampai, today_wib())::timestamp, interval '1 day') g
+    where p_sampai - p_dari between 0 and 92
+  ),
+  x as (
+    select hr.tanggal, d.id as ds_id, d.nama,
+           coalesce(kh.kuota_pagi, d.kuota_pagi) as bp, coalesce(kh.kuota_tengah, d.kuota_tengah) as bt, coalesce(kh.kuota_siang, d.kuota_siang) as bs,
+           coalesce(h.hp, 0) as hp, coalesce(h.tp, 0) as tp, coalesce(h.ht, 0) as ht, coalesce(h.tt, 0) as tt, coalesce(h.hs, 0) as hs, coalesce(h.ts, 0) as ts,
+           coalesce(c.n, 0) as cap, coalesce(h.tanpa, 0) as tanpa
+    from hari hr cross join izin d
+    left join kuota_harian kh on kh.ds_id = d.id and kh.tanggal = hr.tanggal
+    left join h on h.tanggal = hr.tanggal and h.ds_id = d.id
+    left join c on c.tanggal = hr.tanggal and c.ds_id = d.id
+    where h.ds_id is not null or exists (select 1 from jadwal j where j.tanggal = hr.tanggal and j.ds_id = d.id and j.shift <> 'off')
+  )
+  select x.tanggal, x.ds_id, x.nama, x.bp + x.bt + x.bs, least(x.hp, x.bp) + least(x.ht, x.bt) + least(x.hs, x.bs), x.hp + x.ht + x.hs, x.tp + x.tt + x.ts, x.cap, x.tanpa,
+         x.bp, x.hp, x.tp, x.bt, x.ht, x.tt, x.bs, x.hs, x.ts
+  from x order by x.tanggal, x.nama
+$$;
+revoke execute on function aktual_bo(date, date) from public, anon;
+grant execute on function aktual_bo(date, date) to authenticated;
+
+-- Total per hari untuk tren: kebutuhan, terpenuhi, rider hadir, tepat waktu, rider yang belum terdaftar di Orca, dan jumlah DS yang dihitung
+create or replace function aktual_bo_harian(p_dari date, p_sampai date)
+returns table (tanggal date, kebutuhan int, terpenuhi int, hadir int, tepat int, tanpa_orca int, ds_aktif int)
+language sql stable security definer set search_path = public as $$
+  select a.tanggal, sum(a.kebutuhan)::int, sum(a.terpenuhi)::int, sum(a.hadir)::int, sum(a.tepat)::int, sum(a.tanpa_orca)::int, count(*)::int
+  from aktual_bo(p_dari, p_sampai) a group by a.tanggal order by a.tanggal
+$$;
+revoke execute on function aktual_bo_harian(date, date) from public, anon;
+grant execute on function aktual_bo_harian(date, date) to authenticated;

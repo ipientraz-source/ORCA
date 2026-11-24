@@ -79,11 +79,11 @@ test('impor bisa diulang: baris yang sama tidak ganda, hanya jam keluar yang dip
   assert.equal((await q(`select count(*)::int as n from kehadiran_bo where kode_mtr = 'MTR0000001'`))[0].n, 1)
 })
 
-test('ringkasan: rider unik per tanggal dan hub, serta berapa yang terdaftar di Orca', async () => {
-  const r = await sebagaiSuper(() => q(`select * from ringkasan_kehadiran_bo('2026-11-20', '2026-11-20') where hub = $1`, [HUB_L]))
-  assert.deepEqual(r.map((x) => ({ rider: x.rider, terdaftar: x.terdaftar })), [{ rider: 1, terdaftar: 0 }]) // MTR0000099 belum ada di Orca
-  const c = await sebagaiSuper(() => q(`select * from ringkasan_kehadiran_bo('2026-11-20', '2026-11-20') where hub = $1`, [HUB_C]))
-  assert.deepEqual(c.map((x) => ({ rider: x.rider, terdaftar: x.terdaftar })), [{ rider: 2, terdaftar: 2 }])
+test('ringkasan per DS: rider unik yang clock-in, serta berapa yang belum terdaftar di Orca', async () => {
+  const r = await sebagaiSuper(() => q(`select * from aktual_bo('2026-11-20', '2026-11-20') where ds_nama = $1`, [HUB_L]))
+  assert.deepEqual(r.map((x) => ({ hadir: x.hadir, tanpa_orca: x.tanpa_orca })), [{ hadir: 1, tanpa_orca: 1 }]) // MTR0000099 belum ada di Orca
+  const c = await sebagaiSuper(() => q(`select * from aktual_bo('2026-11-20', '2026-11-20') where ds_nama = $1`, [HUB_C]))
+  assert.deepEqual(c.map((x) => ({ hadir: x.hadir, tanpa_orca: x.tanpa_orca })), [{ hadir: 2, tanpa_orca: 0 }])
 })
 
 test('hanya Super-admin: impor dan ringkasan ditolak untuk captain dan anon, data tidak terbaca selain Super-admin', async () => {
@@ -93,7 +93,7 @@ test('hanya Super-admin: impor dan ringkasan ditolak untuk captain dan anon, dat
   await assert.rejects(q(`select impor_kehadiran_bo('[]'::jsonb)`), /permission denied/)
   await db.exec('reset role')
   assert.deepEqual(await sebagai('cap@test.local', () => q(`select * from kehadiran_bo`)), [])
-  assert.deepEqual(await sebagai('cap@test.local', () => q(`select * from ringkasan_kehadiran_bo('2026-11-01', '2026-11-30')`)), [])
+  assert.deepEqual(await sebagai('cap@test.local', () => q(`select * from aktual_bo('2026-11-01', '2026-11-30')`)), [])
   assert.ok((await sebagaiSuper(() => q(`select * from kehadiran_bo`))).length >= 4)
 })
 
@@ -124,14 +124,14 @@ test('Arcon: hanya melihat clock-in DS yang dipegangnya, boleh membaca jam shift
   const arc = (fn) => sebagai('arc@test.local', fn)
   // ARC memegang DS Cihampelas saja (hub lain milik DS yang tidak dipegangnya)
   assert.deepEqual((await arc(() => q(`select distinct hub from kehadiran_bo order by hub`))).map((x) => x.hub), [HUB_C])
-  const r = await arc(() => q(`select * from ringkasan_kehadiran_bo('2026-11-01', '2026-11-30')`))
-  assert.deepEqual([...new Set(r.map((x) => x.hub))], [HUB_C])
+  const r = await arc(() => q(`select * from aktual_bo('2026-11-01', '2026-11-30')`))
+  assert.deepEqual([...new Set(r.map((x) => x.ds_nama))], [HUB_C])
   assert.ok(r.every((x) => x.ds_id === CIHAM))
   // Super-admin tetap melihat semua hub
   assert.ok((await sebagaiSuper(() => q(`select distinct hub from kehadiran_bo`))).length >= 3)
   // Arcon tanpa DS tidak melihat apa pun
   assert.deepEqual(await sebagai('arc2@test.local', () => q(`select * from kehadiran_bo`)), [])
-  assert.deepEqual(await sebagai('arc2@test.local', () => q(`select * from ringkasan_kehadiran_bo('2026-11-01', '2026-11-30')`)), [])
+  assert.deepEqual(await sebagai('arc2@test.local', () => q(`select * from aktual_bo('2026-11-01', '2026-11-30')`)), [])
   // impor tetap khusus Super-admin
   const b = [baris(HUB_C, 'MTR0000005', '2026-11-22', '05:50', 'WIB', '2026-11-21T22:50:00Z')]
   await assert.rejects(arc(() => q(`select impor_kehadiran_bo($1::jsonb) as r`, [JSON.stringify(b)])), /Hanya Super-admin/)
