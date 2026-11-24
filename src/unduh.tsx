@@ -184,8 +184,8 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
             <tfoot>
               <tr className="bg-muted" style={{ borderTop: '2px solid #aeb3c4' }}>
                 <td className="py-2 pl-4 text-xs font-semibold">
-                  Terisi / kebutuhan client
-                  <div className="text-[10px] font-normal text-muted-foreground">Kebutuhan bisa berbeda tiap hari; +cad = rider cadangan</div>
+                  Terisi / budget
+                  <div className="text-[10px] font-normal text-muted-foreground">Budget bisa berbeda tiap hari; +cad = rider cadangan</div>
                 </td>
                 {days.map((d) => {
                   const p = hitung(d, 'pagi')
@@ -208,7 +208,7 @@ export function Cetak({ data, mode, onSelesai }: { data: DataCetak; mode: 'png' 
             </tfoot>
           </table>
           </div>
-          <div className="mt-auto pt-3 text-[10px] text-muted-foreground">Dibuat dengan Dash ORCA. Angka kuota: hijau berarti rider pas, kuning kurang, merah kelebihan.</div>
+          <div className="mt-auto pt-3 text-[10px] text-muted-foreground">Dibuat dengan Dash ORCA. Angka budget: hijau berarti rider pas, kuning kurang, merah kelebihan.</div>
         </div>
       ))}
     </div>

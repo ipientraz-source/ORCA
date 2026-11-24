@@ -32,7 +32,7 @@ export function DaftarJadwal({ bolehHapus = false }: { bolehHapus?: boolean }) {
   // Super-admin: hapus jadwal tersimpan satu DS satu minggu (mis. ada rider baru padahal Captain sudah menyimpan); Captain bisa menyusun ulang
   const hapus = async (x: Baris) => {
     const periode = `${tgl(x.minggu)} – ${tgl(addDays(x.minggu, 6))} ${x.minggu.slice(0, 4)}`
-    if (!(await konfirmasi(`Jadwal ${x.ds_nama} untuk minggu ${periode} (${x.shift} shift, ${x.rider} rider) akan dihapus. Captain atau Super-admin bisa menyusunnya lagi. Kebutuhan harian tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus jadwal minggu ini?', ya: 'Hapus jadwal', bahaya: true }))) return
+    if (!(await konfirmasi(`Jadwal ${x.ds_nama} untuk minggu ${periode} (${x.shift} shift, ${x.rider} rider) akan dihapus. Captain atau Super-admin bisa menyusunnya lagi. Budget harian tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.`, { judul: 'Hapus jadwal minggu ini?', ya: 'Hapus jadwal', bahaya: true }))) return
     if (await ok(sb.rpc('hapus_jadwal', { p_ds: x.ds_id, p_minggu: x.minggu }))) {
       toast.ok(`Jadwal ${x.ds_nama} minggu ${periode} dihapus.`)
       if (sel?.ds.id === x.ds_id && sel.senin === x.minggu) setSel(null)

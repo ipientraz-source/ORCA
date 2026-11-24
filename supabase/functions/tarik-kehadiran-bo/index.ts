@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
       const r = data as typeof total
       total.baris_baru += r.baris_baru; total.baris_diperbarui += r.baris_diperbarui; total.ds_dibuat += r.ds_dibuat; total.ds_dipasang += r.ds_dipasang
     }
-    const ringkas = `${dari} s/d ${sampai}: ${baris.length} baris dari BO, ${total.baris_baru} baru, ${total.baris_diperbarui} diperbarui${zonaTakDikenal ? `, ${zonaTakDikenal} zona waktu tidak dikenal (dianggap WIB)` : ''}`
+    const ringkas = `${dari} s/d ${sampai}: ${baris.length} baris dari BO, ${total.baris_baru} baru, ${total.baris_diperbarui} diperbarui, ${Math.max(0, baris.length - total.baris_baru - total.baris_diperbarui)} tanpa perubahan${zonaTakDikenal ? `, ${zonaTakDikenal} zona waktu tidak dikenal (dianggap WIB)` : ''}`
     await catat('berhasil', ringkas)
     return json({ rentang: { dari, sampai }, ditarik: baris.length, dilewati, hub: hubs.length, zona_tak_dikenal: zonaTakDikenal, ...total })
   } catch (e) {

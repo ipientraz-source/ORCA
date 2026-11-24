@@ -116,16 +116,16 @@ function SelKuota({ nP, nS, nT, k, tengah, editable, ringkas, ubah }: { nP: numb
         <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wP}`}>{ringkas ? `P${nP}` : <><span>P</span><span>{nP}/{k.pagi}</span></>}</div>
         {tengah && <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wT}`}>{ringkas ? `M${nT}` : <><span>M</span><span>{nT}/{k.tengah}</span></>}</div>}
         <div className={`font-mono text-[11px] font-semibold ${ringkas ? 'text-center' : 'flex justify-between gap-2'} ${wS}`}>{ringkas ? `S${nS}` : <><span>S</span><span>{nS}/{k.siang}</span></>}</div>
-        {k.cadangan > 0 && <div className="text-center text-[10px] text-muted-foreground" title="Rider cadangan di atas kebutuhan client">+{k.cadangan} cad.</div>}
+        {k.cadangan > 0 && <div className="text-center text-[10px] text-muted-foreground" title="Rider cadangan di atas budget">+{k.cadangan} cad.</div>}
       </>
     )
   const baris = ringkas ? 'flex flex-col items-center gap-0.5' : 'flex items-center justify-between gap-1'
   return (
     <div className="space-y-1">
-      <div className={`${baris} font-mono text-[11px] font-semibold ${wP}`}><span>P{nP}</span>{input('pagi', k.pagi, 'Kebutuhan shift pagi hari ini (sesuai permintaan client)')}</div>
-      {tengah && <div className={`${baris} font-mono text-[11px] font-semibold ${wT}`}><span>M{nT}</span>{input('tengah', k.tengah, 'Kebutuhan shift middle hari ini (opsional, sesuai permintaan client)')}</div>}
-      <div className={`${baris} font-mono text-[11px] font-semibold ${wS}`}><span>S{nS}</span>{input('siang', k.siang, 'Kebutuhan shift siang hari ini (sesuai permintaan client)')}</div>
-      <div className={`${baris} font-mono text-[10px] text-muted-foreground`}><span>cad</span>{input('cadangan', k.cadangan, 'Rider cadangan di atas kebutuhan client (opsional)')}</div>
+      <div className={`${baris} font-mono text-[11px] font-semibold ${wP}`}><span>P{nP}</span>{input('pagi', k.pagi, 'Budget shift pagi hari ini (sesuai permintaan client)')}</div>
+      {tengah && <div className={`${baris} font-mono text-[11px] font-semibold ${wT}`}><span>M{nT}</span>{input('tengah', k.tengah, 'Budget shift middle hari ini (opsional, sesuai permintaan client)')}</div>}
+      <div className={`${baris} font-mono text-[11px] font-semibold ${wS}`}><span>S{nS}</span>{input('siang', k.siang, 'Budget shift siang hari ini (sesuai permintaan client)')}</div>
+      <div className={`${baris} font-mono text-[10px] text-muted-foreground`}><span>cad</span>{input('cadangan', k.cadangan, 'Rider cadangan di atas budget (opsional)')}</div>
     </div>
   )
 }
@@ -363,7 +363,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
   // Libur terkunci (gembok) SELALU dihormati; pagi/siang/tengah yang sudah diisi hanya dipertahankan bila opsinya dicentang.
   const susunOtomatis = async () => {
     if (!riders.rows.length) return toast('Belum ada rider aktif di DS ini.')
-    if (days.every((d) => kq(d).pagi + kq(d).siang + kq(d).tengah === 0)) return toast('Kebutuhan masih 0 untuk semua hari. Isi kebutuhan di baris kuota, atau minta Super-admin mengisi kuota DS di Kelola DS & Captain.')
+    if (days.every((d) => kq(d).pagi + kq(d).siang + kq(d).tengah === 0)) return toast('Budget masih 0 untuk semua hari. Isi budget di baris bawah jadwal, atau minta Super-admin mengisi budget DS di Kelola DS & Captain.')
     if (adaIsi && !pertahankan && !(await konfirmasi('Jadwal periode ini sudah ada isinya. Ganti dengan draf otomatis? Sel Off (gembok) tetap dihormati.', { judul: 'Ganti jadwal periode ini?', ya: 'Ganti' }))) return
     // Efek HUD hanya di gaya Cyber dan bila perangkat tidak meminta gerakan dikurangi; selain itu perilaku tetap seperti semula.
     const efek = document.documentElement.dataset.gaya === 'cyber' && matchMedia('(prefers-reduced-motion: no-preference)').matches
@@ -398,8 +398,8 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
       const hk = ids.map((id) => days.filter((d) => grid[`${id}|${d}`]).length)
       toast.ok(`Draf jadwal dibuat: ${Object.keys(grid).length} shift, hari kerja per rider ${Math.min(...hk)}–${Math.max(...hk)}. Periksa dulu, lalu klik Simpan jadwal.`)
       if (pakaiCadangan && !pola?.some((p) => p.terisi >= 20)) toast('Data absensi belum cukup untuk menyarankan cadangan, jadi tidak ada cadangan yang ditambahkan.')
-      if (kurang.length) toast(`Rider kurang untuk memenuhi kebutuhan di ${kurang.length} hari (mulai ${hari(kurang[0].tanggal)}). Tambah rider atau kurangi kebutuhan.`)
-      if (langgar.length) toast(`${langgar.length} kali rider terpaksa pindah shift tanpa libur dulu supaya kebutuhan terpenuhi (mulai ${hari(langgar[0].tanggal)}). Periksa lagi jadwalnya.`)
+      if (kurang.length) toast(`Rider kurang untuk memenuhi budget di ${kurang.length} hari (mulai ${hari(kurang[0].tanggal)}). Tambah rider atau kurangi budget.`)
+      if (langgar.length) toast(`${langgar.length} kali rider terpaksa pindah shift tanpa libur dulu supaya budget terpenuhi (mulai ${hari(langgar[0].tanggal)}). Periksa lagi jadwalnya.`)
     } catch (e) { setSusun('diam'); throw e }
   }
 
@@ -460,7 +460,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
               <label className="flex cursor-pointer items-center gap-1.5" title="Pagi/siang yang sudah Anda isi tidak diubah; otomatis hanya mengisi sisanya. Sel Off bergembok selalu dihormati, dicentang atau tidak.">
                 <input type="checkbox" checked={pertahankan} onChange={(e) => setPertahankan(e.target.checked)} /> Pertahankan shift yang sudah diisi
               </label>
-              <label className="flex cursor-pointer items-center gap-1.5" title="Menambah rider di atas kebutuhan client pada hari yang sering ada absen, berdasarkan pola 8 minggu terakhir.">
+              <label className="flex cursor-pointer items-center gap-1.5" title="Menambah rider di atas budget pada hari yang sering ada absen, berdasarkan pola 8 minggu terakhir.">
                 <input type="checkbox" checked={pakaiCadangan} onChange={(e) => setPakaiCadangan(e.target.checked)} /> Tambah cadangan sesuai pola absen
               </label>
             </div>
@@ -561,8 +561,8 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
           <tfoot>
             <tr>
               <td className="sticky left-0 z-10 bg-muted px-2 py-3 text-xs font-semibold md:px-4">
-                Terisi / kebutuhan client
-                <div className="hidden font-normal text-[11px] text-muted-foreground md:block">P = pagi, {tengahAktif ? 'M = middle, ' : ''}S = siang, cad = rider cadangan{editable ? '. Angka kebutuhan bisa diubah per hari.' : ''}</div>
+                Terisi / budget
+                <div className="hidden font-normal text-[11px] text-muted-foreground md:block">P = pagi, {tengahAktif ? 'M = middle, ' : ''}S = siang, cad = rider cadangan{editable ? '. Angka budget bisa diubah per hari.' : ''}</div>
               </td>
               {days.map((d) => (
                 <td key={d} className={`py-2.5 ${padat ? 'px-0.5' : 'px-3'} ${d === today() ? 'bg-primary-soft' : 'bg-muted'}`}>
@@ -579,7 +579,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
         <details className="mt-2 text-xs text-muted-foreground">
           <summary className="cursor-pointer font-semibold text-foreground">Cara kerja jadwal dan susun otomatis</summary>
           <p className="mt-1 leading-relaxed">
-            Warna baris kebutuhan: hijau pas, kuning kurang, biru lebih tapi masih dalam jatah cadangan, merah kelebihan. Jadwal tetap bisa disimpan. Klik sel untuk mengganti: libur, pagi, siang, lalu <b>Off</b> (gembok) untuk cuti atau izin yang sudah disepakati, yang tidak akan diisi otomatis. "Susun otomatis" membagi shift sesuai kebutuhan tiap hari secara adil dan membaca jadwal 28 hari sebelumnya yang sudah tersimpan (simpan periode sebelumnya dulu). Aturannya: maksimal 6 hari kerja per minggu dan 6 hari berturut-turut, shift hanya berganti setelah libur, dan setelah libur rider melanjutkan shift sebelumnya kecuali selisih hari pagi dan siangnya sudah 4 hari atau lebih: maka ia bergantian ke shift satunya, supaya pagi dan siang terbagi adil dari minggu ke minggu. Hasilnya hanya draf: periksa dan ubah dulu, baru klik Simpan jadwal. Pindah periode sebelum menyimpan akan membuang draf.{' '}
+            Warna baris budget: hijau pas, kuning kurang, biru lebih tapi masih dalam jatah cadangan, merah kelebihan. Jadwal tetap bisa disimpan. Klik sel untuk mengganti: libur, pagi, siang, lalu <b>Off</b> (gembok) untuk cuti atau izin yang sudah disepakati, yang tidak akan diisi otomatis. "Susun otomatis" membagi shift sesuai budget tiap hari secara adil dan membaca jadwal 28 hari sebelumnya yang sudah tersimpan (simpan periode sebelumnya dulu). Aturannya: maksimal 6 hari kerja per minggu dan 6 hari berturut-turut, shift hanya berganti setelah libur, dan setelah libur rider melanjutkan shift sebelumnya kecuali selisih hari pagi dan siangnya sudah 4 hari atau lebih: maka ia bergantian ke shift satunya, supaya pagi dan siang terbagi adil dari minggu ke minggu. Hasilnya hanya draf: periksa dan ubah dulu, baru klik Simpan jadwal. Pindah periode sebelum menyimpan akan membuang draf.{' '}
           </p>
         </details>
       )}

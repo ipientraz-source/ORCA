@@ -88,8 +88,8 @@ export const KOLOM: Record<Jenis, Kol[]> = {
   ],
   ds: [
     { kunci: 'nama', judul: 'Nama DS', alias: ['nama ds', 'ds', 'nama'], wajib: true, contoh: 'DS HAYAM WURUK' },
-    { kunci: 'pagi', judul: 'Kuota Pagi', alias: ['kuota pagi'], wajib: true, tipe: 'angka', contoh: '3' },
-    { kunci: 'siang', judul: 'Kuota Siang', alias: ['kuota siang'], wajib: true, tipe: 'angka', contoh: '3' },
+    { kunci: 'pagi', judul: 'Budget Pagi', alias: ['budget pagi', 'kuota pagi'], wajib: true, tipe: 'angka', contoh: '3' },
+    { kunci: 'siang', judul: 'Budget Siang', alias: ['budget siang', 'kuota siang'], wajib: true, tipe: 'angka', contoh: '3' },
     { kunci: 'grup', judul: 'ID Grup WhatsApp', alias: ['id grup whatsapp', 'grup wa', 'id grup'], contoh: '' },
   ],
   servis: [
@@ -226,7 +226,7 @@ function cekKandidat(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
 function cekDs(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   if (!v.nama) return salah('Nama DS wajib diisi')
   const pagi = bulat(v.pagi), siang = bulat(v.siang)
-  if (pagi === null || siang === null || pagi > 500 || siang > 500) return salah('Kuota Pagi dan Kuota Siang wajib angka bulat 0 sampai 500')
+  if (pagi === null || siang === null || pagi > 500 || siang > 500) return salah('Budget Pagi dan Budget Siang wajib angka bulat 0 sampai 500')
   const n = normDs(v.nama)
   if (!n) return salah('Nama DS tidak valid')
   if (ctx.ds.some((d) => normDs(d.nama) === n)) return dobel('DS sudah ada')

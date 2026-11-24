@@ -29,7 +29,7 @@ export function Kelola() {
     if (await ok(sb.from('ds').insert({ nama: nama.trim() }))) {
       setNama('')
       setTambah(false)
-      toast.ok('DS berhasil dibuat. Pilih di daftar, lalu isi kuota dan pilih Captain.')
+      toast.ok('DS berhasil dibuat. Pilih di daftar, lalu isi budget dan pilih Captain.')
       dsl.reload()
     }
   }
@@ -41,7 +41,7 @@ export function Kelola() {
 
       <div className="mb-3 flex flex-wrap items-start gap-3">
         <p className="min-w-60 flex-1 text-sm text-muted-foreground">
-          Urutan menyiapkan DS: <b className="text-foreground">1.</b> buat DS, <b className="text-foreground">2.</b> isi kuota rider per shift, <b className="text-foreground">3.</b> pilih Captain. Buat DS lebih dulu sebelum import rider supaya nama DS di file CSV cocok.
+          Urutan menyiapkan DS: <b className="text-foreground">1.</b> buat DS, <b className="text-foreground">2.</b> isi budget rider per shift, <b className="text-foreground">3.</b> pilih Captain. Buat DS lebih dulu sebelum import rider supaya nama DS di file CSV cocok.
         </p>
         <button type="button" className={tambah ? 'btn2' : 'btn'} onClick={() => setTambah(!tambah)}>{tambah ? <X size={16} /> : <Plus size={16} />}{tambah ? 'Batal' : 'Buat DS'}</button>
       </div>
@@ -182,7 +182,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
       {buka && (
       <div className="border-t border-border p-4">
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {([['dasar', terbatas ? 'Kebutuhan rider' : 'Pengaturan DS'], ['captain', 'Captain'], ...(terbatas ? [] : [['arcon', 'Arcon'] as const])] as const).map(([k, l]) => (
+        {([['dasar', terbatas ? 'Budget rider' : 'Pengaturan DS'], ['captain', 'Captain'], ...(terbatas ? [] : [['arcon', 'Arcon'] as const])] as const).map(([k, l]) => (
           <button key={k} type="button" className={`tab ${tab === k ? 'tab-on' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -194,13 +194,13 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
             <input className="inp w-full" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} />
           </Field>
         )}
-        <Field label={terbatas ? 'Kebutuhan rider shift pagi' : 'Kuota shift pagi'} hint="Jumlah rider yang harus masuk shift pagi setiap hari.">
+        <Field label="Budget shift pagi" hint="Jumlah rider yang harus masuk shift pagi setiap hari.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_pagi} onChange={(e) => setF({ ...f, kuota_pagi: angka(e.target.value) })} />
         </Field>
-        <Field label={terbatas ? 'Kebutuhan rider shift siang' : 'Kuota shift siang'} hint="Jumlah rider yang harus masuk shift siang setiap hari.">
+        <Field label="Budget shift siang" hint="Jumlah rider yang harus masuk shift siang setiap hari.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_siang} onChange={(e) => setF({ ...f, kuota_siang: angka(e.target.value) })} />
         </Field>
-        <Field label={terbatas ? 'Kebutuhan rider shift middle (opsional)' : 'Kuota shift middle (opsional)'} hint="Shift ketiga di antara pagi dan siang. Biarkan 0 bila DS ini tidak memakainya; kalau diisi, shift middle muncul di jadwal dan dibagi adil seperti shift lain.">
+        <Field label="Budget shift middle (opsional)" hint="Shift ketiga di antara pagi dan siang. Biarkan 0 bila DS ini tidak memakainya; kalau diisi, shift middle muncul di jadwal dan dibagi adil seperti shift lain.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_tengah} onChange={(e) => setF({ ...f, kuota_tengah: angka(e.target.value) })} />
         </Field>
         {!terbatas && (
@@ -251,7 +251,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
       {!terbatas && tab === 'arcon' && (
       <div>
         <p className="text-sm text-muted-foreground mb-3">
-          Arcon memantau dan mengatur jadwal, kebutuhan rider, dan Captain di DS yang dipegang; absensi harian tetap dikerjakan Captain. Satu Arcon bisa memegang banyak DS.{' '}
+          Arcon memantau dan mengatur jadwal, budget rider, dan Captain di DS yang dipegang; absensi harian tetap dikerjakan Captain. Satu Arcon bisa memegang banyak DS.{' '}
           {arc ? <>Sekarang: <b className="text-foreground">{arc.nama}</b> ({arc.email}), memegang {jmlDsArcon} DS.</> : 'Belum ada Arcon untuk DS ini (opsional).'}
         </p>
         <div className="grid gap-4 sm:grid-cols-2 items-start">
