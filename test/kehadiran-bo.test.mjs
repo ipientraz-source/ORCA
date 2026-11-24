@@ -174,3 +174,41 @@ test('sinkron API (0064): Edge Function (service_role) boleh impor, baris bersum
   await assert.rejects(q(`update pengaturan_kehadiran set sinkron_status = 'entah' where id = 1`), /check constraint/i)
   assert.equal((await sebagaiSuper(() => q(`select sinkron_status from pengaturan_kehadiran`)))[0].sinkron_status, 'berhasil')
 })
+
+test('nomor HP dari BO (0069): hanya mengisi yang kosong, nomor dirapikan, kode huruf kecil dikenali, yang tidak valid dilewati, dan khusus Super-admin atau Edge Function', async () => {
+  // rider uji: R1 dan R2 kosong, rider baru P1 punya nomor, P2 nomornya hanya spasi
+  await q(`insert into riders (id, kode_mtr, nama, ds_id, peran, status, no_hp) values
+    ('${id(301)}', 'MTR0000601', 'HP Satu', '${CIHAM}', 'rider', 'aktif', null),
+    ('${id(302)}', 'MTR0000602', 'HP Dua', '${CIHAM}', 'rider', 'aktif', ''),
+    ('${id(303)}', 'MTR0000603', 'HP Ada', '${CIHAM}', 'rider', 'aktif', '6281200000001'),
+    ('${id(304)}', 'MTR0000604', 'HP Spasi', '${CIHAM}', 'rider', 'aktif', '  '),
+    ('${id(305)}', 'MTR0000605', 'HP Salah', '${CIHAM}', 'rider', 'aktif', null),
+    ('${id(306)}', 'MTR0000606', 'HP Nonaktif', '${CIHAM}', 'rider', 'nonaktif', null)`)
+  const jalan = (baris) => sebagaiSuper(() => q(`select isi_no_hp_bo($1::jsonb) as r`, [JSON.stringify(baris)])).then((x) => x[0].r)
+  const hasil = await jalan([
+    { kode: 'MTR0000601', hp: '0812-3456-7801' },        // 08... menjadi 62...
+    { kode: ' mtr0000602 ', hp: '+62 812 3456 7802' },   // huruf kecil dan spasi di kode, +62 di nomor
+    { kode: 'MTR0000603', hp: '081299999999' },          // sudah punya nomor: tidak ditimpa
+    { kode: 'MTR0000604', hp: '812345678' },             // 8... menjadi 62...
+    { kode: 'MTR0000605', hp: '123' },                   // terlalu pendek: dilewati
+    { kode: 'MTR0000606', hp: '081234567806' },          // nonaktif: tetap diisi (data lengkap), bukan kandidat aktif
+    { kode: 'MTR0000999', hp: '081234567899' },          // tidak ada di Orca: diabaikan
+  ])
+  assert.equal(hasil.terisi, 4) // 601, 602, 604, 606
+  const nomor = Object.fromEntries((await q(`select kode_mtr, no_hp from riders where kode_mtr like 'MTR000060%' order by kode_mtr`)).map((r) => [r.kode_mtr, r.no_hp]))
+  assert.deepEqual(nomor, {
+    MTR0000601: '6281234567801', MTR0000602: '6281234567802', MTR0000603: '6281200000001',
+    MTR0000604: '62812345678', MTR0000605: null, MTR0000606: '6281234567806',
+  })
+  // diulang: tidak ada lagi yang kosong untuk diisi
+  assert.equal((await jalan([{ kode: 'MTR0000601', hp: '085500000000' }])).terisi, 0)
+  assert.equal((await q(`select no_hp from riders where kode_mtr = 'MTR0000601'`))[0].no_hp, '6281234567801')
+  // captain ditolak, anon ditolak
+  await assert.rejects(sebagai('cap@test.local', () => q(`select isi_no_hp_bo('[]'::jsonb)`)), /Hanya Super-admin/)
+  await db.exec('reset role; set role anon')
+  await assert.rejects(q(`select isi_no_hp_bo('[]'::jsonb)`), /permission denied/)
+  await db.exec('reset role')
+  // Edge Function (service_role) boleh
+  await db.exec(`reset role; select set_config('request.jwt.claims', '{"role":"service_role"}', false)`)
+  try { assert.equal((await q(`select isi_no_hp_bo('[]'::jsonb) as r`))[0].r.terisi, 0) } finally { await db.exec(`select set_config('request.jwt.claims', '', false)`) }
+})

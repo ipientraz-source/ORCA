@@ -13,6 +13,7 @@ type Atur = { mulai_pagi: string; mulai_tengah: string; mulai_siang: string; tol
 type Sinkron = { sinkron_terakhir: string | null; sinkron_status: 'berhasil' | 'gagal' | null; sinkron_pesan: string | null }
 type Hasil = { rentang?: { dari: string; sampai: string }; ditarik: number; baris_baru: number; baris_diperbarui: number; ds_dibuat: number; ds_dipasang: number }
 type Perlu = { hub: string; baris: number }
+type HasilHp = { butuh: number; dibaca: number; ditemukan: number; terisi: number }
 
 const RENTANG = [{ value: '1', label: 'Kemarin dan hari ini' }, { value: '7', label: '7 hari terakhir' }, { value: '30', label: '30 hari terakhir' }]
 const waktuWib = (iso: string) => new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -34,6 +35,8 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
   const [perlu, setPerlu] = useState<Perlu[] | null>(null)
   const [peta, setPeta] = useState<Record<string, string>>({})
   const [hasil, setHasil] = useState<Hasil | null>(null)
+  const [sibukHp, setSibukHp] = useState(false)
+  const [hasilHp, setHasilHp] = useState<HasilHp | null>(null)
 
   // Hub baru dari BO: usulan DS yang namanya mirip dan belum terhubung
   const hubs = useMemo(() => (perlu ?? []).map((h) => {
@@ -67,6 +70,16 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
     dsl.reload()
     ring.reload()
   }
+  // Isi nomor HP rider aktif yang masih kosong dari daftar mitra BO (hanya mengisi yang kosong, tidak menimpa)
+  const isiHp = async () => {
+    setSibukHp(true)
+    setHasilHp(null)
+    const { data, error } = await sb.functions.invoke('tarik-hp-bo', { body: {} })
+    setSibukHp(false)
+    if (error || data?.error) return toast(data?.error ?? 'Nomor HP belum bisa diisi. Coba lagi.')
+    setHasilHp(data as HasilHp)
+    toast.ok(`${(data as HasilHp).terisi} nomor HP terisi`)
+  }
   const lanjut = () => sinkron(Object.fromEntries(Object.entries(peta).filter(([, v]) => v !== BARU)))
 
   return (
@@ -88,6 +101,15 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             <div className="flex flex-wrap items-center gap-3">
               <Select className="w-56" value={rentang} onChange={setRentang} opsi={RENTANG} />
               <button className="btn" disabled={sibuk || !!perlu} onClick={() => void sinkron()}>{sibuk ? 'Menarik data…' : 'Sinkron sekarang'}</button>
+            </div>
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">Nomor HP rider aktif yang masih kosong bisa diisi dari daftar mitra di BO (dicocokkan lewat Kode MTR). Hanya yang kosong yang diisi; nomor yang sudah ada tidak ditimpa.</p>
+              <button className="btn2" disabled={sibukHp} onClick={() => void isiHp()}>{sibukHp ? 'Mencari nomor di BO…' : 'Isi nomor HP dari BO'}</button>
+              {hasilHp && (
+                <p className="rounded-md bg-success-soft p-3 text-sm text-success">
+                  <b>{hasilHp.terisi.toLocaleString('id-ID')} nomor HP terisi</b> dari {hasilHp.butuh.toLocaleString('id-ID')} rider aktif yang belum punya nomor. {hasilHp.ditemukan.toLocaleString('id-ID')} ada nomornya di BO; sisanya belum punya nomor di BO atau tidak ada di daftar mitra BO.
+                </p>
+              )}
             </div>
           </>
         )}
