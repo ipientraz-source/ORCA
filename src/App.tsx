@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
 import { RiderApp, JadwalSaya, SayaRider } from './rider'
 import { LaporanOrderMenu } from './laporan-order'
+import { PengaturanWa } from './pengaturan-wa'
 import { AbsensiSemua, Daily } from './daily'
 import { JadwalDs, JadwalSemua } from './jadwal'
 import { Dashboard, Rekap } from './rekap'
@@ -29,6 +30,7 @@ const SUPER: Tab[] = [
   { nama: 'Laporan Absensi Harian', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
   { nama: 'Rekap Kehadiran', desc: 'Bandingkan jadwal dengan kehadiran sebenarnya, lihat rekap per rider, dan kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
   { nama: 'Laporan Order', desc: 'Jumlah order dan screenshot yang dilaporkan rider per hari, di DS mana pun', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
+  { nama: 'Laporan WhatsApp', desc: 'Atur pesan WhatsApp otomatis: isi pesan, jam, hari, DS yang dicakup, dan grup tujuan, lalu lihat riwayat pengiriman', Icon: Send, View: () => <PengaturanWa /> },
   { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur kuota rider, pilih Captain, dan tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
   { nama: 'Armada', desc: 'Data motor listrik, servis rutin, dan laporan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut tiap DS, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
