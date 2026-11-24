@@ -51,7 +51,7 @@ test('impor: hub dipasangkan ke DS yang ada (nama mengikuti BO), DS bernama pers
     baris(HUB_B, 'MTR0000098', '2026-11-20', '13:48', 'WITA', '2026-11-20T05:48:00Z'),
   ]
   const hasil = await impor(b, { [HUB_C]: CIHAM })
-  assert.deepEqual(hasil, { hub: 3, ds_dibuat: 1, ds_dipasang: 2, baris_baru: 4, baris_diperbarui: 0 })
+  assert.deepEqual(hasil, { hub: 3, ds_dibuat: 1, ds_dipasang: 2, baris_baru: 4, baris_diperbarui: 0, rider_baru: 0 })
   // DS lama dipasangkan dan namanya mengikuti BO; identitas (id, kuota, captain) tetap
   const c = (await q(`select nama, hub_bo, kuota_pagi from ds where id = '${CIHAM}'`))[0]
   assert.deepEqual(c, { nama: HUB_C, hub_bo: HUB_C, kuota_pagi: 8 })
@@ -70,9 +70,9 @@ test('impor bisa diulang: baris yang sama tidak ganda, hanya jam keluar yang dip
     baris(HUB_C, 'MTR0000001', '2026-11-20', '05:53', 'WIB', '2026-11-19T22:53:00Z', '2026-11-20T08:00:00Z'),
     baris(HUB_C, 'MTR0000002', '2026-11-20', '06:09', 'WIB', '2026-11-19T23:09:00Z'),
   ]
-  assert.deepEqual(await impor(b), { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 0 }) // persis sama: tidak ada perubahan
+  assert.deepEqual(await impor(b), { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 0, rider_baru: 0 }) // persis sama: tidak ada perubahan
   b[1].keluar_wib = '2026-11-20T09:30:00Z' // clock-out baru terisi
-  assert.deepEqual(await impor(b), { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 1 })
+  assert.deepEqual(await impor(b), { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 1, rider_baru: 0 })
   assert.equal((await q(`select count(*)::int as n from kehadiran_bo where hub = $1`, [HUB_C]))[0].n, 2)
   // kode mitra huruf kecil dan berspasi dirapikan menjadi satu baris yang sama
   await impor([baris(HUB_C, '  mtr0000001 ', '2026-11-20', '05:53', 'WIB', '2026-11-19T22:53:00Z', '2026-11-20T08:00:00Z')])
@@ -145,13 +145,13 @@ test('impor merapikan nama hub di database (spasi ganda dan tepi), jadi CSV dan 
   const sebelum = (await q(`select count(*)::int as n from ds`))[0].n
   // nama hub yang sama tetapi dengan spasi berlebih: harus jatuh ke DS Cihampelas yang sudah terhubung, bukan DS baru
   const hasil = await impor([baris('  Dark Store Alfagift  -  Cihampelas - Bandung ', 'MTR0000006', '2026-11-22', '05:55', 'WIB', '2026-11-21T22:55:00Z')])
-  assert.deepEqual(hasil, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 1, baris_diperbarui: 0 })
+  assert.deepEqual(hasil, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 1, baris_diperbarui: 0, rider_baru: 0 })
   assert.equal((await q(`select count(*)::int as n from ds`))[0].n, sebelum)
   assert.equal((await q(`select hub from kehadiran_bo where kode_mtr = 'MTR0000006'`))[0].hub, HUB_C) // tersimpan dengan nama yang sudah dirapikan
   // peta pasangan juga dirapikan: kunci dengan spasi berlebih tetap dikenali
   const hubBaru = 'Toko Sapa Alfagift - Peta - Denpasar'
   const r = await impor([baris(hubBaru, 'MTR0000007', '2026-11-22', '05:50', 'WITA', '2026-11-21T21:50:00Z')], { ['  Toko Sapa Alfagift  -  Peta - Denpasar ']: BERSAMA })
-  assert.deepEqual(r, { hub: 1, ds_dibuat: 0, ds_dipasang: 1, baris_baru: 1, baris_diperbarui: 0 })
+  assert.deepEqual(r, { hub: 1, ds_dibuat: 0, ds_dipasang: 1, baris_baru: 1, baris_diperbarui: 0, rider_baru: 0 })
   assert.equal((await q(`select nama from ds where id = '${BERSAMA}'`))[0].nama, hubBaru) // DS Galaxy dipasangkan dan namanya mengikuti BO
 })
 
@@ -162,15 +162,44 @@ test('sinkron API (0064): Edge Function (service_role) boleh impor, baris bersum
     try { return await fn() } finally { await db.exec(`select set_config('request.jwt.claims', '', false)`) }
   }
   const r = (await sebagaiFungsi(() => q(`select impor_kehadiran_bo($1::jsonb) as r`, [JSON.stringify(b)])))[0].r
-  assert.deepEqual(r, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 1, baris_diperbarui: 0 })
+  assert.deepEqual(r, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 1, baris_diperbarui: 0, rider_baru: 0 })
   assert.equal((await q(`select sumber from kehadiran_bo where kode_mtr = 'MTR0000008'`))[0].sumber, 'api')
   // diulang: tidak ganda (tahan jam clock-in yang sama dari tarikan berikutnya)
   const ulang = (await sebagaiFungsi(() => q(`select impor_kehadiran_bo($1::jsonb) as r`, [JSON.stringify(b)])))[0].r
-  assert.deepEqual(ulang, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 0 })
+  assert.deepEqual(ulang, { hub: 1, ds_dibuat: 0, ds_dipasang: 0, baris_baru: 0, baris_diperbarui: 0, rider_baru: 0 })
   // pemanggil tanpa jwt Super-admin dan bukan service_role tetap ditolak
   await assert.rejects(sebagai('cap@test.local', () => q(`select impor_kehadiran_bo($1::jsonb) as r`, [JSON.stringify(b)])), /Hanya Super-admin/)
   // catatan sinkron terakhir: diisi Edge Function, dibatasi nilainya, dan terbaca Super-admin
   await q(`update pengaturan_kehadiran set sinkron_terakhir = now(), sinkron_status = 'berhasil', sinkron_pesan = '1 baris' where id = 1`)
   await assert.rejects(q(`update pengaturan_kehadiran set sinkron_status = 'entah' where id = 1`), /check constraint/i)
   assert.equal((await sebagaiSuper(() => q(`select sinkron_status from pengaturan_kehadiran`)))[0].sinkron_status, 'berhasil')
+})
+
+test('rider otomatis (0068): mitra yang belum ada di Orca ditambahkan aktif di DS hub clock-in terbarunya, yang sudah ada tidak diubah, tanpa nama dilewati', async () => {
+  const r = (hub, kodeMtr, nama, masukWib) => ({ ...baris(hub, kodeMtr, '2026-11-23', '05:50', 'WIB', masukWib), nama })
+  const sebelum = (await q(`select count(*)::int as n from riders`))[0].n
+  const hasil = await impor([
+    r(HUB_C, 'MTR0000501', 'Budi Baru', '2026-11-22T22:50:00Z'),
+    r(HUB_L, 'MTR0000502', '  Sari   Dua ', '2026-11-22T22:51:00Z'),
+    r(HUB_C, 'MTR0000001', 'Nama Beda', '2026-11-22T22:52:00Z'),          // sudah ada di Orca: tidak diubah
+    r(HUB_C, 'MTR0000503', '', '2026-11-22T22:53:00Z'),                   // tanpa nama: dilewati
+    r(HUB_C, 'MTR0000504', 'Dua Hub', '2026-11-22T22:54:00Z'),
+    r(HUB_L, 'MTR0000504', 'Dua Hub', '2026-11-22T23:30:00Z'),            // clock-in terbaru di Lombok: rider masuk DS itu
+  ])
+  assert.equal(hasil.rider_baru, 3)
+  const baru = await q(`select kode_mtr, nama, status::text as status, peran::text as peran, ds_id from riders where kode_mtr in ('MTR0000501', 'MTR0000502', 'MTR0000503', 'MTR0000504') order by kode_mtr`)
+  assert.deepEqual(baru, [
+    { kode_mtr: 'MTR0000501', nama: 'Budi Baru', status: 'aktif', peran: 'rider', ds_id: CIHAM },
+    { kode_mtr: 'MTR0000502', nama: 'Sari Dua', status: 'aktif', peran: 'rider', ds_id: LOMBOK },
+    { kode_mtr: 'MTR0000504', nama: 'Dua Hub', status: 'aktif', peran: 'rider', ds_id: LOMBOK },
+  ])
+  assert.equal((await q(`select nama from riders where kode_mtr = 'MTR0000001'`))[0].nama, 'Rider Satu')
+  assert.equal((await q(`select count(*)::int as n from riders`))[0].n, sebelum + 3)
+  // dicatat bergabung sebelum pencatatan (tanggal kosong), bukan rekrutan hari ini
+  const ev = await q(`select e.tanggal from rider_peristiwa e join riders r on r.id = e.rider_id where r.kode_mtr = 'MTR0000501' and e.jenis = 'bergabung'`)
+  assert.deepEqual(ev, [{ tanggal: null }])
+  // diulang (juga dengan kode huruf kecil): tidak menambah dobel
+  const ulang = await impor([r(HUB_C, ' mtr0000501 ', 'Budi Baru', '2026-11-22T23:40:00Z')])
+  assert.equal(ulang.rider_baru, 0)
+  assert.equal((await q(`select count(*)::int as n from riders where upper(kode_mtr) = 'MTR0000501'`))[0].n, 1)
 })
