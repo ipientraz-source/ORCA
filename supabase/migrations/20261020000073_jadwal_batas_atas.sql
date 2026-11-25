@@ -1,6 +1,8 @@
--- Jadwal Orca hanya dipakai bila clock-in wajar untuk shift itu: paling awal 2 jam sebelum jam mulai (0070) DAN paling lambat sebelum shift berikutnya mulai (baru).
--- Contoh: rider terjadwal Pagi yang baru clock-in 13:41 dulu tetap dibaca Pagi sehingga Pagi terlihat melebihi budget (12/10) padahal tidak ada yang clock-in pagi sebanyak itu; sekarang dibaca dari jam masuk, yaitu Siang.
--- Pagi: sebelum jam mulai Tengah; Tengah: sebelum jam mulai Siang; Siang: tanpa batas atas. Selebihnya sama persis dengan 0071.
+-- Jadwal Orca hanya dipakai bila clock-in wajar untuk shift itu: paling awal 2 jam sebelum jam mulai (0070) DAN tidak melewati batas shift di Pengaturan (baru).
+-- Batas itu sama dengan yang dipakai membaca shift dari jam: Pagi sampai batas_pagi, Middle sampai batas_tengah, Siang tanpa batas atas.
+-- Contoh: rider terjadwal Pagi yang baru clock-in 13:41 dulu tetap dibaca Pagi sehingga Pagi melebihi budget (12/10); sekarang melewati batas Pagi, jadi dibaca dari jam masuk, yaitu Siang.
+-- Selebihnya sama persis dengan 0071.
+
 
 
 drop function if exists aktual_bo(date, date);
@@ -47,7 +49,7 @@ language sql stable security definer set search_path = public as $$
           (select j.shift::text from riders r join jadwal j on j.rider_id = r.id
             where r.kode_mtr = o.kode_mtr and j.tanggal = o.tanggal and j.ds_id = o.ds_id and j.shift <> 'off'
               and o.masuk_lokal >= (case j.shift::text when 'pagi' then a.mulai_pagi when 'tengah' then a.mulai_tengah else a.mulai_siang end)::time - interval '2 hours'
-              and (j.shift::text = 'siang' or o.masuk_lokal < (case j.shift::text when 'pagi' then a.mulai_tengah else a.mulai_siang end)::time)
+              and (j.shift::text = 'siang' or o.masuk_lokal <= (case j.shift::text when 'pagi' then a.batas_pagi else a.batas_tengah end)::time)
             limit 1),
           case when o.masuk_lokal <= a.batas_pagi::time then 'pagi' when o.masuk_lokal <= a.batas_tengah::time then 'tengah' else 'siang' end)
         else case when o.masuk_lokal <= a.batas_pagi::time then 'pagi' when o.masuk_lokal <= a.batas_tengah::time then 'tengah' else 'siang' end
