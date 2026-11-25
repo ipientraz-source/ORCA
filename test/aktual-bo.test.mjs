@@ -101,6 +101,16 @@ test('shift satu clock-in: laporan Captain dulu, lalu jadwal bila wajar (paling 
   assert.deepEqual({ pagi: a.h_pagi, tengah: a.h_tengah, siang: a.h_siang }, { pagi: 1, tengah: 0, siang: 3 })
 })
 
+test('jadwal hanya dipakai bila clock-in sebelum shift berikutnya mulai: rider terjadwal Pagi yang masuk sore dibaca dari jam, bukan Pagi', async () => {
+  const T = '2026-11-19'
+  await q(`insert into jadwal (tanggal, rider_id, shift, ds_id) values ($1, $2, 'pagi', $5), ($1, $3, 'pagi', $5), ($1, $4, 'pagi', $5)`, [T, rid(1), rid(2), rid(5), DSA])
+  await masuk(HUB_A, DSA, kode(1), '15:00', T) // terjadwal Pagi, masuk sore: Siang (dulu terbaca Pagi sehingga Pagi melebihi budget)
+  await masuk(HUB_A, DSA, kode(2), '09:00', T) // terjadwal Pagi, masuk sebelum jam mulai Middle (10:00): tetap Pagi
+  await masuk(HUB_A, DSA, kode(5), '10:30', T) // terjadwal Pagi, masuk setelah jam mulai Middle: dibaca dari jam, Middle
+  const a = (await aktual(T, T)).find((x) => x.ds_id === DSA)
+  assert.deepEqual({ pagi: a.h_pagi, tengah: a.h_tengah, siang: a.h_siang }, { pagi: 1, tengah: 1, siang: 1 })
+})
+
 test('fulfillment aktual: terpenuhi per shift dibatasi budget, kelebihan rider tidak menambah', async () => {
   const a = (await aktual()).find((x) => x.ds_id === DSA)
   assert.equal(a.kebutuhan, 6) // 3 + 1 + 2
