@@ -1347,13 +1347,10 @@ table thead th :is(div, span) { color: inherit; }
   background-attachment: fixed;
 }
 :root:root[data-gaya="cyber"]:not(.dark) body {
-  background-color: #f4f2ff;
+  background-color: #eef2ff;
   background-image:
-    radial-gradient(60rem 44rem at 0% 0%, rgb(196 181 253 / 0.75), transparent 70%),
-    radial-gradient(56rem 42rem at 100% 0%, rgb(147 210 253 / 0.65), transparent 70%),
-    radial-gradient(58rem 44rem at 100% 100%, rgb(251 191 224 / 0.6), transparent 70%),
-    radial-gradient(52rem 40rem at 0% 100%, rgb(167 243 208 / 0.4), transparent 70%),
-    linear-gradient(180deg, #f6f4ff 0%, #eef2ff 100%);
+    radial-gradient(70rem 40rem at 85% 0%, rgb(255 255 255 / 0.55), transparent 70%),
+    linear-gradient(125deg, #ddd6fe 0%, #c7d2fe 32%, #bae6fd 62%, #a7f3d0 100%);
   background-size: auto;
   background-attachment: fixed;
 }
