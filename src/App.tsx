@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, UserCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
-import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me } from './lib'
+import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me, dsAktif } from './lib'
 import { RiderApp, JadwalSaya, SayaRider } from './rider'
 import { LaporanOrderMenu } from './laporan-order'
 import { PengaturanWa } from './pengaturan-wa'
@@ -334,7 +334,7 @@ function AdminApp({ email }: { email: string }) {
       // DS dimuat lebih dulu daripada me, supaya Captain tidak sempat melihat "belum ditunjuk" sebelum DS-nya terbaca
       if (data?.peran === 'arcon') {
         const r = await sb.from('ds').select('*').eq('arcon_id', data.id).order('nama')
-        setDsList((r.data ?? []) as Ds[])
+        setDsList(((r.data ?? []) as Ds[]).filter(dsAktif))
       }
       if (data?.peran === 'captain') {
         const r = await sb.from('ds').select('*').eq('captain_id', data.id).maybeSingle()

@@ -2,7 +2,7 @@
 // Super-admin kelola semua; Arcon kelola penuh di DS yang dipegang; Captain melihat motor DS-nya dan melaporkan kerusakan.
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Bike, ClipboardList, Wrench, Warehouse, X } from 'lucide-react'
-import { sb, today, useRows, ok, toast, konfirmasi, Err, Field, Select, Stat, Kosong, usePage, Pagination, type Ds, type Me, type Rider } from './lib'
+import { sb, today, useRows, ok, toast, konfirmasi, Err, Field, Select, Stat, Kosong, usePage, Pagination, type Ds, type Me, type Rider, dsAktif } from './lib'
 import { angka, BadgeStatus, rupiah, ServisBerikutnya, tgl, type ItemServis, type Motor, type MotorDihapus, type Permintaan, type Pindah, type RingkasanPermintaan, type Rusak, type Servis } from './armada-lib'
 import { BagianDiminta, FormPengajuan } from './armada-diminta'
 import { ImporMotor } from './armada-impor'
@@ -34,7 +34,7 @@ export function Armada({ me, ds, dsList }: { me: Me; ds: Ds | null; dsList: Ds[]
   const bukaServis = (id: string) => { setModeAwal('servis'); setPilih(id); setBagian('motor') }
 
   // DS yang boleh dipakai untuk menambah/memindah motor
-  const dsBoleh = me.peran === 'super_admin' ? dsl.rows : me.peran === 'arcon' ? dsList : ds ? [ds] : []
+  const dsBoleh = (me.peran === 'super_admin' ? dsl.rows : me.peran === 'arcon' ? dsList : ds ? [ds] : []).filter(dsAktif)
   const dsNama = (id: string | null) => dsl.rows.find((d) => d.id === id)?.nama ?? '–'
   const motorKode = (id: string) => mts.rows.find((m) => m.id === id)?.kode_motor ?? '?'
   const dsMotor = (id: string) => mts.rows.find((m) => m.id === id)?.ds_id ?? null

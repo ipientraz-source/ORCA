@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CalendarOff, ChevronDown, Copy, Download, FileText, Image as ImageIcon, Lock, Sparkles, Sun, SunMedium, Sunrise } from 'lucide-react'
-import { sb, today, monday, addDays, hari, useRows, ok, toast, konfirmasi, Err, Select, type Ds, type Me, type Rider } from './lib'
+import { sb, today, monday, addDays, hari, useRows, ok, toast, konfirmasi, Err, Select, type Ds, type Me, type Rider, dsAktif } from './lib'
 import { bagiCadangan, buatDraf, cadanganDisarankan, hitungRiwayat, polaAbsen, ringkasanKeadilan, type KuotaHari, type PolaHari, type StatRider } from './otomatis'
 import { Cetak } from './unduh'
 import { InputTanggal } from './tanggal'
@@ -617,7 +617,7 @@ export function JadwalDs({ ds }: { me: Me; ds: Ds | null }) {
 // Super-admin (editable, akses penuh) / Arcon (hanya lihat): jadwal DS mana pun
 export function JadwalSemua({ daftar, editable = false }: { daftar?: Ds[]; editable?: boolean }) {
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
-  const rows = daftar ?? dsl.rows // Arcon: hanya DS yang dipegang; Super-admin: semua DS
+  const rows = (daftar ?? dsl.rows).filter(dsAktif) // Arcon: hanya DS yang dipegang; Super-admin: semua DS
   const [id, setId] = useState('')
   const ds = rows.find((d) => d.id === (id || rows[0]?.id))
   return (

@@ -16,15 +16,18 @@ async function buatAkun(email: string, password: string) {
 export function Kelola() {
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
   const rs = useRows<Rider>(() => sb.from('riders').select('*').order('nama').limit(1000), [])
+  // Petunjuk: DS terhubung BO tanpa mitra clock-in 3 hari berturut-turut. Galatnya diabaikan (mis. migrasi belum dijalankan): petunjuk saja tidak muncul.
+  const tc = useRows<string>(() => sb.rpc('ds_tanpa_clockin', { p_hari: 3 }), [])
+  const saran = new Set(tc.rows.map(String).filter((id) => dsl.rows.find((d) => d.id === id)?.aktif !== false)) // yang sudah dinonaktifkan tidak disarankan lagi
   const [nama, setNama] = useState('')
   const [cari, setCari] = useState('')
   const candidates = rs.rows.filter((r) => (r.peran === 'rider' || r.peran === 'captain') && r.status === 'aktif')
   const arcons = rs.rows.filter((r) => r.peran === 'arcon' && r.status === 'aktif') // Arcon = tim khusus, bukan rider
-  const tampil = dsl.rows.filter((d) => (d.nama + (rs.rows.find((r) => r.id === d.captain_id)?.nama ?? '')).toLowerCase().includes(cari.toLowerCase()))
+  const tampil = dsl.rows.filter((d) => (d.nama + (rs.rows.find((r) => r.id === d.captain_id)?.nama ?? '')).toLowerCase().includes(cari.toLowerCase())).sort((a, b) => Number(a.aktif === false) - Number(b.aktif === false)) // DS nonaktif di bawah
   const [pilih, setPilih] = useState('')
   const [tambah, setTambah] = useState(false)
   const dipilih = tampil.find((d) => d.id === pilih) ?? tampil[0] ?? null // DS yang formulirnya tampil di panel kanan
-  const tanpaCaptain = dsl.rows.filter((d) => !d.captain_id).length
+  const tanpaCaptain = dsl.rows.filter((d) => !d.captain_id && d.aktif !== false).length
   const buatDs = async () => {
     if (await ok(sb.from('ds').insert({ nama: nama.trim() }))) {
       setNama('')
@@ -64,6 +67,7 @@ export function Kelola() {
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{tampil.length} DS</span>
               {tanpaCaptain > 0 && <span className="badge bg-warning-soft text-warning">{tanpaCaptain} belum ada Captain</span>}
+              {saran.size > 0 && <span className="badge bg-warning-soft text-warning">{saran.size} tanpa clock-in 3 hari</span>}
             </div>
           </div>
           <div className="max-h-[55vh] overflow-y-auto">
@@ -72,7 +76,7 @@ export function Kelola() {
               return (
                 <button key={d.id} type="button" aria-current={d.id === dipilih?.id} onClick={() => setPilih(d.id)}
                   className={`flex w-full flex-col gap-0.5 border-b border-border px-3 py-2.5 text-left last:border-0 ${d.id === dipilih?.id ? 'bg-primary-soft' : 'hover:bg-muted/60'}`}>
-                  <span className="text-sm font-semibold">{d.nama}</span>
+                  <span className={`text-sm font-semibold ${d.aktif === false ? 'text-muted-foreground' : ''}`}>{d.nama}{d.aktif === false && <span className="badge ml-2 bg-muted text-muted-foreground">nonaktif</span>}{saran.has(d.id) && <span className="badge ml-2 bg-warning-soft text-warning">tanpa clock-in 3 hari</span>}</span>
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className={`size-1.5 shrink-0 rounded-full ${capNama ? 'bg-success' : 'bg-warning'}`} />
                     {capNama ?? 'Belum ada Captain'} · {d.kuota_pagi + d.kuota_siang + (d.kuota_tengah ?? 0)} rider/hari
@@ -85,7 +89,7 @@ export function Kelola() {
         </div>
 
         {dipilih
-          ? <DsCard key={dipilih.id} tetap d={dipilih} riders={rs.rows} candidates={candidates} arcons={arcons} semuaDs={dsl.rows} reload={() => { dsl.reload(); rs.reload() }} />
+          ? <DsCard key={dipilih.id} tetap saran={saran.has(dipilih.id)} d={dipilih} riders={rs.rows} candidates={candidates} arcons={arcons} semuaDs={dsl.rows} reload={() => { dsl.reload(); rs.reload(); tc.reload() }} />
           : <div className="card !mb-0 text-center text-sm text-muted-foreground">{dsl.rows.length ? 'Tidak ada DS yang cocok dengan pencarian.' : 'Belum ada DS. Klik "Buat DS" di kanan atas untuk membuat yang pertama.'}</div>}
       </div>
 
@@ -97,7 +101,7 @@ export function Kelola() {
 }
 
 // terbatas = tampilan Arcon: hanya kebutuhan rider (kuota) dan Captain; tanpa nama DS, grup WhatsApp, password, dan pilihan Arcon
-function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = false, awalBuka = false, tetap = false }: { d: Ds; riders: Rider[]; candidates: Rider[]; arcons: Rider[]; semuaDs: Ds[]; reload: () => void; terbatas?: boolean; awalBuka?: boolean; tetap?: boolean }) {
+function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = false, awalBuka = false, tetap = false, saran = false }: { saran?: boolean; d: Ds; riders: Rider[]; candidates: Rider[]; arcons: Rider[]; semuaDs: Ds[]; reload: () => void; terbatas?: boolean; awalBuka?: boolean; tetap?: boolean }) {
   // Ringkas: formulir dipisah per tab supaya tidak menumpuk. tetap = panel detail yang selalu terbuka; selain itu satu baris yang dibuka lewat "Atur"
   const [buka, setBuka] = useState(awalBuka || tetap)
   const [tab, setTab] = useState<'dasar' | 'captain' | 'arcon'>('dasar')
@@ -157,6 +161,15 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
     reload()
   }
 
+  const ubahAktif = async () => {
+    const nonaktif = d.aktif === false
+    const pesan = nonaktif ? `Aktifkan lagi ${d.nama}? DS muncul lagi di daftar pilihan.` : `Nonaktifkan ${d.nama}? DS disembunyikan dari daftar pilihan. Semua data dan riwayatnya tetap utuh, dan bisa diaktifkan lagi kapan saja.`
+    if ((await konfirmasi(pesan, { judul: nonaktif ? 'Aktifkan DS?' : 'Nonaktifkan DS?', ya: nonaktif ? 'Aktifkan' : 'Nonaktifkan', bahaya: !nonaktif })) && (await ok(sb.from('ds').update({ aktif: nonaktif }).eq('id', d.id)))) {
+      toast.ok(nonaktif ? 'DS diaktifkan lagi' : 'DS dinonaktifkan')
+      reload()
+    }
+  }
+
   const ringkas = (
     <>
       <h3 className="mr-1 min-w-40 text-base font-bold">{d.nama}</h3>
@@ -164,6 +177,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
         {d.kuota_pagi} pagi + {(d.kuota_tengah ?? 0) > 0 ? `${d.kuota_tengah} middle + ` : ''}{d.kuota_siang} siang = {d.kuota_pagi + d.kuota_siang + (d.kuota_tengah ?? 0)} rider/hari
       </span>
       {cap ? <span className="badge bg-primary-soft text-primary-soft-foreground">Captain: {cap.nama}</span> : <span className="badge bg-warning-soft text-warning">Belum ada Captain</span>}
+      {d.aktif === false && <span className="badge bg-muted text-muted-foreground">Nonaktif</span>}
       {!terbatas && (arc ? <span className="badge bg-muted text-foreground/80">Arcon: {arc.nama}</span> : <span className="badge bg-muted text-muted-foreground">Tanpa Arcon</span>)}
       {!tetap && (
         <span className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-primary">
@@ -213,6 +227,16 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
         <button className="btn" disabled={!berubah || (!terbatas && !f.nama.trim())} onClick={simpan}>Simpan perubahan</button>
         {!berubah && <span className="text-xs text-muted-foreground">Belum ada yang diubah</span>}
       </div>
+      {!terbatas && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">
+          <button type="button" className={d.aktif === false ? 'btn' : 'btn2'} onClick={ubahAktif}>{d.aktif === false ? 'Aktifkan lagi' : 'Nonaktifkan DS'}</button>
+          <span className="min-w-60 flex-1 text-xs text-muted-foreground">
+            {d.aktif === false ? 'DS ini nonaktif dan disembunyikan dari daftar pilihan. Data dan riwayatnya tetap utuh.'
+              : saran ? 'Tidak ada mitra clock-in di DS ini 3 hari berturut-turut. Nonaktifkan bila DS sudah tutup; data dan riwayatnya tetap utuh.'
+              : 'Untuk DS yang sudah tutup. Data dan riwayatnya tetap utuh dan bisa diaktifkan lagi. DS yang masih punya rider aktif atau jadwal tidak bisa dinonaktifkan.'}
+          </span>
+        </div>
+      )}
       </>)}
 
       {tab === 'captain' && (

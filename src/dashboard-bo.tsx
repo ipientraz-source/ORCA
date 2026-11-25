@@ -3,7 +3,7 @@
 // Super-admin melihat semua DS, Arcon hanya DS yang dipegangnya (dibatasi database).
 import { useEffect, useRef, useState } from 'react'
 import { Gauge, TrendingUp, Users, UserX } from 'lucide-react'
-import { sb, today, addDays, tanggal, hari, useRows, Err, Kosong, Stat, usePage, Pagination } from './lib'
+import { sb, today, addDays, tanggal, hari, useRows, Err, Kosong, Stat, usePage, Pagination, type Ds } from './lib'
 import { InputTanggal } from './tanggal'
 import { persenBo, teksPersen, type AktualBo, type AktualBoHari } from './aktual-bo'
 import { SelShift } from './aktual-bo-ui'
@@ -90,6 +90,8 @@ export function DashboardBo() {
   const [tgl, setTgl] = useState(hariIni)
   const a = useRows<AktualBo>(() => sb.rpc('aktual_bo', { p_dari: tgl, p_sampai: tgl }), [tgl])
   const rows = a.rows
+  const dsl = useRows<Ds>(() => sb.from('ds').select('*'), [])
+  const nonaktif = new Set(dsl.rows.filter((d) => d.aktif === false).map((d) => d.id))
   const jum = (k: 'kebutuhan' | 'terpenuhi' | 'hadir' | 'tepat' | 'tanpa_orca') => rows.reduce((s, r) => s + r[k], 0)
   const pg = usePage(rows, [tgl])
   const ful = persenBo(jum('terpenuhi'), jum('kebutuhan'))
@@ -132,7 +134,7 @@ export function DashboardBo() {
                     const merah = diabsen && Math.abs(sel) >= SELISIH_MERAH
                     return (
                       <tr key={r.ds_id} className={merah ? 'bg-danger-soft' : ''}>
-                        <td>{r.ds_nama}{r.kebutuhan === 0 && <span className="badge ml-2 bg-warning-soft text-warning">budget belum diisi</span>}</td>
+                        <td>{r.ds_nama}{nonaktif.has(r.ds_id) && <span className="badge ml-2 bg-muted text-muted-foreground">nonaktif</span>}{r.kebutuhan === 0 && <span className="badge ml-2 bg-warning-soft text-warning">budget belum diisi</span>}</td>
                         <SelShift b={r.b_pagi} h={r.h_pagi} t={r.t_pagi} />
                         <SelShift b={r.b_tengah} h={r.h_tengah} t={r.t_tengah} />
                         <SelShift b={r.b_siang} h={r.h_siang} t={r.t_siang} />

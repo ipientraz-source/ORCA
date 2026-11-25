@@ -2,7 +2,7 @@
 // Rider (login Kode MTR, tanpa akun Supabase) memakai Edge Function laporan-order-rider. Captain, Arcon, dan Super-admin membaca langsung lewat RLS.
 import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
-import { sb, today, addDays, hari, useRows, toast, Err, Kosong, Field, Select, usePage, Pagination, type Ds } from './lib'
+import { sb, today, addDays, hari, useRows, toast, Err, Kosong, Field, Select, usePage, Pagination, type Ds, dsAktif } from './lib'
 import { InputTanggal } from './tanggal'
 import { FotoGaleri, kecilkan } from './armada-lib'
 import { RekapOrder } from './rekap-order'
@@ -187,7 +187,7 @@ export function LaporanOrderRider({ kode }: { kode: string }) {
 // Captain: DS-nya. Arcon: DS yang dipegang (dsList dari App). Super-admin: semua DS.
 export function LaporanOrderMenu({ ds, dsList }: { ds: Ds | null; dsList?: Ds[] }) {
   const semua = useRows<Ds>(() => (ds || dsList ? Promise.resolve({ data: [], error: null }) : sb.from('ds').select('*').order('nama')), [ds?.id, dsList?.length])
-  const daftar = ds ? [ds] : dsList ?? semua.rows
+  const daftar = (ds ? [ds] : dsList ?? semua.rows).filter(dsAktif)
   const [id, setId] = useState('')
   const [sub, setSub] = useState<'harian' | 'rekap'>('harian')
   const pilih = daftar.find((d) => d.id === (id || daftar[0]?.id))
