@@ -1402,6 +1402,18 @@ table thead th :is(div, span) { color: inherit; }
 /* garis pemindai dimatikan di mode gelap (menodai kaca) */
 :root:root[data-gaya="cyber"].dark body::after { content: none; }
 
+/* aturan warna: ungu dan cyan untuk struktur, pink hanya untuk aksi utama, hijau/kuning/merah hanya untuk status */
+/* tombol status di tabel: aktif hijau, nonaktif redup */
+:root:root[data-gaya="cyber"] .tbl .btn2.text-success { background: color-mix(in srgb, var(--success) 16%, transparent); border-color: color-mix(in srgb, var(--success) 55%, transparent); color: var(--success); }
+:root:root[data-gaya="cyber"] .tbl .btn2.text-muted-foreground { background: transparent; border-color: var(--kaca-input-tepi); color: var(--muted-foreground); }
+/* lencana netral (peran, "belum punya DS"): abu-abu kaca, bukan biru-ungu mencolok */
+:root:root[data-gaya="cyber"] .badge.bg-muted { background: color-mix(in srgb, var(--foreground) 8%, transparent); border-color: var(--kaca-input-tepi); color: var(--muted-foreground); }
+/* chip tanggal di pojok: tinta cyan tipis, tidak lagi blok putih terang */
+:root:root[data-gaya="cyber"] header > span.font-mono { border-radius: 9999px; background: color-mix(in srgb, var(--cy) 10%, transparent); border: 1px solid var(--kaca-input-tepi); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* pilihan DS di dalam baris tabel: tenang (hanya garis bawah tipis) sampai disentuh, supaya tabel tidak penuh kotak */
+:root:root[data-gaya="cyber"] .tbl button.inp { background: transparent; border-color: transparent; border-bottom-color: color-mix(in srgb, var(--cy) 35%, transparent); box-shadow: none; }
+:root:root[data-gaya="cyber"] .tbl button.inp:is(:hover, :focus-visible) { background: var(--kaca-input); border-color: var(--kaca-input-tepi); border-bottom-color: var(--cy); }
+
 /* tanpa dukungan blur, atau pengguna meminta transparansi dikurangi: semua permukaan jadi hampir solid */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { background-color: var(--kaca-padat); }
