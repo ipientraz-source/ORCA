@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { sb, today, monday, hari, useRows, ok, toast, Err, Kosong, RiderPick, Select, usePage, Pagination, type Ds, type Me, type Rider } from './lib'
+import { sb, today, monday, hari, useRows, ok, toast, Err, Kosong, RiderPick, Select, usePage, Pagination, type Ds, type Me, type Rider, dsAktif } from './lib'
 import { InputTanggal } from './tanggal'
 
 type Act = { rider_id: string; status: string; backup_untuk_id: string | null; penjelasan: string | null; potongan: boolean | null; insentif: number; tanpa_pengganti: boolean; tukar_dikonfirmasi: boolean }
@@ -62,7 +62,7 @@ export function Daily({ ds }: { me: Me; ds: Ds | null }) {
 // Super-admin (akses penuh): isi atau koreksi absensi di DS mana pun. Arcon: membantu Captain di DS yang dipegangnya (dsList dari App).
 export function AbsensiSemua({ dsList }: { dsList?: Ds[] }) {
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
-  const daftar = dsList ?? dsl.rows
+  const daftar = (dsList ?? dsl.rows).filter(dsAktif)
   const [id, setId] = useState('')
   const ds = daftar.find((d) => d.id === (id || daftar[0]?.id))
   return (

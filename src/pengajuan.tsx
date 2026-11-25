@@ -3,7 +3,7 @@
 // Tidak punya menu sendiri: Arcon memakainya di Kelola DS, Super-admin di Kelola DS & Captain (lihat kelola.tsx).
 import { useEffect, useState, type FormEvent } from 'react'
 import { Plus, X } from 'lucide-react'
-import { sb, useRows, ok, toast, konfirmasi, Err, Field, Select, usePage, Pagination, type Ds, type Me } from './lib'
+import { sb, useRows, ok, toast, konfirmasi, Err, Field, Select, usePage, Pagination, type Ds, type Me, dsAktif } from './lib'
 
 type Aju = {
   id: string; jenis: 'ds_baru' | 'jadi_arcon'; pemohon_id: string | null; pemohon_nama: string; ds_id: string | null; nama_ds: string
@@ -92,7 +92,7 @@ export function PengajuanArcon({ me, onSelesai }: { me: Me; onSelesai?: () => vo
         <button type="button" className="btn2" onClick={() => ganti('arcon')}>{buka === 'arcon' ? <X size={16} /> : <Plus size={16} />}{buka === 'arcon' ? 'Batal' : 'Ajukan jadi Arcon di DS lain'}</button>
       </div>
       {buka === 'ds' && <FormDsBaru selesai={() => { setBuka(''); muat() }} />}
-      {buka === 'arcon' && <FormJadiArcon dsl={dsl.rows.filter((d) => d.arcon_id !== me.id)} selesai={() => { setBuka(''); muat() }} />}
+      {buka === 'arcon' && <FormJadiArcon dsl={dsl.rows.filter((d) => d.arcon_id !== me.id && dsAktif(d))} selesai={() => { setBuka(''); muat() }} />}
       <Err msg={aju.err} />
       {!!aju.rows.length && (
         <details open={menunggu > 0} className="rounded-xl border border-border bg-card">
