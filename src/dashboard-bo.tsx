@@ -100,7 +100,7 @@ export function DashboardBo() {
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           Tanggal <InputTanggal className="inp" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value > hariIni ? hariIni : e.target.value)} />
         </label>
-        <span className="text-sm text-muted-foreground">{tanggal(tgl)}{tgl === hariIni ? ' · hari ini, masih berjalan' : ''}</span>
+        <span className="text-sm text-muted-foreground">{tanggal(tgl)}{tgl === hariIni ? ' · hari ini, masih berjalan: shift yang belum mulai belum dihitung' : ''}</span>
       </div>
       <Err msg={a.err} />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">

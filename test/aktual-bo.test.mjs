@@ -184,6 +184,21 @@ test('hari yang belum terjadi dan rentang terlalu panjang tidak menghasilkan bar
   assert.deepEqual(await aktual('2026-01-01', '2026-11-20'), [])
 })
 
+test('hari berjalan: budget shift yang belum mulai tidak dihitung; hari lampau selalu penuh', async () => {
+  // Pagi sudah mulai (00:00); Middle dan Siang belum (23:59). Berlaku untuk hari ini saja.
+  await q(`update pengaturan_kehadiran set mulai_pagi = '00:00', mulai_tengah = '23:59', mulai_siang = '23:59' where id = 1`)
+  const hariIni = (await q(`select to_char(today_wib(), 'YYYY-MM-DD') as d`))[0].d
+  try {
+    await masuk(HUB_A, DSA, kode(1), '05:50', hariIni)
+    const a = (await aktual(hariIni, hariIni)).find((x) => x.ds_id === DSA)
+    assert.deepEqual({ b: [a.b_pagi, a.b_tengah, a.b_siang], kebutuhan: a.kebutuhan, terpenuhi: a.terpenuhi }, { b: [3, 0, 0], kebutuhan: 3, terpenuhi: 1 })
+    const lampau = (await aktual()).find((x) => x.ds_id === DSA)
+    assert.equal(lampau.kebutuhan, 6) // TGL sudah lewat: Pagi 3 + Middle 1 + Siang 2, tidak terpengaruh jam mulai
+  } finally {
+    await q(`update pengaturan_kehadiran set mulai_pagi = '06:00', mulai_tengah = '10:00', mulai_siang = '14:00' where id = 1`)
+  }
+})
+
 test('akses: Super-admin semua DS, Arcon hanya DS yang dipegangnya, captain dan Arcon tanpa DS tidak melihat apa pun, anon ditolak', async () => {
   const arc = await sebagai('arc@test.local', () => q(`select distinct ds_id from aktual_bo($1, $1)`, [TGL]))
   assert.deepEqual(arc.map((x) => x.ds_id), [DSA])
