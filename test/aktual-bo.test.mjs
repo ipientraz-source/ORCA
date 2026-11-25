@@ -62,7 +62,7 @@ before(async () => {
   await masuk(HUB_A, DSA, kode(1), '05:58')
   await masuk(HUB_A, DSA, kode(1), '07:30') // clock-in kedua rider yang sama: hanya yang paling awal dihitung
   await masuk(HUB_A, DSA, kode(2), '06:02') // tepat di batas jam mulai + toleransi 2 menit
-  await masuk(HUB_A, DSA, kode(3), '07:00') // terjadwal shift siang: shift mengikuti jadwal, bukan jam masuk
+  await masuk(HUB_A, DSA, kode(3), '13:00') // terjadwal shift siang dan masuk wajar (1 jam sebelum mulai): shift mengikuti jadwal, bukan jam masuk (jam 13:00 akan jadi siang juga)
   await masuk(HUB_A, DSA, kode(5), '06:03') // tidak terjadwal, pagi, telat
   await masuk(HUB_A, DSA, kode(6), '08:55') // batas pagi
   await masuk(HUB_A, DSA, kode(7), '08:56') // Middle (sebelum jam mulai Middle, jadi tepat waktu)
@@ -81,6 +81,24 @@ test('shift: terjadwal mengikuti jadwal, tidak terjadwal dari jam masuk; satu ri
   // pagi: R1, R2, R5, R6, kode belum terdaftar (hadir 5; tepat R1, R2, kode belum terdaftar). Middle: R7 tepat, R8 telat. Siang: R3 (jadwal) dan R9.
   assert.equal(a.hadir, 9)
   assert.equal(a.tepat, 6)
+})
+
+test('shift satu clock-in: laporan Captain dulu, lalu jadwal bila wajar (paling awal 2 jam sebelum mulai), selain itu jam masuk', async () => {
+  const T = '2026-11-24'
+  await q(`insert into jadwal (tanggal, rider_id, shift, ds_id) values ($1, $2, 'siang', $6), ($1, $3, 'siang', $6), ($1, $4, 'siang', $6), ($1, $5, 'siang', $6)`,
+    [T, rid(1), rid(2), rid(5), rid(8), DSA])
+  // R1 terjadwal siang tapi masuk 06:07 dan belum dilaporkan Captain: terlalu awal untuk siang, jadi dibaca Pagi
+  await masuk(HUB_A, DSA, kode(1), '06:07', T)
+  // R2 terjadwal siang, masuk 06:15, tetapi Captain mencatat hadir: laporan Captain menang, jadi Siang
+  await masuk(HUB_A, DSA, kode(2), '06:15', T)
+  await q(`insert into actual_harian (tanggal, rider_id, ds_id, status) values ($1, $2, $3, 'hadir')`, [T, rid(2), DSA])
+  // R5 terjadwal siang, masuk 12:30 (1,5 jam sebelum mulai), belum dilaporkan: jadwal wajar, Siang
+  await masuk(HUB_A, DSA, kode(5), '12:30', T)
+  // R7 tidak terjadwal, masuk 06:05, Captain mencatat pengganti untuk R8 yang terjadwal siang: mengisi shift Siang
+  await masuk(HUB_A, DSA, kode(7), '06:05', T)
+  await q(`insert into actual_harian (tanggal, rider_id, ds_id, status, backup_untuk_id) values ($1, $2, $3, 'pengganti', $4)`, [T, rid(7), DSA, rid(8)])
+  const a = (await aktual(T, T)).find((x) => x.ds_id === DSA)
+  assert.deepEqual({ pagi: a.h_pagi, tengah: a.h_tengah, siang: a.h_siang }, { pagi: 1, tengah: 0, siang: 3 })
 })
 
 test('fulfillment aktual: terpenuhi per shift dibatasi budget, kelebihan rider tidak menambah', async () => {
