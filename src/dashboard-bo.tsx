@@ -80,7 +80,7 @@ function Tren({ hariIni }: { hariIni: string }) {
           </svg>
         )}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">Angka di bawah garis adalah tanggal dalam bulan; angka tebal di kanan adalah nilai terbaru. Hari tanpa data (belum ada clock-in atau jadwal) dilewati.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Angka di bawah garis = tanggal; angka tebal di kanan = nilai terbaru. Hari tanpa data dilewati.</p>
     </div>
   )
 }
@@ -117,10 +117,10 @@ export function DashboardBo() {
           <Kosong teks="Belum ada data clock-in BO di tanggal ini" hint="Tekan Sinkron sekarang di menu Clock-in BO, atau pilih tanggal lain." />
         ) : (
           <>
-            <div className="mb-3 rounded-md bg-muted p-3 text-xs leading-relaxed text-muted-foreground">
-              <b className="text-foreground">Cara membaca.</b> Kolom Pagi, Middle, dan Siang berisi <b>rider clock-in / budget</b> shift itu, dan baris kecil di bawahnya adalah berapa yang <b>tepat waktu</b> (clock-in paling lambat jam mulai shift + toleransi).
-              Angka <span className="font-semibold text-success">hijau</span> berarti budget terpenuhi, <span className="font-semibold text-warning">kuning</span> berarti kurang. <b>Total</b> adalah fulfillment aktual: kelebihan rider di satu shift tidak menutup kekurangan shift lain.
-              <b> Captain</b> adalah rider hadir menurut absensi Captain, ditandai <span className="font-semibold text-danger">merah</span> bila beda 3 atau lebih dari clock-in BO. Bila Captain belum mengisi, tertulis "belum diabsen" dan tidak ditandai merah.
+            <div className="mb-3 space-y-1 rounded-md bg-muted p-3 text-xs leading-relaxed text-muted-foreground">
+              <p><b className="text-foreground">Pagi / Middle / Siang:</b> rider clock-in / budget. Angka kecil di bawahnya = yang tepat waktu.</p>
+              <p><span className="font-semibold text-success">Hijau</span> = budget terpenuhi, <span className="font-semibold text-warning">kuning</span> = kurang. <b className="text-foreground">Total:</b> kelebihan di satu shift tidak menutup kekurangan shift lain.</p>
+              <p><b className="text-foreground">Captain:</b> rider hadir menurut absensi Captain, <span className="font-semibold text-danger">merah</span> bila beda 3 atau lebih dari clock-in BO.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="tbl w-full text-sm">

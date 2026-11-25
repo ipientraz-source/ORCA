@@ -53,7 +53,7 @@ export function FormPengajuan({ dsBoleh, selesai, motorIds }: { dsBoleh: Ds[]; s
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Semua motor di cakupan yang dipilih otomatis masuk daftar menunggu servis. Saat servis dengan jenis yang sama dicatat untuk sebuah motor, statusnya langsung selesai.</p>
+      <p className="text-sm text-muted-foreground">Motor di cakupan terpilih otomatis masuk daftar menunggu servis, dan selesai saat servis sejenis dicatat.</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Judul pengajuan"><input className="inp w-full" value={judul} onChange={(e) => setJudul(e.target.value)} /></Field>
         <Field label="Jenis servis"><Select value={jenis} onChange={setJenis} opsi={JENIS_SERVIS.map((v) => ({ value: v, label: v }))} /></Field>

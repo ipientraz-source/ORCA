@@ -96,12 +96,12 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
         </div>
         {!bacaSaja && (
           <>
-            <p className="text-xs text-muted-foreground">Data ditarik otomatis berkala. Bila sinkron otomatis terputus (status di atas gagal atau sudah lama), tarik manual di sini: 3 hari ke belakang sampai hari ini. Aman diulang: baris yang sama tidak tercatat dua kali. Rider yang clock-in di BO tetapi belum ada di Orca ditambahkan otomatis sebagai rider aktif; Captain tinggal menonaktifkan yang sudah resign.</p>
+            <p className="text-xs text-muted-foreground">Data ditarik otomatis. Bila terputus, tarik manual di sini (3 hari terakhir); aman diulang. Rider baru dari BO ditambahkan otomatis sebagai rider aktif; Captain menonaktifkan yang sudah resign.</p>
             <div className="flex flex-wrap items-center gap-3">
               <button className="btn" disabled={sibuk || !!perlu} onClick={() => void sinkron()}>{sibuk ? 'Menarik data…' : 'Sinkron sekarang'}</button>
             </div>
             <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-xs text-muted-foreground">Nomor HP rider aktif yang masih kosong bisa diisi dari daftar mitra di BO (dicocokkan lewat Kode MTR). Hanya yang kosong yang diisi; nomor yang sudah ada tidak ditimpa.</p>
+              <p className="text-xs text-muted-foreground">Isi nomor HP rider aktif yang masih kosong dari daftar mitra BO (cocok lewat Kode MTR). Nomor yang sudah ada tidak ditimpa.</p>
               <button className="btn2" disabled={sibukHp} onClick={() => void isiHp()}>{sibukHp ? 'Mencari nomor di BO…' : 'Isi nomor HP dari BO'}</button>
               {hasilHp && (
                 <p className="rounded-md bg-success-soft p-3 text-sm text-success">
@@ -132,7 +132,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
               </table>
             </div>
             {ganda && <p className="text-sm text-danger">Satu DS dipilih untuk lebih dari satu hub. Perbaiki dulu.</p>}
-            <p className="text-xs text-muted-foreground">DS yang dipasangkan mengganti namanya mengikuti nama hub BO (jadwal, captain, dan riwayat tetap). Hub yang belum ada DS-nya dibuatkan DS baru dengan budget 0, yang perlu Anda isi di Kelola DS.</p>
+            <p className="text-xs text-muted-foreground">DS yang dipasangkan memakai nama hub BO (jadwal, captain, riwayat tetap). Hub tanpa DS dibuatkan DS baru dengan budget 0; isi di Kelola DS.</p>
             <div className="flex gap-2">
               <button className="btn" disabled={sibuk || ganda} onClick={() => void lanjut()}>{sibuk ? 'Menyimpan…' : 'Lanjutkan sinkron'}</button>
               <button className="btn2" disabled={sibuk} onClick={() => setPerlu(null)}>Batal</button>
@@ -145,10 +145,10 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             <p>
               {hasil.ditarik.toLocaleString('id-ID')} clock-in ditarik dari BO: <b>{hasil.baris_baru.toLocaleString('id-ID')} baru</b> disimpan, {hasil.baris_diperbarui.toLocaleString('id-ID')} diperbarui (jam clock-out terisi), {Math.max(0, hasil.ditarik - hasil.baris_baru - hasil.baris_diperbarui).toLocaleString('id-ID')} sudah ada dan tidak berubah.
             </p>
-            {(hasil.rider_baru ?? 0) > 0 && <p><b>{hasil.rider_baru} rider baru</b> ditambahkan sebagai rider aktif di DS hub-nya. Captain: nonaktifkan yang sudah resign di Data Rider.</p>}
+            {(hasil.rider_baru ?? 0) > 0 && <p><b>{hasil.rider_baru} rider baru</b> ditambahkan sebagai rider aktif. Captain: nonaktifkan yang sudah resign.</p>}
             <p>
               Hub BO: {hasil.ds_dipasang} dicocokkan ke DS lama, <b>{hasil.ds_dibuat} DS baru dibuat</b>.
-              {hasil.ds_dibuat > 0 ? ' DS baru budget-nya masih 0: isi di Kelola DS, dan cek apakah itu memang DS baru, bukan DS lama dengan nama berbeda.' : ''}
+              {hasil.ds_dibuat > 0 ? ' Budget DS baru masih 0: isi di Kelola DS dan pastikan bukan DS lama dengan nama lain.' : ''}
             </p>
           </div>
         )}
@@ -188,7 +188,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             </div>
             <div className="mt-3"><Pagination {...pg} /></div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Tiap shift: rider clock-in / budget, dan berapa yang tepat waktu. Rider terjadwal mengikuti jadwalnya; yang tidak terjadwal ditentukan dari jam masuk memakai jam shift di bawah.
+              Tiap shift: clock-in / budget, dan yang tepat waktu. Shift dibaca dari laporan Captain, lalu jadwal, lalu jam masuk.
             </p>
           </>
         )}

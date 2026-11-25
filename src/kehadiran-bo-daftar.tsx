@@ -159,7 +159,7 @@ export function DaftarClockin({ ds }: { ds: Ds[] }) {
             </table>
           </div>
           <div className="mt-3"><Pagination {...pg} /></div>
-          <p className="mt-2 text-xs text-muted-foreground">Shift dan status dibaca dari jam masuk memakai jam shift di bawah. Di Dashboard BO, rider terjadwal atau tukar shift bisa terbaca lain karena memakai jadwal dan laporan Captain.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Shift dan status dibaca dari jam masuk. Dashboard BO memakai jadwal dan laporan Captain, jadi bisa berbeda.</p>
         </>
       )}
     </div>

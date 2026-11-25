@@ -353,7 +353,7 @@ function FormMendesak({ m, selesai }: { m: Motor; selesai: () => void }) {
   }
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Pakai ini hanya kalau molis butuh servis sekarang. Pengajuan akan tampil paling atas dengan tanda URGENT untuk Arcon dan Super-admin. Untuk kerusakan fisik (jatuh, patah) pakai Lapor kerusakan.</p>
+      <p className="text-sm text-muted-foreground">Hanya jika molis butuh servis sekarang; tampil paling atas dengan tanda URGENT. Kerusakan fisik: pakai Lapor kerusakan.</p>
       <Field label="Alasan servis mendesak" hint="Apa masalahnya dan kenapa tidak bisa menunggu."><textarea className="inp w-full" rows={3} value={alasan} onChange={(e) => setAlasan(e.target.value)} /></Field>
       <button className="btn" onClick={kirim}>Ajukan servis mendesak</button>
     </div>
@@ -395,7 +395,7 @@ function FormPindah({ m, dsBoleh, selesai }: { m: Motor; dsBoleh: Ds[]; selesai:
   }
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Syarat: tidak ada laporan kerusakan yang belum selesai, dan alasan wajib diisi. Rider pemegang dilepas otomatis. Arcon hanya bisa memindah antar DS yang dia pegang.</p>
+      <p className="text-sm text-muted-foreground">Syarat: tidak ada kerusakan yang belum selesai dan alasan diisi. Rider pemegang dilepas otomatis. Arcon hanya antar DS yang dipegang.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="DS tujuan"><Select value={ke} onChange={setKe} placeholder="— pilih DS tujuan —" opsi={dsBoleh.map((d) => ({ value: d.id, label: d.nama }))} /></Field>
         <Field label="Alasan pemindahan"><input className="inp w-full" value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Mis. DS asal kelebihan motor" /></Field>
