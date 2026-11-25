@@ -1418,6 +1418,19 @@ table thead th :is(div, span) { color: inherit; }
 :root:root[data-gaya="cyber"] .tbl button.inp { background: transparent; border-color: transparent; border-bottom-color: color-mix(in srgb, var(--cy) 35%, transparent); box-shadow: none; }
 :root:root[data-gaya="cyber"] .tbl button.inp:is(:hover, :focus-visible) { background: var(--kaca-input); border-color: var(--kaca-input-tepi); border-bottom-color: var(--cy); }
 
+/* padat: bar menu, judul halaman, penggaris, dan kartu dirapatkan supaya isi halaman mulai lebih atas (dulu sekitar 210px sebelum isi pertama) */
+@media (min-width: 768px) {
+  :root:root[data-gaya="cyber"] .app-shell > aside { padding: 8px 20px; gap: 12px; }
+  :root:root[data-gaya="cyber"] .app-shell > aside > nav { padding: 4px; gap: 2px; }
+  :root:root[data-gaya="cyber"] .nav { padding: 0.28rem 0.7rem; font-size: 0.78rem; }
+}
+:root:root[data-gaya="cyber"] .app-shell header { padding: 2px 20px 0; }
+:root:root[data-gaya="cyber"] header h2 { font-size: 1.2rem; }
+:root:root[data-gaya="cyber"] header > div:first-child { width: 2.25rem; height: 2.25rem; }
+:root:root[data-gaya="cyber"] main::before { height: 7px; margin-bottom: 0.4rem; }
+:root:root[data-gaya="cyber"] main { padding-top: 10px; }
+:root:root[data-gaya="cyber"] main .card { padding: 0.875rem 1rem; margin-bottom: 0.625rem; }
+
 /* baris tabel yang disorot diberi garis neon di kiri */
 :root:root[data-gaya="cyber"] .tbl tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--cy); }
 

@@ -85,31 +85,28 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
     <div className="w-full space-y-4">
       <Err msg={dsl.err || ring.err || st.err} />
       <div className="card !mb-0 space-y-3">
-        <div>
-          <b className="block">Sinkron clock-in dari BO</b>
-          <p className="text-xs text-muted-foreground">
-            {status?.sinkron_terakhir
-              ? <>Sinkron terakhir {waktuWib(status.sinkron_terakhir)}: <span className={status.sinkron_status === 'gagal' ? 'text-danger' : 'text-success'}>{status.sinkron_status === 'gagal' ? 'gagal' : 'berhasil'}</span>{status.sinkron_pesan ? ` · ${status.sinkron_pesan}` : ''}</>
-              : 'Belum pernah sinkron.'}
-          </p>
-          {bacaSaja && <p className="text-xs text-muted-foreground">Menampilkan clock-in dari BO untuk DS yang Anda pegang. Sinkron manual dilakukan Super-admin.</p>}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="min-w-0 flex-1">
+            <b className="block">Sinkron clock-in dari BO</b>
+            <p className="text-xs text-muted-foreground">
+              {status?.sinkron_terakhir
+                ? <>Sinkron terakhir {waktuWib(status.sinkron_terakhir)}: <span className={status.sinkron_status === 'gagal' ? 'text-danger' : 'text-success'}>{status.sinkron_status === 'gagal' ? 'gagal' : 'berhasil'}</span>{status.sinkron_pesan ? ` · ${status.sinkron_pesan}` : ''}</>
+                : 'Belum pernah sinkron.'}
+              {!bacaSaja && ' Data ditarik otomatis; tarik manual bila terputus (aman diulang).'}
+            </p>
+            {bacaSaja && <p className="text-xs text-muted-foreground">Clock-in BO untuk DS yang Anda pegang. Sinkron manual dilakukan Super-admin.</p>}
+          </div>
+          {!bacaSaja && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="btn" title="Tarik clock-in 3 hari terakhir dari BO. Rider baru ditambahkan otomatis sebagai rider aktif." disabled={sibuk || !!perlu} onClick={() => void sinkron()}>{sibuk ? 'Menarik data…' : 'Sinkron sekarang'}</button>
+              <button className="btn2" title="Isi nomor HP rider aktif yang masih kosong dari daftar mitra BO (cocok lewat Kode MTR). Nomor yang sudah ada tidak ditimpa." disabled={sibukHp} onClick={() => void isiHp()}>{sibukHp ? 'Mencari nomor di BO…' : 'Isi nomor HP dari BO'}</button>
+            </div>
+          )}
         </div>
-        {!bacaSaja && (
-          <>
-            <p className="text-xs text-muted-foreground">Data ditarik otomatis. Bila terputus, tarik manual di sini (3 hari terakhir); aman diulang. Rider baru dari BO ditambahkan otomatis sebagai rider aktif; Captain menonaktifkan yang sudah resign.</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <button className="btn" disabled={sibuk || !!perlu} onClick={() => void sinkron()}>{sibuk ? 'Menarik data…' : 'Sinkron sekarang'}</button>
-            </div>
-            <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-xs text-muted-foreground">Isi nomor HP rider aktif yang masih kosong dari daftar mitra BO (cocok lewat Kode MTR). Nomor yang sudah ada tidak ditimpa.</p>
-              <button className="btn2" disabled={sibukHp} onClick={() => void isiHp()}>{sibukHp ? 'Mencari nomor di BO…' : 'Isi nomor HP dari BO'}</button>
-              {hasilHp && (
-                <p className="rounded-md bg-success-soft p-3 text-sm text-success">
-                  <b>{hasilHp.terisi.toLocaleString('id-ID')} nomor HP terisi</b> dari {hasilHp.butuh.toLocaleString('id-ID')} rider aktif yang belum punya nomor. {hasilHp.ditemukan.toLocaleString('id-ID')} ada nomornya di BO; sisanya belum punya nomor di BO atau tidak ada di daftar mitra BO.
-                </p>
-              )}
-            </div>
-          </>
+        {!bacaSaja && hasilHp && (
+          <p className="rounded-md bg-success-soft p-3 text-sm text-success">
+            <b>{hasilHp.terisi.toLocaleString('id-ID')} nomor HP terisi</b> dari {hasilHp.butuh.toLocaleString('id-ID')} rider aktif yang belum punya nomor. {hasilHp.ditemukan.toLocaleString('id-ID')} ada nomornya di BO; sisanya belum punya nomor di BO atau tidak ada di daftar mitra BO.
+          </p>
         )}
         {perlu && (
           <div className="space-y-3">
@@ -222,12 +219,9 @@ function JamShift({ bacaSaja }: { bacaSaja: boolean }) {
     <Field label={label} hint={hint}><input type="time" className="inp !w-32" value={String(f[k])} disabled={bacaSaja} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></Field>
   )
   return (
-    <div className="card !mb-0 space-y-3">
-      <div>
-        <b className="block">Jam shift dan tepat waktu</b>
-        <p className="text-xs text-muted-foreground">Dinilai Orca memakai jam lokal hub (WITA tidak dikonversi). Tepat waktu bila clock-in paling lambat jam mulai ditambah toleransi.</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-4">
+    <details className="card !mb-0 space-y-3">
+      <summary className="cursor-pointer font-bold">Jam shift dan tepat waktu <span className="ml-1 text-xs font-normal text-muted-foreground">jam lokal hub; tepat bila clock-in paling lambat jam mulai + toleransi</span></summary>
+      <div className="mt-3 grid gap-3 sm:grid-cols-4">
         {kolom('Mulai pagi', 'mulai_pagi')}
         {kolom('Mulai Middle', 'mulai_tengah')}
         {kolom('Mulai siang', 'mulai_siang')}
@@ -239,6 +233,6 @@ function JamShift({ bacaSaja }: { bacaSaja: boolean }) {
       </div>
       {salah && <p className="text-xs text-danger">Periksa jam (jam:menit) dan toleransi 0–60 menit.</p>}
       {bacaSaja ? <p className="text-xs text-muted-foreground">Hanya Super-admin yang bisa mengubah jam ini.</p> : <button className="btn" disabled={sibuk || salah || !berubah} onClick={simpan}>{sibuk ? 'Menyimpan…' : 'Simpan'}</button>}
-    </div>
+    </details>
   )
 }

@@ -92,7 +92,7 @@ export function PengaturanWa() {
           <input type="checkbox" className="size-5" checked={saklar?.aktif ?? true} disabled={!saklar} onChange={(e) => ubahSaklar(e.target.checked)} />
           <span>
             <b className="block">Pengiriman otomatis</b>
-            <span className="text-xs text-muted-foreground">Mati = tidak ada pesan terjadwal yang dikirim, semuanya sekaligus. Tombol "Kirim sekarang" tetap bisa dipakai.</span>
+            <span className="text-xs text-muted-foreground">Mati = semua pesan terjadwal tidak dikirim. "Kirim sekarang" tetap bisa dipakai.</span>
           </span>
         </label>
         <button className="btn" onClick={tambah}>+ Tambah pesan</button>
@@ -113,7 +113,7 @@ export function PengaturanWa() {
           {terpilih ? (
             <EditorPesan key={terpilih.id} m={terpilih} dsl={dsl.rows} arl={arl.rows} grupOpsi={grupOpsi} muatGrup={muatGrup} onUlang={ambilGrup} namaGrup={namaGrup} reload={muatUlang} tutup={() => setPilih(null)} />
           ) : (
-            <div className="card !mb-0"><Kosong teks="Pilih pesan di kiri" hint='Klik "Atur" pada salah satu pesan untuk mengubah isi, jam, cakupan, dan grup tujuannya di sini.' /></div>
+            <p className="px-1 text-xs text-muted-foreground">Klik "Atur" pada pesan di kiri untuk mengubah isi, jam, cakupan, dan grup tujuannya.</p>
           )}
         </div>
       </div>
@@ -164,9 +164,8 @@ function BarisPesan({ m, terpilih, namaGrup, onPilih, reload }: { m: Pesan; terp
       </label>
       <div className="min-w-40 flex-1">
         <b className="block">{m.nama}</b>
-        <span className="text-xs text-muted-foreground">{ringkas}</span>
         <span className="block text-xs text-muted-foreground">
-          {m.cakupan === 'semua' ? 'Semua DS' : m.cakupan === 'arcon' ? `${m.cakupan_ids.length} Arcon` : `${m.cakupan_ids.length} DS`} · {m.grup.length ? `${m.grup.length} grup: ${m.grup.map(namaGrup).join(', ')}` : 'grup tiap DS'}
+          {ringkas} · {m.cakupan === 'semua' ? 'Semua DS' : m.cakupan === 'arcon' ? `${m.cakupan_ids.length} Arcon` : `${m.cakupan_ids.length} DS`} · {m.grup.length ? `${m.grup.length} grup: ${m.grup.map(namaGrup).join(', ')}` : 'grup tiap DS'}
         </span>
       </div>
       <button className={terpilih ? 'btn' : 'btn2'} onClick={onPilih} aria-pressed={terpilih}>{terpilih ? 'Dipilih' : 'Atur'}</button>
