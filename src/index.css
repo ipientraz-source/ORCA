@@ -1351,20 +1351,6 @@ table thead th :is(div, span) { color: inherit; }
   background-attachment: fixed;
 }
 
-/* sarang lebah menyala: garis hexagon dipakai sebagai topeng di atas bercak warna (indigo, magenta, merah muda), jadi garisnya yang berwarna dan
-   menyala di area tertentu, gelap di sela. Berada di belakang semua panel, jadi kaca memburamkannya. Tanpa gambar, ringan, dan tidak bisa diklik. */
-:root:root[data-gaya="cyber"] #root::before {
-  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(48rem 34rem at 8% 88%, rgb(99 102 241), transparent 70%),
-    radial-gradient(52rem 36rem at 38% 38%, rgb(217 70 239), transparent 70%),
-    radial-gradient(50rem 36rem at 92% 14%, rgb(255 59 92), transparent 70%),
-    radial-gradient(40rem 28rem at 70% 96%, rgb(167 139 250), transparent 70%);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='35'%3E%3Cpath d='M10 0V5.8L20 11.7V23.3L10 29.2V35M10 29.2L0 23.3V11.7L10 5.8' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") 0 0 / 20px 35px;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='35'%3E%3Cpath d='M10 0V5.8L20 11.7V23.3L10 29.2V35M10 29.2L0 23.3V11.7L10 5.8' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") 0 0 / 20px 35px;
-}
-:root:root[data-gaya="cyber"].dark #root::before { opacity: 1; }
-:root:root[data-gaya="cyber"]:not(.dark) #root::before { opacity: 0.75; }
 
 /* panel dan kartu angka */
 :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) {
@@ -1431,6 +1417,35 @@ table thead th :is(div, span) { color: inherit; }
 /* pilihan DS di dalam baris tabel: tenang (hanya garis bawah tipis) sampai disentuh, supaya tabel tidak penuh kotak */
 :root:root[data-gaya="cyber"] .tbl button.inp { background: transparent; border-color: transparent; border-bottom-color: color-mix(in srgb, var(--cy) 35%, transparent); box-shadow: none; }
 :root:root[data-gaya="cyber"] .tbl button.inp:is(:hover, :focus-visible) { background: var(--kaca-input); border-color: var(--kaca-input-tepi); border-bottom-color: var(--cy); }
+
+/* baris tabel yang disorot diberi garis neon di kiri */
+:root:root[data-gaya="cyber"] .tbl tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--cy); }
+
+/* animasi pendukung kesan Cyberpunk: hanya transform, opacity, dan filter ringan; mati bila pengguna memilih "kurangi gerakan" */
+@media (prefers-reduced-motion: no-preference) {
+  /* sinar pemindai tipis turun pelan di seluruh layar (di belakang dialog, tidak bisa diklik) */
+  :root:root[data-gaya="cyber"] #root::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 55; pointer-events: none; opacity: 0.32; background: linear-gradient(90deg, transparent, var(--cy), var(--mg), transparent); box-shadow: 0 0 18px 4px color-mix(in srgb, var(--cy) 40%, transparent); animation: sinar 9s linear infinite; }
+  @keyframes sinar { from { transform: translateY(-8vh); } to { transform: translateY(108vh); } }
+  /* busur neon di sudut kartu berdenyut pelan, bergantian */
+  :root:root[data-gaya="cyber"] .card:not(.cetak *)::before { animation: denyut-sudut 3.6s ease-in-out infinite; }
+  :root:root[data-gaya="cyber"] .card:not(.cetak *)::after { animation: denyut-sudut 3.6s ease-in-out -1.8s infinite; }
+  @keyframes denyut-sudut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  /* judul halaman sesekali bergeser seperti glitch (sekitar 0,3 detik tiap 7 detik) */
+  :root:root[data-gaya="cyber"] header h2 { animation: glitch 7s steps(1) infinite; }
+  @keyframes glitch {
+    0%, 92%, 100% { filter: none; transform: none; }
+    93% { filter: drop-shadow(-2px 0 0 var(--mg)) drop-shadow(2px 0 0 var(--cy)); transform: translateX(1px); }
+    95% { filter: drop-shadow(2px 0 0 var(--mg)) drop-shadow(-2px 0 0 var(--cy)); transform: translateX(-1px) skewX(-4deg); }
+    97% { filter: none; transform: none; }
+  }
+  /* chevron di judul berkilau mengalir */
+  :root:root[data-gaya="cyber"] header h2::after { background: linear-gradient(90deg, var(--mg) 0%, var(--mg) 35%, var(--cy) 50%, var(--mg) 65%, var(--mg) 100%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: aliran 2.4s linear infinite; }
+  @keyframes aliran { from { background-position: 0 0; } to { background-position: 100% 0; } }
+  /* tombol utama: kilat menyapu saat disentuh */
+  :root:root[data-gaya="cyber"] .btn { position: relative; overflow: hidden; }
+  :root:root[data-gaya="cyber"] .btn::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%); transform: translateX(-130%); }
+  :root:root[data-gaya="cyber"] .btn:hover:not(:disabled)::before { transform: translateX(130%); transition: transform 0.7s ease; }
+}
 
 /* tanpa dukungan blur, atau pengguna meminta transparansi dikurangi: semua permukaan jadi hampir solid */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
