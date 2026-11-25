@@ -1329,18 +1329,18 @@ table thead th :is(div, span) { color: inherit; }
 /* latar berwarna lembut supaya kaca punya sesuatu untuk dibiaskan */
 :root:root[data-gaya="cyber"].dark body {
   background-image:
-    radial-gradient(44rem 34rem at 8% 6%, rgb(139 92 246 / 0.55), transparent 62%),
-    radial-gradient(48rem 34rem at 94% 12%, rgb(0 200 255 / 0.36), transparent 62%),
-    radial-gradient(52rem 38rem at 70% 98%, rgb(255 79 216 / 0.3), transparent 62%),
-    radial-gradient(36rem 28rem at 2% 96%, rgb(0 240 255 / 0.16), transparent 62%);
+    radial-gradient(circle 15rem at 14% 24%, rgb(139 92 246 / 0.5) 0 14.4rem, transparent 15rem),
+    radial-gradient(circle 11rem at 88% 72%, rgb(0 200 255 / 0.4) 0 10.4rem, transparent 11rem),
+    radial-gradient(52rem 38rem at 100% 0%, rgb(139 92 246 / 0.3), transparent 62%),
+    radial-gradient(50rem 36rem at 0% 100%, rgb(0 200 255 / 0.16), transparent 62%);
 }
 :root:root[data-gaya="cyber"]:not(.dark) body {
-  background-color: #ebe7ff;
+  background-color: #eceeff;
   background-image:
-    radial-gradient(46rem 36rem at 6% 4%, rgb(139 92 246 / 0.5), transparent 62%),
-    radial-gradient(50rem 36rem at 96% 10%, rgb(0 200 255 / 0.5), transparent 62%),
-    radial-gradient(54rem 40rem at 72% 98%, rgb(255 79 216 / 0.4), transparent 62%),
-    radial-gradient(40rem 30rem at 0% 96%, rgb(166 255 61 / 0.32), transparent 62%);
+    radial-gradient(circle 15rem at 14% 24%, rgb(124 58 237 / 0.38) 0 14.4rem, transparent 15rem),
+    radial-gradient(circle 11rem at 88% 72%, rgb(6 182 212 / 0.4) 0 10.4rem, transparent 11rem),
+    radial-gradient(52rem 38rem at 100% 0%, rgb(124 58 237 / 0.16), transparent 62%),
+    radial-gradient(50rem 36rem at 0% 100%, rgb(6 182 212 / 0.16), transparent 62%);
   background-size: auto;
   background-attachment: fixed;
 }
@@ -1362,23 +1362,23 @@ table thead th :is(div, span) { color: inherit; }
 }
 /* kartu angka: tinta neon lembut dari sudut kiri-atas menggantikan batang kiri */
 :root:root[data-gaya="cyber"] .stat:not(.cetak *) {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--neon, var(--cy)) 34%, transparent), rgb(255 255 255 / 0.04) 72%), var(--kaca-isi);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neon, var(--cy)) 14%, transparent), rgb(255 255 255 / 0.04) 72%), var(--kaca-isi);
 }
 :root:root[data-gaya="cyber"] .stat:not(.cetak *):hover { border-color: var(--kaca-kilap); box-shadow: inset 0 1px 0 var(--kaca-kilap), 0 0 36px -10px var(--neon, var(--cy)), 0 20px 44px -22px var(--kaca-bayang); }
-:root:root[data-gaya="cyber"] .stat > div:first-child { border-radius: 0.85rem; }
+:root:root[data-gaya="cyber"] .stat > div:first-child { border-radius: 0.85rem; background: color-mix(in srgb, var(--neon, var(--cy)) 26%, var(--kaca-btn)); }
 /* kotak kecil di dalam kartu (kelas rounded-*) ikut membulat, bukan 0 seperti Cyber sudut tajam */
 :root:root[data-gaya="cyber"] :is(.rounded-xl, .rounded-2xl):not(.cetak *) { border-radius: 1.1rem; }
 :root:root[data-gaya="cyber"] .rounded-lg:not(.cetak *) { border-radius: 0.9rem; }
 :root:root[data-gaya="cyber"] .rounded-md:not(.cetak *) { border-radius: 0.7rem; }
 
 /* tombol, isian, lencana, tab: bulat dan berkilap */
-:root:root[data-gaya="cyber"] .btn { border-radius: 9999px; clip-path: none; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 -2px 6px rgb(0 0 0 / 0.16), 0 8px 22px -8px rgb(255 79 216 / 0.7); }
+:root:root[data-gaya="cyber"] .btn { border-radius: 9999px; clip-path: none; background: linear-gradient(135deg, #ff4fd8, #8b5cf6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 -2px 6px rgb(0 0 0 / 0.16), 0 8px 22px -8px rgb(255 79 216 / 0.7); }
 :root:root[data-gaya="cyber"] .btn2 { border-radius: 9999px; background: var(--kaca-btn); border: 1px solid var(--kaca-tepi); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 var(--kaca-kilap), 0 0 0 1px var(--kaca-garis); }
 :root:root[data-gaya="cyber"] .btn2:hover:not(:disabled) { background: color-mix(in srgb, var(--cy) 18%, var(--kaca-btn)); border-color: var(--kaca-kilap); }
 :root:root[data-gaya="cyber"] .inp { border-radius: 0.9rem; background: var(--kaca-input); border: 1px solid var(--kaca-input-tepi); border-bottom: 2px solid var(--cy); box-shadow: inset 0 1px 0 var(--kaca-kilap); }
 :root:root[data-gaya="cyber"] :is(.badge, .tab, .nav) { border-radius: 9999px; }
 :root:root[data-gaya="cyber"]:not(.dark) .badge { border: 1px solid rgb(20 26 74 / 0.35); }
-:root:root[data-gaya="cyber"] .tab-on, :root:root[data-gaya="cyber"] .tab-on:hover { clip-path: none; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 22px -4px rgb(255 79 216 / 0.7); }
+:root:root[data-gaya="cyber"] .tab-on, :root:root[data-gaya="cyber"] .tab-on:hover { clip-path: none; background: linear-gradient(135deg, #ff4fd8, #8b5cf6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 22px -4px rgb(255 79 216 / 0.7); }
 
 /* kepala tabel: tinta tipis dan garis cyan tipis (di terang berteks tinta, bukan blok gelap) */
 :root:root[data-gaya="cyber"].dark :is(table thead th, .tbl th):not(.cetak *) { background: rgb(0 200 255 / 0.1); border-bottom: 1px solid color-mix(in srgb, var(--cy) 60%, transparent); }
@@ -1390,7 +1390,7 @@ table thead th :is(div, span) { color: inherit; }
   :root:root[data-gaya="cyber"] .app-shell > aside { background: var(--kaca-bar); -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7); }
   :root:root[data-gaya="cyber"] .app-shell > aside::after { height: 1px; background: linear-gradient(90deg, transparent, var(--cy), var(--mg), transparent); }
   :root:root[data-gaya="cyber"] .app-shell > aside > nav { clip-path: none; border-radius: 1.75rem; background: rgb(255 255 255 / 0.07); -webkit-backdrop-filter: blur(26px) saturate(1.8); backdrop-filter: blur(26px) saturate(1.8); border: 1px solid rgb(255 255 255 / 0.2); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 18px 44px -16px rgb(139 92 246 / 0.6); }
-  :root:root[data-gaya="cyber"] .nav-on, :root:root[data-gaya="cyber"] .nav-on:hover { clip-path: none; border-radius: 9999px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 24px -2px rgb(255 79 216 / 0.7); }
+  :root:root[data-gaya="cyber"] .nav-on, :root:root[data-gaya="cyber"] .nav-on:hover { clip-path: none; border-radius: 9999px; background: linear-gradient(110deg, #ff4fd8, #8b5cf6, #ff4fd8); background-size: 220% 100%; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 24px -2px rgb(255 79 216 / 0.7); }
   :root:root[data-gaya="cyber"] .app-shell > aside > div:last-child, :root:root[data-gaya="cyber"] .sidebar-bg .ring-1 { clip-path: none; border-radius: 9999px; background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.2); }
 }
 
