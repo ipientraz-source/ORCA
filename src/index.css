@@ -1333,25 +1333,38 @@ table thead th :is(div, span) { color: inherit; }
 /* latar berwarna lembut supaya kaca punya sesuatu untuk dibiaskan */
 :root:root[data-gaya="cyber"].dark body {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M15 0V8.7L30 17.3V34.7L15 43.3V52M15 43.3L0 34.7V17.3L15 8.7' fill='none' stroke='%2300c8ff' stroke-opacity='0.18' stroke-width='1'/%3E%3C/svg%3E"),
     radial-gradient(50rem 36rem at 4% 4%, rgb(139 92 246 / 0.42), transparent 64%),
     radial-gradient(52rem 38rem at 100% 0%, rgb(0 200 255 / 0.2), transparent 64%),
     radial-gradient(52rem 38rem at 96% 100%, rgb(139 92 246 / 0.3), transparent 64%),
     radial-gradient(46rem 34rem at 0% 100%, rgb(0 200 255 / 0.16), transparent 64%);
-  background-size: 30px 52px, auto, auto, auto, auto;
+  background-size: auto;
   background-attachment: fixed;
 }
 :root:root[data-gaya="cyber"]:not(.dark) body {
   background-color: #eceeff;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M15 0V8.7L30 17.3V34.7L15 43.3V52M15 43.3L0 34.7V17.3L15 8.7' fill='none' stroke='%235a46dc' stroke-opacity='0.22' stroke-width='1'/%3E%3C/svg%3E"),
     radial-gradient(50rem 36rem at 4% 4%, rgb(124 58 237 / 0.26), transparent 64%),
     radial-gradient(52rem 38rem at 100% 0%, rgb(6 182 212 / 0.26), transparent 64%),
     radial-gradient(52rem 38rem at 96% 100%, rgb(124 58 237 / 0.2), transparent 64%),
     radial-gradient(46rem 34rem at 0% 100%, rgb(6 182 212 / 0.2), transparent 64%);
-  background-size: 30px 52px, auto, auto, auto, auto;
+  background-size: auto;
   background-attachment: fixed;
 }
+
+/* sarang lebah menyala: garis hexagon dipakai sebagai topeng di atas bercak warna (indigo, magenta, merah muda), jadi garisnya yang berwarna dan
+   menyala di area tertentu, gelap di sela. Berada di belakang semua panel, jadi kaca memburamkannya. Tanpa gambar, ringan, dan tidak bisa diklik. */
+:root:root[data-gaya="cyber"] #root::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(48rem 34rem at 8% 88%, rgb(99 102 241), transparent 70%),
+    radial-gradient(52rem 36rem at 38% 38%, rgb(217 70 239), transparent 70%),
+    radial-gradient(50rem 36rem at 92% 14%, rgb(255 59 92), transparent 70%),
+    radial-gradient(40rem 28rem at 70% 96%, rgb(167 139 250), transparent 70%);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='35'%3E%3Cpath d='M10 0V5.8L20 11.7V23.3L10 29.2V35M10 29.2L0 23.3V11.7L10 5.8' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") 0 0 / 20px 35px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='35'%3E%3Cpath d='M10 0V5.8L20 11.7V23.3L10 29.2V35M10 29.2L0 23.3V11.7L10 5.8' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") 0 0 / 20px 35px;
+}
+:root:root[data-gaya="cyber"].dark #root::before { opacity: 1; }
+:root:root[data-gaya="cyber"]:not(.dark) #root::before { opacity: 0.75; }
 
 /* panel dan kartu angka */
 :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) {
