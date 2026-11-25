@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { sb, today, addDays, hari, tanggal, useRows, ok, toast, Err, Field, Kosong, Select, usePage, Pagination } from './lib'
 import { persenBo, teksPersen, type AktualBo } from './aktual-bo'
 import { SelShift } from './aktual-bo-ui'
+import { DaftarClockin } from './kehadiran-bo-daftar'
 
 const BARU = '__baru__'
 
@@ -192,6 +193,8 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
           </>
         )}
       </div>
+
+      <DaftarClockin ds={dsl.rows} />
 
       <JamShift bacaSaja={bacaSaja} />
     </div>
