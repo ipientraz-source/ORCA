@@ -44,7 +44,7 @@ export function Kelola() {
 
       <div className="mb-3 flex flex-wrap items-start gap-3">
         <p className="min-w-60 flex-1 text-sm text-muted-foreground">
-          Urutan menyiapkan DS: <b className="text-foreground">1.</b> buat DS, <b className="text-foreground">2.</b> isi budget rider per shift, <b className="text-foreground">3.</b> pilih Captain. Buat DS lebih dulu sebelum import rider supaya nama DS di file CSV cocok.
+          Urutan menyiapkan DS: <b className="text-foreground">1.</b> buat DS, <b className="text-foreground">2.</b> isi budget rider per shift, <b className="text-foreground">3.</b> pilih Captain. Buat DS sebelum impor rider agar nama DS di CSV cocok.
         </p>
         <button type="button" className={tambah ? 'btn2' : 'btn'} onClick={() => setTambah(!tambah)}>{tambah ? <X size={16} /> : <Plus size={16} />}{tambah ? 'Batal' : 'Buat DS'}</button>
       </div>
@@ -214,7 +214,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
         <Field label="Budget shift siang" hint="Jumlah rider yang harus masuk shift siang setiap hari.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_siang} onChange={(e) => setF({ ...f, kuota_siang: angka(e.target.value) })} />
         </Field>
-        <Field label="Budget shift middle (opsional)" hint="Shift ketiga di antara pagi dan siang. Biarkan 0 bila DS ini tidak memakainya; kalau diisi, shift middle muncul di jadwal dan dibagi adil seperti shift lain.">
+        <Field label="Budget shift middle (opsional)" hint="Shift ketiga di antara pagi dan siang. Isi 0 bila tidak dipakai.">
           <input type="number" min={0} className="inp w-full" value={f.kuota_tengah} onChange={(e) => setF({ ...f, kuota_tengah: angka(e.target.value) })} />
         </Field>
         {!terbatas && (
@@ -264,7 +264,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
             </Field>
           )}
         </div>
-        {terbatas && <p className="mt-2 text-xs text-muted-foreground">Captain membuat password sendiri lewat "Lupa password / buat password?" di layar masuk. Calon: rider di DS ini atau rider yang belum punya DS (cari lewat kolom di atas). Rider di DS lain hanya bisa dipindah Super-admin.</p>}
+        {terbatas && <p className="mt-2 text-xs text-muted-foreground">Captain membuat password sendiri lewat "Lupa password / buat password?" di layar masuk. Calon: rider DS ini atau yang belum punya DS. Rider DS lain hanya bisa dipindah Super-admin.</p>}
         <div className="mt-3 flex items-center gap-3">
           <button className="btn2" disabled={!!kurang} onClick={tunjuk}>{cap ? 'Ganti Captain' : 'Jadikan Captain'}</button>
           {kurang && <span className="text-xs text-muted-foreground">{kurang}</span>}
@@ -275,7 +275,7 @@ function DsCard({ d, riders, candidates, arcons, semuaDs, reload, terbatas = fal
       {!terbatas && tab === 'arcon' && (
       <div>
         <p className="text-sm text-muted-foreground mb-3">
-          Arcon memantau dan mengatur jadwal, budget rider, dan Captain di DS yang dipegang; absensi harian tetap dikerjakan Captain. Satu Arcon bisa memegang banyak DS.{' '}
+          Arcon mengatur jadwal, budget, dan Captain di DS yang dipegang; absensi harian tetap oleh Captain. Satu Arcon bisa memegang banyak DS.{' '}
           {arc ? <>Sekarang: <b className="text-foreground">{arc.nama}</b> ({arc.email}), memegang {jmlDsArcon} DS.</> : 'Belum ada Arcon untuk DS ini (opsional).'}
         </p>
         <div className="grid gap-4 sm:grid-cols-2 items-start">
@@ -308,7 +308,7 @@ export function KelolaArcon({ me, dsList }: { me: Me; dsList: Ds[] }) {
       <div className="card !bg-primary-soft !border-primary/20">
         <b className="block mb-1">Yang bisa Anda atur di sini</b>
         <p className="text-sm text-muted-foreground">
-          Untuk DS yang Anda pegang: berapa rider yang harus masuk tiap shift setiap hari, dan siapa Captain-nya. DS baru dan memegang DS lain diajukan ke Super-admin; mengganti nama DS dilakukan Super-admin.
+          Budget rider per shift dan Captain untuk DS yang Anda pegang. DS baru dan DS lain diajukan ke Super-admin; ganti nama oleh Super-admin.
         </p>
       </div>
       <PengajuanArcon me={me} onSelesai={() => { dsl.reload(); rs.reload() }} />

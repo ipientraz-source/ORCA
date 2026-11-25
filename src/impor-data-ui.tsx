@@ -117,8 +117,8 @@ function Csv({ jenis, ctx, selesai }: { jenis: Jenis; ctx: Ctx; selesai: () => v
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Unggah berkas CSV (UTF-8, satu jenis data per berkas) sesuai templat di atas. Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
-        Baris yang dobel dengan data lama atau dengan baris lain di berkas <b>dilewati, bukan ditambahkan lagi</b>; data lama tidak diubah.
+        Unggah CSV (UTF-8, satu jenis per berkas) sesuai templat. Wajib: <b>{KOLOM[jenis].filter((k) => k.wajib).map((k) => k.judul).join(', ')}</b>.
+        Baris dobel <b>dilewati</b>; data lama tidak diubah.
       </p>
       <label
         onDragOver={(e) => e.preventDefault()}
@@ -291,8 +291,7 @@ export function ImporData({ terbatas }: { terbatas?: Ds[] }) {
   return (
     <div className="space-y-4">
       <div className="card text-sm text-muted-foreground">
-        <b className="text-foreground">Aturan duplikat:</b> data yang sudah ada tidak pernah dihapus atau ditimpa. Baris yang dobel (dengan data lama atau dengan baris lain di berkas) dilewati dan dilaporkan, jadi impor berkas yang sama dua kali tidak menambah apa pun.
-        Urutan yang disarankan: DS → Rider → Motor → Kandidat → Servis dan Kerusakan, karena data belakangan merujuk data sebelumnya.
+        <b className="text-foreground">Aturan duplikat:</b> data lama tidak dihapus atau ditimpa; baris dobel dilewati dan dilaporkan. Urutan impor: DS → Rider → Motor → Kandidat → Servis dan Kerusakan.
       </div>
       <div className="flex flex-wrap gap-1.5">
         {tersedia.map((j) => <button key={j} type="button" className={`tab ${tab === j ? 'tab-on' : ''}`} onClick={() => setTab(j)}>{NAMA[j]}</button>)}

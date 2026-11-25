@@ -418,11 +418,11 @@ function Baris({
                   <>
                     <RiderPick riders={calon} value={backup} onChange={setBackup} placeholder="Pilih rider pengganti" />
                     {backup && shiftKerja(backup) && (
-                      <span className="text-xs text-muted-foreground">{nama(backup)} masuk {shiftKerja(backup)}{shiftKerja(backup) !== shiftDari(backup) ? ' (hasil tukar)' : ''}, lalu menutup {(backup === rekanTukar ? shift : shiftKerja(r.id)) ?? 'shift ini'}: long shift, dihitung 2 shift. Jika shift {shiftKerja(backup)}-nya ditukar ke rider lain, catat lewat Tukar shift pada {nama(backup)}.</span>
+                      <span className="text-xs text-muted-foreground">{nama(backup)} masuk {shiftKerja(backup)}{shiftKerja(backup) !== shiftDari(backup) ? ' (hasil tukar)' : ''}, lalu menutup {(backup === rekanTukar ? shift : shiftKerja(r.id)) ?? 'shift ini'}: long shift, dihitung 2 shift. Bila shift {shiftKerja(backup)}-nya ditukar, catat lewat Tukar shift pada {nama(backup)}.</span>
                     )}
                   </>
                 ) : (
-                  <span className="text-xs text-warning">Tidak ada rider yang bisa jadi pengganti hari ini (semua dijadwalkan di shift yang sama, tidak hadir, atau sudah menutup shift lain). Pilih "Tidak dapat pengganti".</span>
+                  <span className="text-xs text-warning">Tidak ada rider yang bisa jadi pengganti (semua sama shift, tidak hadir, atau sudah menutup shift lain). Pilih "Tidak dapat pengganti".</span>
                 )
               )}
             </div>

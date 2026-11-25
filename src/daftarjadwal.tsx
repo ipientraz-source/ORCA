@@ -92,7 +92,7 @@ export function DaftarJadwal({ bolehHapus = false }: { bolehHapus?: boolean }) {
         {!tampil.length && <Kosong teks="Belum ada jadwal tersimpan di rentang ini." hint="Jadwal muncul di sini setelah Captain atau Super-admin menyimpannya." />}
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Halaman ini hanya untuk Super-admin dan Arcon. Arcon hanya melihat DS yang dipegang. Captain hanya bisa melihat jadwal DS-nya sendiri. Super-admin bisa menghapus jadwal satu minggu (ikon tempat sampah) selama absensi minggu itu belum diisi atau dikunci.</p>
+      <p className="mt-3 text-xs text-muted-foreground">Super-admin melihat semua DS, Arcon DS yang dipegang, Captain DS sendiri. Hanya Super-admin yang bisa menghapus jadwal seminggu (ikon sampah), selama absensinya belum diisi atau dikunci.</p>
     </div>
   )
 }

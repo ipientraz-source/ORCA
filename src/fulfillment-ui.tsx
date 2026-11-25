@@ -52,7 +52,7 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Persen rider yang benar-benar bekerja dari budget (jumlah rider yang diminta client per shift). Contoh: budget 10, bekerja 9 = 90%. Rider lebih dan shift yang belum dilaporkan tidak dihitung.
+        Rider yang bekerja dibanding budget per shift. Contoh: budget 10, bekerja 9 = 90%. Rider lebih dan shift yang belum dilaporkan tidak dihitung.
       </p>
       <Err msg={f.err} />
       {!harian.length ? (

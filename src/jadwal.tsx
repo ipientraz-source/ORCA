@@ -257,7 +257,7 @@ function PanelPola({ pola, ds }: { pola: PolaHari[] | null; ds: Ds }) {
     <details className="card">
       <summary className="cursor-pointer font-bold">Pola absen dan saran cadangan</summary>
       <p className="mt-1 text-xs text-muted-foreground">
-        Dihitung dari absensi 8 minggu terakhir yang sudah diisi Captain (alpha + izin + sakit dibanding shift terjadwal). Saran cadangan baru muncul bila datanya cukup (minimal 20 shift per hari dalam seminggu) dan paling banyak 2 rider.
+        Dari absensi 8 minggu terakhir (alpha + izin + sakit dibanding shift terjadwal). Saran muncul bila datanya cukup (min. 20 shift per hari dalam seminggu), maksimal 2 rider.
       </p>
       {!pola ? (
         <p className="mt-3 text-sm text-muted-foreground">Memuat…</p>
