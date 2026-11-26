@@ -25,53 +25,53 @@ type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => React
 
 const SUPER: Tab[] = [
   { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard /> },
-  { nama: 'Data Rider', desc: 'Pindah DS, ubah status, impor dan unduh CSV', Icon: Users, View: DataRider },
-  { nama: 'Jadwal', desc: 'Lihat dan susun jadwal DS mana pun', Icon: CalendarDays, View: () => <JadwalSemua editable /> },
-  { nama: 'Daftar Jadwal', desc: 'Jadwal tersimpan semua DS per minggu', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
-  { nama: 'Laporan Absensi Harian', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
-  { nama: 'Rekap Kehadiran', desc: 'Jadwal vs kehadiran sebenarnya, rekap per rider, kunci absensi', Icon: ClipboardList, View: Rekap },
-  { nama: 'Laporan Order', desc: 'Order dan screenshot yang dilaporkan rider per hari', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
-  { nama: 'Clock-in BO', desc: 'Sinkron clock-in dari BO, pasangkan hub ke DS, atur jam shift', Icon: UserCheck, View: () => <KehadiranBo /> },
-  { nama: 'Laporan WhatsApp', desc: 'Atur pesan WhatsApp otomatis dan lihat riwayat kirim', Icon: Send, View: () => <PengaturanWa /> },
-  { nama: 'Kelola DS & Captain', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
-  { nama: 'Armada', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
-  { nama: 'Rekrutmen', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
-  { nama: 'Impor Data', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
-  { nama: 'Pengguna', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
-  { nama: 'Riwayat', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
+  { nama: 'Rider Management', desc: 'Pindah DS, ubah status, impor dan unduh CSV', Icon: Users, View: DataRider },
+  { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS mana pun', Icon: CalendarDays, View: () => <JadwalSemua editable /> },
+  { nama: 'Schedule Archive', desc: 'Jadwal tersimpan semua DS per minggu', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
+  { nama: 'Report Absensi', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
+  { nama: 'Schedule Compliance', desc: 'Jadwal vs kehadiran sebenarnya, rekap per rider, kunci absensi', Icon: ClipboardList, View: Rekap },
+  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
+  { nama: 'Dash Attendance', desc: 'Sinkron clock-in dari BO, pasangkan hub ke DS, atur jam shift', Icon: UserCheck, View: () => <KehadiranBo /> },
+  { nama: 'WA Automation', desc: 'Atur pesan WhatsApp otomatis dan lihat riwayat kirim', Icon: Send, View: () => <PengaturanWa /> },
+  { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
+  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
+  { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
+  { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
+  { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
+  { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
 const CAPTAIN: Tab[] = [
   { nama: 'Jadwal Saya', desc: 'Jadwal kerja Anda', Icon: CalendarCheck, View: JadwalSaya },
-  { nama: 'Laporan Order Saya', desc: 'Laporkan order dan screenshot Anda', Icon: Receipt, View: ({ me }) => <SayaRider me={me} menu="order" /> },
-  { nama: 'Riwayat Masuk Saya', desc: 'Status absensi Anda per hari', Icon: History, View: ({ me }) => <SayaRider me={me} menu="masuk" /> },
-  { nama: 'Laporan Absensi Harian', desc: 'Tandai rider masuk dan tidak masuk hari ini', Icon: ClipboardCheck, View: Daily },
-  { nama: 'Jadwal DS', desc: 'Susun jadwal rider DS Anda per minggu', Icon: CalendarDays, View: JadwalDs },
-  { nama: 'Rekap Kehadiran', desc: 'Rekap kehadiran, alpha, dan pengganti di DS Anda', Icon: TrendingUp, View: Rekap },
-  { nama: 'Laporan Order', desc: 'Order dan screenshot yang dilaporkan rider DS Anda', Icon: Receipt, View: ({ ds }) => <LaporanOrderMenu ds={ds} /> },
-  { nama: 'Armada', desc: 'Motor listrik DS Anda dan laporan kerusakan', Icon: Bike, View: Armada },
-  { nama: 'Rider DS', desc: 'Kelola rider DS Anda, tarik dari DS lain', Icon: Users, View: DataRider },
-  { nama: 'Rekrutmen', desc: 'Kandidat rider dan kebutuhan rekrut DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
-  { nama: 'Riwayat', desc: 'Aktivitas DS Anda beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
+  { nama: 'Order Saya', desc: 'Laporkan order dan screenshot Anda', Icon: Receipt, View: ({ me }) => <SayaRider me={me} menu="order" /> },
+  { nama: 'Absensi Saya', desc: 'Status absensi Anda per hari', Icon: History, View: ({ me }) => <SayaRider me={me} menu="masuk" /> },
+  { nama: 'Report Absensi', desc: 'Tandai rider masuk dan tidak masuk hari ini', Icon: ClipboardCheck, View: Daily },
+  { nama: 'Shift Planner', desc: 'Susun jadwal rider DS Anda per minggu', Icon: CalendarDays, View: JadwalDs },
+  { nama: 'Schedule Compliance', desc: 'Rekap kehadiran, alpha, dan pengganti di DS Anda', Icon: TrendingUp, View: Rekap },
+  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider DS Anda', Icon: Receipt, View: ({ ds }) => <LaporanOrderMenu ds={ds} /> },
+  { nama: 'Fleet', desc: 'Motor listrik DS Anda dan laporan kerusakan', Icon: Bike, View: Armada },
+  { nama: 'Rider Management', desc: 'Kelola rider DS Anda, tarik dari DS lain', Icon: Users, View: DataRider },
+  { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
+  { nama: 'Activity Log', desc: 'Aktivitas DS Anda beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
 // Arcon: atasan Captain, memantau beberapa DS. Boleh menyusun jadwal (termasuk otomatis), mengatur kebutuhan harian, mengunci absensi mingguan, dan menonaktifkan rider. Absensi harian dikerjakan Captain; Arcon boleh membantu mengisinya di DS yang dipegang.
 const ARCON: Tab[] = [
   { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di DS Anda', Icon: LayoutDashboard, View: () => <Dashboard /> },
-  { nama: 'Data Rider', desc: 'Rider DS Anda: tambah baru, nonaktifkan yang tidak jalan', Icon: Users, View: DataRider },
-  { nama: 'Jadwal', desc: 'Lihat dan susun jadwal DS Anda, termasuk Susun otomatis', Icon: CalendarDays, View: ({ dsList }) => <JadwalSemua daftar={dsList} editable /> },
-  { nama: 'Daftar Jadwal', desc: 'Jadwal tersimpan DS Anda per minggu', Icon: ListChecks, View: () => <DaftarJadwal /> },
-  { nama: 'Laporan Absensi Harian', desc: 'Bantu isi atau koreksi absensi rider DS Anda', Icon: ClipboardCheck, View: ({ dsList }) => <AbsensiSemua dsList={dsList} /> },
-  { nama: 'Armada', desc: 'Motor listrik, servis rutin, dan kerusakan di DS Anda', Icon: Bike, View: Armada },
-  { nama: 'Rekap Kehadiran', desc: 'Jadwal vs kehadiran sebenarnya, kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
-  { nama: 'Clock-in BO', desc: 'Clock-in rider dari BO untuk DS Anda', Icon: UserCheck, View: () => <KehadiranBo bacaSaja /> },
-  { nama: 'Laporan Order', desc: 'Order dan screenshot yang dilaporkan rider DS Anda', Icon: Receipt, View: ({ dsList }) => <LaporanOrderMenu ds={null} dsList={dsList} /> },
-  { nama: 'Kelola DS', desc: 'Budget rider per shift dan Captain untuk DS Anda', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },
-  { nama: 'Impor Data', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
-  { nama: 'Rekrutmen', desc: 'Kandidat rider dan kebutuhan rekrut DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
-  { nama: 'Riwayat', desc: 'Aktivitas DS Anda beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
+  { nama: 'Rider Management', desc: 'Rider DS Anda: tambah baru, nonaktifkan yang tidak jalan', Icon: Users, View: DataRider },
+  { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS Anda, termasuk Susun otomatis', Icon: CalendarDays, View: ({ dsList }) => <JadwalSemua daftar={dsList} editable /> },
+  { nama: 'Schedule Archive', desc: 'Jadwal tersimpan DS Anda per minggu', Icon: ListChecks, View: () => <DaftarJadwal /> },
+  { nama: 'Report Absensi', desc: 'Bantu isi atau koreksi absensi rider DS Anda', Icon: ClipboardCheck, View: ({ dsList }) => <AbsensiSemua dsList={dsList} /> },
+  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di DS Anda', Icon: Bike, View: Armada },
+  { nama: 'Schedule Compliance', desc: 'Jadwal vs kehadiran sebenarnya, kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
+  { nama: 'Dash Attendance', desc: 'Clock-in rider dari BO untuk DS Anda', Icon: UserCheck, View: () => <KehadiranBo bacaSaja /> },
+  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider DS Anda', Icon: Receipt, View: ({ dsList }) => <LaporanOrderMenu ds={null} dsList={dsList} /> },
+  { nama: 'Hub Control', desc: 'Budget rider per shift dan Captain untuk DS Anda', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },
+  { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
+  { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
+  { nama: 'Activity Log', desc: 'Aktivitas DS Anda beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
-// Recruiter: tim rekrutmen, hanya menu Rekrutmen (semua DS)
+// Recruiter: tim rekrutmen, hanya menu Talent Pipeline (semua DS)
 const RECRUITER: Tab[] = [
-  { nama: 'Rekrutmen', desc: 'Kandidat rider, kebutuhan rekrut, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
+  { nama: 'Talent Pipeline', desc: 'Kandidat rider, kebutuhan rekrut, dan terima jadi rider', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
 ]
 const RIDER: Tab[] = [{ nama: 'Jadwal Saya', desc: 'Jadwal kerja Anda', Icon: CalendarCheck, View: JadwalSaya }]
 
@@ -344,11 +344,11 @@ function AdminApp({ email }: { email: string }) {
     })()
   }, [email])
 
-  // Tautan dari pesan WhatsApp: ?tab=rekap&tgl=YYYY-MM-DD membuka Rekap Kehadiran, ?tab=absensi membuka Laporan Absensi Harian
+  // Tautan dari pesan WhatsApp: ?tab=rekap&tgl=YYYY-MM-DD membuka Schedule Compliance, ?tab=absensi membuka Report Absensi
   useEffect(() => {
     if (!me) return
     const t = new URLSearchParams(location.search).get('tab')
-    const nama = t === 'rekap' ? 'Rekap Kehadiran' : t === 'absensi' ? 'Laporan Absensi Harian' : ''
+    const nama = t === 'rekap' ? 'Schedule Compliance' : t === 'absensi' ? 'Report Absensi' : ''
     const i = tabsDari(me.peran).findIndex((x) => x.nama === nama)
     if (i >= 0) setTab(i)
   }, [me])
@@ -403,7 +403,7 @@ function AdminApp({ email }: { email: string }) {
             <button key={t.nama} onClick={() => setTab(i)} className={`nav ${i === tab ? 'nav-on' : ''}`}>
               <t.Icon size={18} />
               {t.nama}
-              {t.nama === 'Kelola DS & Captain' && me.peran === 'super_admin' && <LencanaPengajuan />}
+              {t.nama === 'Hub Control' && me.peran === 'super_admin' && <LencanaPengajuan />}
             </button>
           ))}
         </nav>

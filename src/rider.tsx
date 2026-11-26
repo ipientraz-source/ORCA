@@ -59,7 +59,7 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
       </div>
       <main className="rider-isi max-w-md mx-auto px-4 -mt-4 pb-10">
         <div role="tablist" aria-label="Menu rider" className="mb-3 flex gap-2">
-          {([['jadwal', 'Jadwal Saya'], ['order', 'Laporan Order'], ['masuk', 'Riwayat Masuk']] as const).map(([k, label]) => (
+          {([['jadwal', 'Jadwal Saya'], ['order', 'Order Saya'], ['masuk', 'Absensi Saya']] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={menu === k} onClick={() => setMenu(k)} className={`tab !px-1 text-[13px] flex-1 ${menu === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
           ))}
         </div>
@@ -80,7 +80,7 @@ export function RiderApp({ kode, out }: { kode: string; out: () => void }) {
 
 // Captain yang juga ikut jadwal sebagai rider: laporan order dan riwayat masuk dirinya sendiri, lewat Kode MTR di data riders-nya
 export function SayaRider({ me, menu }: { me: Me; menu: 'order' | 'masuk' }) {
-  if (!me.kode_mtr) return <Kosong teks="Akun Anda belum punya Kode MTR" hint="Minta Super-admin mengisi Kode MTR Anda di Data Rider supaya bisa melapor order sebagai rider." />
+  if (!me.kode_mtr) return <Kosong teks="Akun Anda belum punya Kode MTR" hint="Minta Super-admin mengisi Kode MTR Anda di Rider Management supaya bisa melapor order sebagai rider." />
   return <div className="max-w-md">{menu === 'order' ? <LaporanOrderRider kode={me.kode_mtr} /> : <RiwayatMasukRider kode={me.kode_mtr} />}</div>
 }
 

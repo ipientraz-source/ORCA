@@ -158,7 +158,7 @@ export function Pengguna() {
                         <button className="btn2 ml-1.5" title="Hapus email: tetap rider, masuk dengan Kode MTR" onClick={() => hapusEmail(r)}>Hapus email</button>
                       )}
                       {r.peran === 'arcon' && r.status === 'nonaktif' && (
-                        <button className="btn2 !text-danger" disabled={ds.length > 0} title={ds.length ? 'Masih memegang DS. Lepas dulu di Kelola DS' : 'Hapus Arcon yang sudah tidak aktif'} onClick={() => setHapus(r)}>
+                        <button className="btn2 !text-danger" disabled={ds.length > 0} title={ds.length ? 'Masih memegang DS. Lepas dulu di Hub Control' : 'Hapus Arcon yang sudah tidak aktif'} onClick={() => setHapus(r)}>
                           Hapus
                         </button>
                       )}
@@ -173,13 +173,13 @@ export function Pengguna() {
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain atau rider ber-email login bisa dinaikkan jadi Arcon lewat tombol di barisnya. Arcon nonaktif tanpa DS bisa dihapus. Ganti Captain/Arcon per DS di Kelola DS &amp; Captain.
+        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain atau rider ber-email login bisa dinaikkan jadi Arcon lewat tombol di barisnya. Arcon nonaktif tanpa DS bisa dihapus. Ganti Captain/Arcon per DS di Hub Control.
       </p>
     </div>
   )
 }
 
-// Menghapus Arcon yang sudah tidak aktif: alasan wajib dan tercatat di Riwayat. Aktivitas lamanya tetap tampil atas namanya.
+// Menghapus Arcon yang sudah tidak aktif: alasan wajib dan tercatat di Activity Log. Aktivitas lamanya tetap tampil atas namanya.
 function DialogHapusArcon({ arcon, tutup, selesai }: { arcon: Rider; tutup: () => void; selesai: () => void }) {
   const [alasan, setAlasan] = useState('')
   const [proses, setProses] = useState(false)
@@ -197,7 +197,7 @@ function DialogHapusArcon({ arcon, tutup, selesai }: { arcon: Rider; tutup: () =
       <div className="card !mb-0 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-1 text-lg font-bold">Hapus {arcon.nama}?</h3>
         <p className="mb-4 text-sm text-muted-foreground">
-          {arcon.email ? `${arcon.email} tidak bisa masuk lagi. ` : ''}Penghapusan tercatat di Riwayat dan tidak bisa dibatalkan. Aktivitas lamanya tetap tampil atas namanya.
+          {arcon.email ? `${arcon.email} tidak bisa masuk lagi. ` : ''}Penghapusan tercatat di Activity Log dan tidak bisa dibatalkan. Aktivitas lamanya tetap tampil atas namanya.
         </p>
         <label className="lbl">Alasan menghapus</label>
         <input autoFocus className="inp w-full" placeholder="mis. sudah pindah divisi" value={alasan} onChange={(e) => setAlasan(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && alasan.trim() && kirim()} />

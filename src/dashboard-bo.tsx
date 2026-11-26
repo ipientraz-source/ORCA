@@ -61,7 +61,7 @@ function Tren({ hariIni }: { hariIni: string }) {
       <Err msg={t.err} />
       <div ref={ref} className="w-full">
         {!nilai.length ? (
-          <Kosong teks="Belum ada data clock-in BO" hint="Tekan Sinkron sekarang di menu Clock-in BO." />
+          <Kosong teks="Belum ada data Dash Attendance" hint="Tekan Sinkron sekarang di menu Dash Attendance." />
         ) : (
           <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block max-w-full" role="img" aria-label={`Tren ${HARI_TREN} hari. Fulfillment aktual ${rentang(f)}, tepat waktu ${rentang(o)}.`}>
             {ticks.map((v) => (
@@ -108,19 +108,19 @@ export function DashboardBo() {
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat icon={Gauge} label={`Fulfillment aktual · ${jum('terpenuhi')} dari ${jum('kebutuhan')} rider`} value={teksPersen(ful)} />
         <Stat icon={TrendingUp} label={`Tepat waktu · ${jum('tepat')} dari ${jum('hadir')} clock-in`} value={teksPersen(tw)} tone={tw !== null && tw < 80 ? 'red' : 'brand'} />
-        <Stat icon={Users} label={`Clock-in BO · ${rows.length} DS`} value={jum('hadir')} tone="zinc" />
+        <Stat icon={Users} label={`Dash Attendance · ${rows.length} DS`} value={jum('hadir')} tone="zinc" />
         <Stat icon={UserX} label="Mitra belum terdaftar di Orca" value={jum('tanpa_orca')} tone={jum('tanpa_orca') ? 'red' : 'zinc'} />
       </div>
       <div className="card">
         <b className="mb-3 block">Per DS</b>
         {!rows.length ? (
-          <Kosong teks="Belum ada data clock-in BO di tanggal ini" hint="Tekan Sinkron sekarang di menu Clock-in BO, atau pilih tanggal lain." />
+          <Kosong teks="Belum ada data Dash Attendance di tanggal ini" hint="Tekan Sinkron sekarang di menu Dash Attendance, atau pilih tanggal lain." />
         ) : (
           <>
             <div className="mb-3 space-y-1 rounded-md bg-muted p-3 text-xs leading-relaxed text-muted-foreground">
               <p><b className="text-foreground">Pagi / Middle / Siang:</b> rider clock-in / budget. Angka kecil di bawahnya = yang tepat waktu.</p>
               <p><span className="font-semibold text-success">Hijau</span> = budget terpenuhi, <span className="font-semibold text-warning">kuning</span> = kurang. <b className="text-foreground">Total:</b> kelebihan di satu shift tidak menutup kekurangan shift lain.</p>
-              <p><b className="text-foreground">Captain:</b> rider hadir menurut absensi Captain, <span className="font-semibold text-danger">merah</span> bila beda 3 atau lebih dari clock-in BO.</p>
+              <p><b className="text-foreground">Captain:</b> rider hadir menurut absensi Captain, <span className="font-semibold text-danger">merah</span> bila beda 3 atau lebih dari Dash Attendance.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="tbl w-full text-sm">

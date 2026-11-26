@@ -1,5 +1,5 @@
-// Daftar Jadwal: jadwal tersimpan semua DS, satu baris per DS per minggu. Hanya Super-admin dan Arcon
-// (Arcon otomatis hanya melihat DS yang dipegang: dibatasi di database). Captain memakai tab Jadwal DS.
+// Schedule Archive: jadwal tersimpan semua DS, satu baris per DS per minggu. Hanya Super-admin dan Arcon
+// (Arcon otomatis hanya melihat DS yang dipegang: dibatasi di database). Captain memakai tab Shift Planner.
 import { useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { sb, useRows, today, addDays, monday, ok, toast, konfirmasi, Err, Kosong, Select, usePage, Pagination, type Ds } from './lib'

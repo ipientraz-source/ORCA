@@ -1,4 +1,4 @@
-// Impor Data (Super-admin): satu tempat untuk menambah data baku (templat Excel) lewat dua jalur, impor CSV atau input manual.
+// Data Import (Super-admin): satu tempat untuk menambah data baku (templat Excel) lewat dua jalur, impor CSV atau input manual.
 // Dua jalur memakai mesin yang sama (impor-data.ts) → aturan duplikat sama: data lama tidak pernah dihapus atau ditimpa,
 // baris yang dobel dilewati dan dilaporkan.
 import { useCallback, useEffect, useState } from 'react'
@@ -257,7 +257,7 @@ function Panduan({ jenis, ctx }: { jenis: Jenis; ctx: Ctx | null }) {
         </div>
         <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
           <li>Nomor HP: di Excel, ubah format kolom ke <b className="text-foreground">Text</b> sebelum mengetik, supaya angka 0 di depan tidak hilang.</li>
-          <li>Nama DS harus persis seperti di Kelola DS{daftarDs ? <>. DS yang ada: <span className="text-foreground">{daftarDs}</span></> : ''}.</li>
+          <li>Nama DS harus persis seperti di Hub Control{daftarDs ? <>. DS yang ada: <span className="text-foreground">{daftarDs}</span></> : ''}.</li>
           <li>Baris yang dobel dilewati dan dilaporkan; data lama tidak pernah diubah.</li>
         </ul>
       </div>

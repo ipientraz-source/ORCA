@@ -65,7 +65,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
     if (data.perlu_pasangan) return setPerlu(data.perlu_pasangan as Perlu[])
     setPerlu(null)
     setHasil(data as Hasil)
-    toast.ok('Clock-in BO tersinkron')
+    toast.ok('Dash Attendance tersinkron')
     dsl.reload()
     ring.reload()
   }
@@ -94,7 +94,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
                 : 'Belum pernah sinkron.'}
               {!bacaSaja && ' Data ditarik otomatis; tarik manual bila terputus (aman diulang).'}
             </p>
-            {bacaSaja && <p className="text-xs text-muted-foreground">Clock-in BO untuk DS yang Anda pegang. Sinkron manual dilakukan Super-admin.</p>}
+            {bacaSaja && <p className="text-xs text-muted-foreground">Dash Attendance untuk DS yang Anda pegang. Sinkron manual dilakukan Super-admin.</p>}
           </div>
           {!bacaSaja && (
             <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +129,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
               </table>
             </div>
             {ganda && <p className="text-sm text-danger">Satu DS dipilih untuk lebih dari satu hub. Perbaiki dulu.</p>}
-            <p className="text-xs text-muted-foreground">DS yang dipasangkan memakai nama hub BO (jadwal, captain, riwayat tetap). Hub tanpa DS dibuatkan DS baru dengan budget 0; isi di Kelola DS.</p>
+            <p className="text-xs text-muted-foreground">DS yang dipasangkan memakai nama hub BO (jadwal, captain, riwayat tetap). Hub tanpa DS dibuatkan DS baru dengan budget 0; isi di Hub Control.</p>
             <div className="flex gap-2">
               <button className="btn" disabled={sibuk || ganda} onClick={() => void lanjut()}>{sibuk ? 'Menyimpan…' : 'Lanjutkan sinkron'}</button>
               <button className="btn2" disabled={sibuk} onClick={() => setPerlu(null)}>Batal</button>
@@ -145,7 +145,7 @@ export function KehadiranBo({ bacaSaja = false }: { bacaSaja?: boolean }) {
             {(hasil.rider_baru ?? 0) > 0 && <p><b>{hasil.rider_baru} rider baru</b> ditambahkan sebagai rider aktif. Captain: nonaktifkan yang sudah resign.</p>}
             <p>
               Hub BO: {hasil.ds_dipasang} dicocokkan ke DS lama, <b>{hasil.ds_dibuat} DS baru dibuat</b>.
-              {hasil.ds_dibuat > 0 ? ' Budget DS baru masih 0: isi di Kelola DS dan pastikan bukan DS lama dengan nama lain.' : ''}
+              {hasil.ds_dibuat > 0 ? ' Budget DS baru masih 0: isi di Hub Control dan pastikan bukan DS lama dengan nama lain.' : ''}
             </p>
           </div>
         )}

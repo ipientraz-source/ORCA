@@ -1,6 +1,6 @@
 // Pengajuan Arcon: Arcon mengajukan DS baru atau menjadi Arcon di sebuah DS; Super-admin menyetujui atau menolak.
 // Menulis hanya lewat fungsi database (ajukan_*, batalkan_pengajuan, putuskan_pengajuan); tabelnya tidak bisa ditulis langsung.
-// Tidak punya menu sendiri: Arcon memakainya di Kelola DS, Super-admin di Kelola DS & Captain (lihat kelola.tsx).
+// Tidak punya menu sendiri: Arcon dan Super-admin memakainya di Hub Control (lihat kelola.tsx).
 import { useEffect, useState, type FormEvent } from 'react'
 import { Plus, X } from 'lucide-react'
 import { sb, useRows, ok, toast, konfirmasi, Err, Field, Select, usePage, Pagination, type Ds, type Me, dsAktif } from './lib'
@@ -37,7 +37,7 @@ export function LencanaPengajuan() {
   return n ? <span className="ml-auto rounded-full bg-warning px-1.5 text-[10px] font-bold text-white" title={`${n} pengajuan Arcon menunggu keputusan Anda`} aria-label={`${n} pengajuan menunggu`}>{n}</span> : null
 }
 
-// Super-admin (di Kelola DS & Captain): antrean persetujuan + riwayat keputusan. Tidak tampil bila belum pernah ada pengajuan.
+// Super-admin (di Hub Control): antrean persetujuan + riwayat keputusan. Tidak tampil bila belum pernah ada pengajuan.
 export function AntreanPengajuan({ onSelesai }: { onSelesai?: () => void }) {
   const aju = useRows<Aju>(muatPengajuan, [])
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])
@@ -75,7 +75,7 @@ export function AntreanPengajuan({ onSelesai }: { onSelesai?: () => void }) {
   )
 }
 
-// Arcon (di Kelola DS): dua tombol pengajuan + daftar "Pengajuan saya"
+// Arcon (di Hub Control): dua tombol pengajuan + daftar "Pengajuan saya"
 export function PengajuanArcon({ me, onSelesai }: { me: Me; onSelesai?: () => void }) {
   const aju = useRows<Aju>(muatPengajuan, [])
   const dsl = useRows<Ds>(() => sb.from('ds').select('*').order('nama'), [])

@@ -293,7 +293,7 @@ export function Dashboard() {
   )
 }
 
-// Super-admin: Laporan Actual · Captain: Rekap Kehadiran (RLS otomatis membatasi Captain ke DS-nya)
+// Super-admin: Laporan Actual · Captain: Schedule Compliance (RLS otomatis membatasi Captain ke DS-nya)
 export function Rekap({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsList?: Ds[] }) {
   const luas = me.peran !== 'captain' // Super-admin (semua DS) dan Arcon (beberapa DS) memilih DS lewat filter
   const { from, to, ui } = useRange()

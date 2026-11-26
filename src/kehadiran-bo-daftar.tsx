@@ -134,7 +134,7 @@ export function DaftarClockin({ ds }: { ds: Ds[] }) {
       </div>
       {salahRentang && <p className="mb-3 text-sm text-danger">Rentang tanggal tidak valid. Tanggal awal tidak boleh setelah tanggal akhir, dan paling lama {MAKS_HARI} hari.</p>}
       {!baris.length ? (
-        <Kosong teks={semua.length ? 'Tidak ada clock-in yang cocok dengan filter' : 'Belum ada clock-in BO di rentang ini'} hint={semua.length ? 'Ubah kata cari atau filter di atas.' : 'Pilih rentang lain, atau tarik data lewat Sinkron sekarang di atas.'} />
+        <Kosong teks={semua.length ? 'Tidak ada clock-in yang cocok dengan filter' : 'Belum ada data Dash Attendance di rentang ini'} hint={semua.length ? 'Ubah kata cari atau filter di atas.' : 'Pilih rentang lain, atau tarik data lewat Sinkron sekarang di atas.'} />
       ) : (
         <>
           <p className="mb-2 text-xs text-muted-foreground">

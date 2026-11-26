@@ -18,7 +18,7 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
   const [lokal, setLokal] = useState<Record<string, Rider['status']>>({})
   useEffect(() => setLokal({}), [rs.rows])
   const semuaRider = rs.rows.map((r) => (lokal[r.id] ? { ...r, status: lokal[r.id] } : r))
-  const orang = semuaRider.filter((r) => r.peran !== 'super_admin') // super-admin bukan rider — dikelola di Kelola DS & Captain
+  const orang = semuaRider.filter((r) => r.peran !== 'super_admin') // super-admin bukan rider — dikelola di Hub Control
   const shown = orang.filter(
     (r) => (r.nama + (r.kode_mtr ?? '')).toLowerCase().includes(q.toLowerCase()) && (!fds || (fds === '-' ? !r.ds_id : r.ds_id === fds)),
   )
@@ -273,7 +273,7 @@ function ImportCsv({ done, dsl }: { done: () => void; dsl: Ds[] }) {
               {peta.some((p) => !p.ke) && (
                 <label className="mt-3 flex items-center gap-2">
                   <input type="checkbox" checked={buatBaru} onChange={(e) => setBuatBaru(e.target.checked)} />
-                  Buat DS baru untuk lokasi yang belum ada (kuotanya diisi nanti di Kelola DS)
+                  Buat DS baru untuk lokasi yang belum ada (kuotanya diisi nanti di Hub Control)
                 </label>
               )}
             </div>
