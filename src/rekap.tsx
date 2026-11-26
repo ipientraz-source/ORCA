@@ -145,6 +145,7 @@ function DashboardCaptain() {
     () => sb.from('log_aktivitas').select('waktu,aksi,detail,pelaku_nama,captain:riders!log_aktivitas_captain_id_fkey(nama)').order('waktu', { ascending: false }).limit(10),
     [],
   )
+  const pgDs = usePage(d.rows, [from, to])
   const kosong = d.rows.filter((x) => jmlBelum(x) > 0)
   const sum = (k: 'dijadwalkan' | 'terisi' | 'patuh' | 'alpha') => d.rows.reduce((a, x) => a + x[k], 0)
   const kepatuhan = sum('terisi') > 0 ? Math.round((100 * sum('patuh')) / sum('terisi')) + '%' : '–'
@@ -162,8 +163,8 @@ function DashboardCaptain() {
       <div className="grid items-start md:grid-cols-2 gap-4 mb-4">
         <div className="card !mb-0">
           <b className="block mb-3">Hadir sesuai jadwal per DS</b>
-          {d.rows.length === 0 && <Kosong teks="Belum ada DS" hint="Buat DS di tab Kelola DS & Captain." />}
-          {d.rows.map((x) => {
+          {d.rows.length === 0 && <Kosong teks="Belum ada DS" hint="Buat DS di tab Hub Control." />}
+          {pgDs.rows.map((x) => {
             const p = x.terisi ? Math.round((100 * x.patuh) / x.terisi) : 0
             return (
               <div key={x.ds_id} className="mb-3 last:mb-0">
@@ -177,6 +178,7 @@ function DashboardCaptain() {
               </div>
             )
           })}
+          <Pagination {...pgDs} />
         </div>
         <div className="card !mb-0">
           <b className="block mb-3">Rincian kehadiran</b>

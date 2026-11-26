@@ -1322,7 +1322,7 @@ table thead th :is(div, span) { color: inherit; }
   --kaca-tepi: rgb(255 255 255 / 0.9);
   --kaca-kilap: rgb(255 255 255 / 1);
   --kaca-garis: rgb(90 70 200 / 0.16);
-  --kaca-isi: rgb(255 255 255 / 0.44);
+  --kaca-isi: rgb(255 255 255 / 0.66);
   --kaca-padat: rgb(255 255 255 / 0.86);
   --kaca-bayang: rgb(70 50 170 / 0.32);
   --kaca-btn: rgb(255 255 255 / 0.6);
@@ -1363,6 +1363,8 @@ table thead th :is(div, span) { color: inherit; }
   -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
   box-shadow: inset 0 1px 0 var(--kaca-kilap), inset 1px 0 0 rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px var(--kaca-garis), 0 20px 44px -22px var(--kaca-bayang);
 }
+/* mode terang: warna latar yang tembus kartu dijaga tipis (tanpa saturasi tinggi) supaya tidak menjadi blok pekat */
+:root:root[data-gaya="cyber"]:not(.dark) :is(.card, .stat):not(.cetak *) { -webkit-backdrop-filter: blur(18px) saturate(1.05); backdrop-filter: blur(18px) saturate(1.05); }
 :root:root[data-gaya="cyber"] .stat:not(.cetak *) { box-shadow: inset 4px 0 0 var(--neon, var(--cy)), inset 0 1px 0 var(--kaca-kilap), 0 0 0 1px var(--kaca-garis), 0 20px 44px -22px var(--kaca-bayang); }
 /* sudut kartu: busur neon cyan (kiri-atas) dan magenta (kanan-bawah) mengikuti lengkung kaca, menggantikan garis diagonal */
 :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { position: relative; }

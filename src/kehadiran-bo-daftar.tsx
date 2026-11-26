@@ -4,7 +4,8 @@
 // untuk rider terjadwal/tukar karena memakai jadwal dan laporan Captain.
 import { useMemo, useState } from 'react'
 import { Download, Search } from 'lucide-react'
-import { sb, today, addDays, tanggal, useRows, Err, Kosong, Select, usePage, Pagination, toCsv, download } from './lib'
+import { sb, today, addDays, tanggal, useRows, Err, Kosong, Select, usePage, Pagination, toCsv, download, toast } from './lib'
+import { persenBo, type AktualBo } from './aktual-bo'
 
 type Atur = { mulai_pagi: string; mulai_tengah: string; mulai_siang: string; toleransi_menit: number; batas_pagi: string; batas_tengah: string }
 type Baris = { id: string; ds_id: string | null; hub: string; kode_mtr: string; tanggal: string; masuk_lokal: string; zona: 'WIB' | 'WITA' | 'WIT'; keluar_wib: string | null }
@@ -101,10 +102,23 @@ export function DaftarClockin({ ds }: { ds: Ds[] }) {
     return [{ value: '', label: 'Semua DS' }, ...ds.filter((d) => ada.has(d.id)).map((d) => ({ value: d.id, label: d.nama }))]
   }, [semua, ds])
 
-  const unduh = () => download(`clockin-bo_${d1}_${d2}.csv`, toCsv(baris.map((r) => ({
-    tanggal: r.tanggal, ds: r.ds_nama, nama: r.nama, kode_mitra: r.kode_mtr, clock_in: jam(r.masuk_lokal), clock_out: r.keluar_wib ? keluarLokal(r.keluar_wib, r.zona, r.tanggal) : '',
-    zona: r.zona, shift: NAMA_SHIFT[r.shift], status: r.tepat ? 'Tepat waktu' : 'Telat',
-  }))))
+  // Progres fulfilment DS per hari dan per shift (RPC aktual_bo, angka sama dengan Dashboard BO) ikut di tiap baris CSV; diambil saat unduh saja
+  const unduh = async () => {
+    const a = await sb.rpc('aktual_bo', { p_dari: d1, p_sampai: d2 })
+    if (a.error) return toast(a.error.message)
+    const akt = new Map((a.data as AktualBo[]).map((x) => [x.tanggal + x.ds_id, x]))
+    const pct = (b: number, t: number) => { const p = persenBo(b, t); return p === null ? '' : p + '%' }
+    download(`dash-attendance_${d1}_${d2}.csv`, toCsv(baris.map((r) => {
+      const x = r.ds_id ? akt.get(r.tanggal + r.ds_id) : undefined
+      const [b, h, t] = x ? (r.shift === 'pagi' ? [x.b_pagi, x.h_pagi, x.t_pagi] : r.shift === 'tengah' ? [x.b_tengah, x.h_tengah, x.t_tengah] : [x.b_siang, x.h_siang, x.t_siang]) : ['', '', '']
+      return {
+        tanggal: r.tanggal, ds: r.ds_nama, nama: r.nama, kode_mitra: r.kode_mtr, clock_in: jam(r.masuk_lokal), clock_out: r.keluar_wib ? keluarLokal(r.keluar_wib, r.zona, r.tanggal) : '',
+        zona: r.zona, shift: NAMA_SHIFT[r.shift], status: r.tepat ? 'Tepat waktu' : 'Telat',
+        budget_ds_hari: x?.kebutuhan ?? '', terpenuhi_ds_hari: x?.terpenuhi ?? '', fulfilment_ds_hari: x ? pct(x.terpenuhi, x.kebutuhan) : '',
+        budget_shift: b, hadir_shift: h, tepat_shift: t, fulfilment_shift: x ? pct(Math.min(h as number, b as number), b as number) : '',
+      }
+    })))
+  }
 
   return (
     <div className="card !mb-0">
