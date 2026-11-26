@@ -459,7 +459,8 @@ test('sumber BO (0074): pesan Fulfillment dari clock-in BO, Captain tetap bawaan
 
   // pagi: budget 2, dua clock-in (satu tepat, satu telat)
   const pagi = await bo('laporan_pagi')
-  assert.match(pagi.pesan, /\*Fulfillment Shift Pagi \(Clock-in BO\)\*/)
+  assert.match(pagi.pesan, /\*Shift Pagi Fulfillment Update\*/)
+  assert.match(pagi.pesan, /· Live dari Dash Attendance/)
   assert.match(pagi.pesan, /Terpenuhi: 2 dari 2 rider \(100%\)/)
   assert.match(pagi.pesan, /Clock-in BO: 2 · Tepat waktu: 1/)
   assert.deepEqual([pagi.n_terpenuhi, pagi.n_kebutuhan, pagi.n_belum], [2, 2, 0])
@@ -472,14 +473,15 @@ test('sumber BO (0074): pesan Fulfillment dari clock-in BO, Captain tetap bawaan
   // seharian: jumlah semua shift
   const hari = await bo('laporan_hari')
   assert.deepEqual([hari.n_terpenuhi, hari.n_kebutuhan], [3, 3])
-  assert.match(hari.pesan, /\*Fulfillment Seharian \(Clock-in BO\)\*/)
+  assert.match(hari.pesan, /\*Daily Update Fulfillment\*/)
   // pengingat bukan laporan: tidak ada versi BO
   await assert.rejects(q(`select * from laporan_wa_bo('ingat_pagi', ${tgl(n)})`), /Sesi tidak dikenal/)
 
   // gabungan: judul menyebut Clock-in BO dan angka total dari dua DS; tanpa p_sumber tetap dari Captain (hari ini tanpa jadwal: tidak ada baris)
   const g = await q(`select * from laporan_wa_gabung('laporan_pagi', ${tgl(n)}, 'https://orca.test', null, '120363999@g.us', null, 'bo')`)
   assert.equal(g.length, 1)
-  assert.match(g[0].pesan, /FULFILLMENT · SHIFT PAGI · CLOCK-IN BO/)
+  assert.match(g[0].pesan, /\*SHIFT PAGI FULFILLMENT UPDATE\*/)
+  assert.match(g[0].pesan, /· Live dari Dash Attendance/)
   assert.match(g[0].pesan, /3 dari 3 \(100%\) · 2 DS/)
   assert.equal((await q(`select * from laporan_wa_gabung('laporan_pagi', ${tgl(n)}, 'https://orca.test', null, '120363999@g.us')`)).length, 0)
   // pengingat tetap dari Captain walau sumber BO, dan sumber yang tidak dikenal ditolak
