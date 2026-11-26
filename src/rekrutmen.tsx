@@ -288,7 +288,7 @@ function DaftarKandidat({ me }: { me: Me }) {
                               <input autoFocus className="inp w-44" placeholder="mis. MTR0012345" aria-label="Kode MTR" value={isi} onChange={(e) => setIsi(e.target.value)} />
                               <button className="btn" disabled={!k.ds_id} onClick={() => terima(k)}>Terima jadi rider</button>
                               <button className="btn2" onClick={() => setAksi(null)}>Batal</button>
-                              <span className="w-full text-xs text-muted-foreground">{k.ds_id ? 'Kode MTR boleh dikosongkan dan diisi nanti di Data Rider.' : 'DS tujuan belum dipilih, pilih dulu agar bisa diterima.'}</span>
+                              <span className="w-full text-xs text-muted-foreground">{k.ds_id ? 'Kode MTR boleh dikosongkan dan diisi nanti di Rider Management.' : 'DS tujuan belum dipilih, pilih dulu agar bisa diterima.'}</span>
                             </div>
                           )}
                         </td>

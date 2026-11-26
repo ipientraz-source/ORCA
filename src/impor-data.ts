@@ -65,8 +65,8 @@ export const KOLOM: Record<Jenis, Kol[]> = {
     { kunci: 'kode_mtr', judul: 'Kode MTR', alias: ['kode mtr', 'employee id', 'kode mitra', 'id', 'mtr'], wajib: true, contoh: 'MTR0099001' },
     { kunci: 'nama', judul: 'Nama', alias: ['nama', 'full name', 'name', 'nama lengkap'], wajib: true, contoh: 'Contoh Rider Satu' },
     { kunci: 'no_hp', judul: 'No HP', alias: ['no hp', 'phone', 'telepon', 'hp', 'no wa', 'whatsapp'], contoh: '081200000001' },
-    { kunci: 'ds', judul: 'DS', alias: ['ds', 'nama ds', 'depot'], contoh: 'DS GALAXY', bantuan: 'Nama DS persis seperti di Kelola DS' },
-    { kunci: 'status', judul: 'Status', opsi: ['aktif'], contoh: 'aktif', bantuan: 'Hanya aktif. Rider berhenti dicatat lewat Data Rider (butuh tanggal dan alasan).' },
+    { kunci: 'ds', judul: 'DS', alias: ['ds', 'nama ds', 'depot'], contoh: 'DS GALAXY', bantuan: 'Nama DS persis seperti di Hub Control' },
+    { kunci: 'status', judul: 'Status', opsi: ['aktif'], contoh: 'aktif', bantuan: 'Hanya aktif. Rider berhenti dicatat lewat Rider Management (butuh tanggal dan alasan).' },
   ],
   motor: [
     { kunci: 'ds', judul: 'DS Location', alias: ['ds location', 'lokasi', 'lokasi ds', 'ds', 'nama ds', 'dark store'], wajib: true, contoh: 'DS GALAXY' },
@@ -81,7 +81,7 @@ export const KOLOM: Record<Jenis, Kol[]> = {
     { kunci: 'ds', judul: 'DS Tujuan', alias: ['ds tujuan', 'ds', 'nama ds'], contoh: 'DS GALAXY' },
     { kunci: 'sumber', judul: 'Sumber', alias: ['sumber'], opsi: SUMBER, contoh: 'Walk-in' },
     { kunci: 'perujuk', judul: 'Kode MTR Perujuk', alias: ['kode mtr perujuk', 'perujuk', 'referral'], contoh: 'MTR0021037', bantuan: 'Wajib bila Sumber = Referral rider' },
-    { kunci: 'status', judul: 'Status', alias: ['status'], opsi: STATUS_KANDIDAT.filter((s) => s !== 'diterima'), contoh: 'baru', bantuan: 'Kosong = baru. "Diterima" tidak bisa diimpor: pakai tombol "Terima jadi rider" di Rekrutmen.' },
+    { kunci: 'status', judul: 'Status', alias: ['status'], opsi: STATUS_KANDIDAT.filter((s) => s !== 'diterima'), contoh: 'baru', bantuan: 'Kosong = baru. "Diterima" tidak bisa diimpor: pakai tombol "Terima jadi rider" di Talent Pipeline.' },
     { kunci: 'masuk', judul: 'Tanggal Masuk', alias: ['tanggal masuk', 'tgl masuk'], tipe: 'tanggal', contoh: '2026-10-28' },
     { kunci: 'alasan', judul: 'Alasan Ditolak', alias: ['alasan ditolak', 'alasan'], contoh: '', bantuan: 'Wajib bila Status = ditolak' },
     { kunci: 'catatan', judul: 'Catatan', alias: ['catatan'], contoh: '' },
@@ -152,12 +152,12 @@ function dsPersis(ctx: Ctx, nama: string) {
 function cekRider(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   const kode = v.kode_mtr.toUpperCase().replace(/\s+/g, '')
   if (!kode || !v.nama) return salah('Kode MTR dan Nama wajib diisi')
-  if (v.status && !sama(v.status, 'aktif')) return salah('Status hanya boleh aktif. Rider berhenti dicatat lewat Data Rider.')
+  if (v.status && !sama(v.status, 'aktif')) return salah('Status hanya boleh aktif. Rider berhenti dicatat lewat Rider Management.')
   let ds: string | null = null
   if (ctx.wajibDs && !v.ds) return salah(`DS wajib diisi (kolom bernama "DS"), pilih salah satu: ${ctx.ds.map((d) => d.nama).join(', ')}`)
   if (v.ds) {
     const d = dsPersis(ctx, v.ds)
-    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" tidak ada di DS yang Anda pegang (${ctx.ds.map((d) => d.nama).join(', ')}). Bila ini DS baru, minta Super-admin membuatnya dulu di Kelola DS` : `DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
+    if (!d) return salah(ctx.wajibDs ? `DS "${v.ds}" tidak ada di DS yang Anda pegang (${ctx.ds.map((d) => d.nama).join(', ')}). Bila ini DS baru, minta Super-admin membuatnya dulu di Hub Control` : `DS "${v.ds}" belum ada. Buat dulu di Hub Control atau impor sheet DS.`)
     ds = d.id
   }
   if (ctx.riders.some((r) => (r.kode_mtr ?? '').toUpperCase() === kode)) return dobel('Kode MTR sudah terdaftar')
@@ -175,7 +175,7 @@ function cekMotor(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   const status = v.status_unit ? dalam(['active', 'return'], v.status_unit) : 'active'
   if (!status) return salah('Status Motor harus active atau return')
   const ds = cocokDs(v.ds, ctx.ds.map((d) => d.nama))
-  if (!ds) return salah(`DS "${v.ds}" belum ada. Buat dulu di Kelola DS atau impor sheet DS.`)
+  if (!ds) return salah(`DS "${v.ds}" belum ada. Buat dulu di Hub Control atau impor sheet DS.`)
   if (ctx.motors.some((m) => (m.plat_nomor ?? '').toUpperCase() === plat || m.kode_motor.toUpperCase() === plat)) return dobel('Plat sudah terdaftar')
   if (vin && ctx.motors.some((m) => (m.no_rangka ?? '').toUpperCase() === vin)) return dobel('VIN sudah terdaftar')
   if (pakai.has('p:' + plat)) return dobel('Plat dobel di file')
@@ -189,7 +189,7 @@ function cekKandidat(v: Row, ctx: Ctx, pakai: Set<string>): Cek {
   if (!v.nama) return salah('Nama wajib diisi')
   const status = v.status ? dalam(STATUS_KANDIDAT, v.status) : 'baru'
   if (!status) return salah('Status tidak dikenal (baru, dihubungi, interview, training, ditolak)')
-  if (status === 'diterima') return salah('Status Diterima tidak bisa diimpor. Tambahkan ke Rider, lalu pakai "Terima jadi rider" di Rekrutmen.')
+  if (status === 'diterima') return salah('Status Diterima tidak bisa diimpor. Tambahkan ke Rider, lalu pakai "Terima jadi rider" di Talent Pipeline.')
   if (status === 'ditolak' && !v.alasan) return salah('Status ditolak: Alasan Ditolak wajib diisi')
   const sumber = v.sumber ? dalam(SUMBER, v.sumber) ?? 'Lainnya' : null
   let perujuk: string | null = null

@@ -282,7 +282,7 @@ function PanelPola({ pola, ds }: { pola: PolaHari[] | null; ds: Ds }) {
 
 // Grid jadwal 1 DS untuk periode bebas. editable = Captain / Super-admin; read-only = Arcon (dan Super-admin di tampilan lihat).
 export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boolean; awalDari?: string }) {
-  const awal = awalDari ?? (editable ? addDays(monday(today()), 7) : monday(today())) // awalDari: dibuka dari Daftar Jadwal
+  const awal = awalDari ?? (editable ? addDays(monday(today()), 7) : monday(today())) // awalDari: dibuka dari Schedule Archive
   const [mode, setMode] = useState<Mode>('minggu')
   const [dari, setDari] = useState(awal)
   const [sampai, setSampai] = useState(addDays(awal, 6))
@@ -363,7 +363,7 @@ export function JadwalGrid({ ds, editable, awalDari }: { ds: Ds; editable: boole
   // Libur terkunci (gembok) SELALU dihormati; pagi/siang/tengah yang sudah diisi hanya dipertahankan bila opsinya dicentang.
   const susunOtomatis = async () => {
     if (!riders.rows.length) return toast('Belum ada rider aktif di DS ini.')
-    if (days.every((d) => kq(d).pagi + kq(d).siang + kq(d).tengah === 0)) return toast('Budget masih 0 untuk semua hari. Isi budget di baris bawah jadwal, atau minta Super-admin mengisi budget DS di Kelola DS & Captain.')
+    if (days.every((d) => kq(d).pagi + kq(d).siang + kq(d).tengah === 0)) return toast('Budget masih 0 untuk semua hari. Isi budget di baris bawah jadwal, atau minta Super-admin mengisi budget DS di Hub Control.')
     if (adaIsi && !pertahankan && !(await konfirmasi('Jadwal periode ini sudah ada isinya. Ganti dengan draf otomatis? Sel Off (gembok) tetap dihormati.', { judul: 'Ganti jadwal periode ini?', ya: 'Ganti' }))) return
     // Efek HUD hanya di gaya Cyber dan bila perangkat tidak meminta gerakan dikurangi; selain itu perilaku tetap seperti semula.
     const efek = document.documentElement.dataset.gaya === 'cyber' && matchMedia('(prefers-reduced-motion: no-preference)').matches

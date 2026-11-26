@@ -94,7 +94,7 @@ export function Kelola() {
       </div>
 
       <ArconTim arcons={rs.rows.filter((r) => r.peran === 'arcon')} captains={rs.rows.filter((r) => r.peran === 'captain' && r.status === 'aktif')} semuaDs={dsl.rows} reload={() => { dsl.reload(); rs.reload() }} />
-      <AkunTim peran="recruiter" judul="Recruiter" ket="Tim rekrutmen: mengelola kandidat rider dan menerimanya jadi rider. Hanya melihat menu Rekrutmen. Jumlahnya boleh lebih dari satu." orang={rs.rows.filter((r) => r.peran === 'recruiter')} reload={rs.reload} />
+      <AkunTim peran="recruiter" judul="Recruiter" ket="Tim rekrutmen: mengelola kandidat rider dan menerimanya jadi rider. Hanya melihat menu Talent Pipeline. Jumlahnya boleh lebih dari satu." orang={rs.rows.filter((r) => r.peran === 'recruiter')} reload={rs.reload} />
       <AkunTim peran="super_admin" judul="Super-admin" ket="Bisa melihat semua DS dan mengatur sistem. Jumlahnya boleh lebih dari satu." orang={rs.rows.filter((r) => r.peran === 'super_admin')} reload={rs.reload} />
     </div>
   )

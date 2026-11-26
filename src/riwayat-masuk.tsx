@@ -1,4 +1,4 @@
-// Riwayat masuk untuk rider (login Kode MTR): status absensi per hari beserta shift, dari Laporan Absensi Harian yang diisi Captain.
+// Riwayat masuk untuk rider (login Kode MTR): status absensi per hari beserta shift, dari Report Absensi yang diisi Captain.
 // Hari terjadwal yang belum dicatat Captain tampil sebagai "Belum dicatat". Data lewat RPC riwayat_absensi_rider (hanya milik rider itu).
 import { useState } from 'react'
 import { sb, hari, useRows, Err, Kosong, usePage, Pagination } from './lib'
@@ -47,7 +47,7 @@ export function RiwayatMasukRider({ kode }: { kode: string }) {
         ))}
       </div>
       {!rows.length ? (
-        <Kosong teks="Belum ada riwayat masuk" hint="Kehadiran akan muncul di sini setelah Captain mengisi Laporan Absensi Harian." />
+        <Kosong teks="Belum ada riwayat masuk" hint="Kehadiran akan muncul di sini setelah Captain mengisi Report Absensi." />
       ) : (
         <>
           <ul className="space-y-2">

@@ -1,4 +1,4 @@
-// Menu Laporan WhatsApp (Super-admin): daftar pesan terjadwal di kiri, pengaturan pesan yang dipilih di kanan.
+// Menu WA Automation (Super-admin): daftar pesan terjadwal di kiri, pengaturan pesan yang dipilih di kanan.
 // Tiap pesan punya isi (jenis), shift, jam, hari atau tanggal bulanan, cakupan DS, dan grup tujuannya sendiri.
 // Disimpan di tabel pesan_wa; saklar utama di pengaturan_wa. Pengiriman dilakukan fungsi kirim-laporan (cron tiap 5 menit, sesi 'auto'); riwayat dari log_wa.
 import { useEffect, useMemo, useState } from 'react'
@@ -310,7 +310,7 @@ function EditorPesan({ m, dsl, arl, grupOpsi, muatGrup, onUlang, namaGrup, reloa
               <button type="button" aria-label={`Hapus ${namaGrup(g)}`} onClick={() => setGrup(grup.filter((x) => x !== g))}>✕</button>
             </span>
           ))}
-          {!grup.length && <span className="text-xs text-muted-foreground">Belum ada grup: pesan dikirim ke grup tiap DS (diatur di Kelola DS). Budget dan ringkasan wajib memilih grup.</span>}
+          {!grup.length && <span className="text-xs text-muted-foreground">Belum ada grup: pesan dikirim ke grup tiap DS (diatur di Hub Control). Budget dan ringkasan wajib memilih grup.</span>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {sisaGrup.length > 0 && <Select className="sm:w-72" value="" onChange={tambahGrup} placeholder="Pilih grup dari akun Fonnte…" opsi={sisaGrup.map((g) => ({ value: g.id, label: g.nama || g.id }))} />}

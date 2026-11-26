@@ -239,7 +239,7 @@ function LaporanOrderDs({ ds }: { ds: Ds }) {
   const [q, setQ] = useState('')
   const [saring, setSaring] = useState<'semua' | 'belum' | 'sudah'>('semua')
   const kalender = Math.round((Date.parse(sampai) - Date.parse(dari)) / 86400000) + 1
-  const salah = dari > sampai ? 'Tanggal awal harus sebelum tanggal akhir.' : kalender > MAKS_RENTANG ? `Rentang maksimal ${MAKS_RENTANG} hari. Untuk periode lebih panjang pakai tab Rekap.` : ''
+  const salah = dari > sampai ? 'Tanggal awal harus sebelum tanggal akhir.' : kalender > MAKS_RENTANG ? `Rentang maksimal ${MAKS_RENTANG} hari. Untuk periode lebih panjang pakai menu Schedule Compliance.` : ''
   const kosong = Promise.resolve({ data: [], error: null })
   const riders = useRows<RiderDs>(() => sb.from('riders').select('id,nama,kode_mtr').eq('ds_id', ds.id).eq('status', 'aktif').eq('peran', 'rider').order('nama'), [ds.id])
   const jd = useRows<{ rider_id: string; tanggal: string; shift: string }>(() => (salah ? kosong : ambilSemua((a, b) => sb.from('jadwal').select('rider_id,tanggal,shift').eq('ds_id', ds.id).neq('shift', 'off').gte('tanggal', dari).lte('tanggal', sampai).order('tanggal').order('rider_id').range(a, b))), [ds.id, dari, sampai, salah])
@@ -283,7 +283,7 @@ function LaporanOrderDs({ ds }: { ds: Ds }) {
         </span>
       </div>
       {!baris.length ? (
-        <div className="card"><Kosong teks="Tidak ada rider yang dijadwalkan atau melapor di periode ini" hint="Susun jadwal di tab Jadwal, atau pilih periode lain." /></div>
+        <div className="card"><Kosong teks="Tidak ada rider yang dijadwalkan atau melapor di periode ini" hint="Susun jadwal di tab Shift Planner, atau pilih periode lain." /></div>
       ) : (
         <div className="card !p-0 overflow-x-auto">
           <table className="tbl">
