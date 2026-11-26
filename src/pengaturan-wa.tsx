@@ -14,6 +14,7 @@ const JENIS = [
   { value: 'ringkasan_bulanan', label: 'Ringkasan bulanan (budget, fulfillment, rider baru, churn)', perShift: false, ket: 'Bulan yang baru lewat, dibanding bulan sebelumnya, dengan tanda ▲▼. Dikirim pada tanggal yang dipilih tiap bulan.' },
 ]
 const SHIFT = [{ value: 'pagi', label: 'Pagi' }, { value: 'tengah', label: 'Middle' }, { value: 'siang', label: 'Siang' }]
+const SUMBER = [{ value: 'captain', label: 'Absensi Captain' }, { value: 'bo', label: 'Clock-in BO (Dash Attendance)' }]
 const HARI = [[1, 'Sen'], [2, 'Sel'], [3, 'Rab'], [4, 'Kam'], [5, 'Jum'], [6, 'Sab'], [7, 'Min']] as const
 const SEMUA_HARI = [1, 2, 3, 4, 5, 6, 7]
 const TANGGAL = Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: `Tanggal ${i + 1}` }))
@@ -25,7 +26,7 @@ const SESI: Record<string, string> = {
 }
 const wib = (iso: string) => new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-type Pesan = { id: string; nama: string; jenis: string; shift: string | null; jam: string; hari: number[]; tanggal_bulan: number | null; cakupan: string; cakupan_ids: string[]; grup: string[]; aktif: boolean; diubah: string }
+type Pesan = { id: string; nama: string; jenis: string; shift: string | null; jam: string; hari: number[]; tanggal_bulan: number | null; cakupan: string; cakupan_ids: string[]; grup: string[]; aktif: boolean; diubah: string; sumber?: string }
 type Grup = { id: string; nama: string }
 type Log = { tanggal: string; sesi: string; status: string; waktu: string; respons: string | null; pesan_id: string | null }
 type Ds = { id: string; nama: string }
@@ -155,7 +156,7 @@ export function PengaturanWa() {
 // Satu baris ringkas di daftar kiri: saklar hidup/mati, nama, ringkasan jadwal, dan tombol Atur
 function BarisPesan({ m, terpilih, namaGrup, onPilih, reload }: { m: Pesan; terpilih: boolean; namaGrup: (id: string) => string; onPilih: () => void; reload: () => void }) {
   const hidup = async (aktif: boolean) => { if (await ok(sb.from('pesan_wa').update({ aktif, diubah: new Date().toISOString() }).eq('id', m.id))) reload() }
-  const ringkas = [JENIS.find((j) => j.value === m.jenis)?.label, m.shift ? SHIFT.find((s) => s.value === m.shift)?.label : null, m.jam, jadwalTeks(m)].filter(Boolean).join(' · ')
+  const ringkas = [JENIS.find((j) => j.value === m.jenis)?.label, m.shift ? SHIFT.find((s) => s.value === m.shift)?.label : null, m.sumber === 'bo' ? 'Sumber: Clock-in BO' : null, m.jam, jadwalTeks(m)].filter(Boolean).join(' · ')
   return (
     <div className={`card !mb-0 flex flex-wrap items-center gap-3 ${terpilih ? 'ring-2 ring-primary' : ''} ${m.aktif ? '' : 'opacity-80'}`}>
       <label className="flex items-center gap-2" title={m.aktif ? 'Hidup' : 'Mati'}>
@@ -184,17 +185,19 @@ function EditorPesan({ m, dsl, arl, grupOpsi, muatGrup, onUlang, namaGrup, reloa
   const [cakupan, setCakupan] = useState(m.cakupan)
   const [cakIds, setCakIds] = useState<string[]>(m.cakupan_ids)
   const [grup, setGrup] = useState<string[]>(m.grup)
+  const [sumber, setSumber] = useState(m.sumber ?? 'captain')
   const [manual, setManual] = useState('')
   const [sibuk, setSibuk] = useState(false)
 
   // Setelah disimpan atau dimuat ulang, isian mengikuti data tersimpan
   useEffect(() => {
-    setNama(m.nama); setJenis(m.jenis); setShift(m.shift ?? 'pagi'); setJam(m.jam); setHari(m.hari); setTglBulan(m.tanggal_bulan ?? 1); setCakupan(m.cakupan); setCakIds(m.cakupan_ids); setGrup(m.grup)
+    setNama(m.nama); setJenis(m.jenis); setShift(m.shift ?? 'pagi'); setJam(m.jam); setHari(m.hari); setTglBulan(m.tanggal_bulan ?? 1); setCakupan(m.cakupan); setCakIds(m.cakupan_ids); setGrup(m.grup); setSumber(m.sumber ?? 'captain')
   }, [m])
 
   const info = JENIS.find((j) => j.value === jenis)
   const perShift = info?.perShift ?? false
   const bulanan = jenis === 'ringkasan_bulanan'
+  const fulfillment = jenis === 'fulfillment_shift' || jenis === 'fulfillment_hari' // hanya pesan Fulfillment yang bisa memilih sumber data
   const jamSalah = !/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)
   const cakSalah = cakupan !== 'semua' && !cakIds.length
   const hariUrut = [...hari].sort()
@@ -202,7 +205,7 @@ function EditorPesan({ m, dsl, arl, grupOpsi, muatGrup, onUlang, namaGrup, reloa
   const berubah =
     nama.trim() !== m.nama || jenis !== m.jenis || (perShift ? shift : null) !== m.shift || jam !== m.jam || hariSimpan.join() !== [...m.hari].sort().join() ||
     (bulanan ? tglBulan : null) !== m.tanggal_bulan ||
-    cakupan !== m.cakupan || (cakupan === 'semua' ? [] : [...cakIds].sort()).join() !== [...m.cakupan_ids].sort().join() || grup.join('|') !== m.grup.join('|')
+    cakupan !== m.cakupan || (cakupan === 'semua' ? [] : [...cakIds].sort()).join() !== [...m.cakupan_ids].sort().join() || grup.join('|') !== m.grup.join('|') || (fulfillment ? sumber : 'captain') !== (m.sumber ?? 'captain')
   const invalid = !nama.trim() || jamSalah || !hariSimpan.length || cakSalah
 
   // Mengganti jenis menyesuaikan bawaan: mingguan biasanya Senin, bulanan memakai tanggal
@@ -218,7 +221,7 @@ function EditorPesan({ m, dsl, arl, grupOpsi, muatGrup, onUlang, namaGrup, reloa
     const berhasil = await ok(
       sb.from('pesan_wa').update({
         nama: nama.trim(), jenis, shift: perShift ? shift : null, jam, hari: hariSimpan, tanggal_bulan: bulanan ? tglBulan : null,
-        cakupan, cakupan_ids: cakupan === 'semua' ? [] : cakIds, grup, diubah: new Date().toISOString(),
+        cakupan, cakupan_ids: cakupan === 'semua' ? [] : cakIds, grup, sumber: fulfillment ? sumber : 'captain', diubah: new Date().toISOString(),
       }).eq('id', m.id),
     )
     setSibuk(false)
@@ -261,6 +264,11 @@ function EditorPesan({ m, dsl, arl, grupOpsi, muatGrup, onUlang, namaGrup, reloa
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nama pesan"><input className="inp w-full" value={nama} onChange={(e) => setNama(e.target.value)} /></Field>
         <Field label="Isi pesan" hint={info?.ket}><Select value={jenis} onChange={gantiJenis} opsi={JENIS.map(({ value, label }) => ({ value, label }))} /></Field>
+        {fulfillment && (
+          <Field label="Sumber data" hint={sumber === 'bo' ? 'Angka dari clock-in BO, sama dengan Dashboard BO; jumlah tepat waktu ikut tampil.' : 'Angka dari absensi yang diisi Captain, termasuk rider tidak hadir dan pengganti.'}>
+            <Select value={sumber} onChange={setSumber} opsi={SUMBER} />
+          </Field>
+        )}
         {perShift && <Field label="Shift"><Select value={shift} onChange={setShift} opsi={SHIFT} /></Field>}
         <Field label="Jam kirim (WIB)" hint="Pesan tiba antara jam ini sampai 5 menit sesudahnya.">
           <input type="time" className="inp !w-32" value={jam} onChange={(e) => setJam(e.target.value)} />

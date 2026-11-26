@@ -34,7 +34,7 @@ function samaPersis(a: string, b: string) {
 }
 
 type Baris = { group_wa_id: string | null; ds_ids: string[]; ds_namas: string[]; pesan: string }
-type Pesan = { id: string; nama: string; jenis: string; shift: string | null; cakupan: string; cakupan_ids: string[]; grup: string[] }
+type Pesan = { id: string; nama: string; jenis: string; shift: string | null; cakupan: string; cakupan_ids: string[]; grup: string[]; sumber?: string }
 type Hasil = { ds: string; status: string; alasan?: string }
 
 Deno.serve(async (req) => {
@@ -137,7 +137,8 @@ Deno.serve(async (req) => {
 
   // ── Satu pesan terjadwal (tabel pesan_wa) untuk satu tanggal ──
   const kirimPesan = async (id: string, tgl: string, ulang: boolean) => {
-    const { data: p } = await admin.from('pesan_wa').select('id,nama,jenis,shift,cakupan,cakupan_ids,grup').eq('id', id).maybeSingle()
+    // select('*') supaya fungsi tetap jalan sebelum migrasi 0074 (kolom sumber) dijalankan; tanpa kolom itu pesan diperlakukan bersumber Captain
+    const { data: p } = await admin.from('pesan_wa').select('*').eq('id', id).maybeSingle()
     if (!p) return { error: 'Pesan tidak ditemukan' }
     const m = p as Pesan
     // Pesan terjadwal dikirim sekali per tanggal. Sebelumnya hanya dicek per DS, jadi DS yang baru ikut di tick berikutnya (jendela 30 menit,
@@ -158,7 +159,7 @@ Deno.serve(async (req) => {
       ? await admin.rpc('laporan_budget_wa', { p_tanggal: tgl, p_ds_ids: dsIds, p_grup: grup[0] ?? null })
       : m.jenis === 'ringkasan_mingguan' || m.jenis === 'ringkasan_bulanan'
         ? await admin.rpc('laporan_ringkasan_wa', { p_periode: m.jenis === 'ringkasan_mingguan' ? 'mingguan' : 'bulanan', p_tanggal: tgl, p_ds_ids: dsIds, p_grup: grup[0] ?? null })
-        : await admin.rpc('laporan_wa_gabung', { p_sesi: sesiPesan, p_tanggal: tgl, p_ds_ids: dsIds, p_grup_semua: grup[0] ?? null })
+        : await admin.rpc('laporan_wa_gabung', { p_sesi: sesiPesan, p_tanggal: tgl, p_ds_ids: dsIds, p_grup_semua: grup[0] ?? null, ...(m.sumber === 'bo' ? { p_sumber: 'bo' } : {}) })
     if (error) return { error: error.message }
     return { pesan: m.nama, tanggal: tgl, hasil: await kirimBaris((rows ?? []) as Baris[], { tgl, sesi: sesiPesan, pesanId: m.id, tujuan: grup, ulang }) }
   }
