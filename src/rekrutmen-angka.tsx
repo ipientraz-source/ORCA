@@ -99,7 +99,7 @@ export function AngkaRekrutmen({ me }: { me: Me }) {
           <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {bagian.map((b) => <li key={b.k} className="flex items-center gap-2"><span className={`size-2.5 shrink-0 rounded-full ${b.w}`} /><span className="flex-1">{b.k}</span><b>{b.n}</b></li>)}
           </ul>
-          <p className="mt-3 text-xs text-muted-foreground">Rider dinyatakan <b>mulai aktif</b> saat pertama kali masuk jadwal atau tercatat di laporan Captain. "Betul-betul aktif" = berstatus aktif dan hadir (atau menggantikan) dalam 14 hari terakhir. "Belum masuk jadwal" adalah rider yang sudah diterima tapi belum disusun Arcon atau Captain ke jadwal mana pun. Yang sudah dijadwalkan tapi diterima kurang dari 14 hari dan belum hadir disebut "baru", supaya tidak dianggap gagal sebelum sempat bekerja.</p>
+          <p className="mt-3 text-xs text-muted-foreground"><b>Mulai aktif</b> = pertama kali masuk jadwal atau laporan Captain. "Betul-betul aktif" = aktif dan hadir (atau menggantikan) dalam 14 hari terakhir. "Belum masuk jadwal" = sudah diterima tapi belum dijadwalkan. "Baru" = dijadwalkan, diterima kurang dari 14 hari, belum hadir.</p>
         </div>
       )}
 
@@ -258,8 +258,7 @@ export function ImporRiwayat({ onSelesai }: { onSelesai: () => void }) {
     <details className="card">
       <summary className="cursor-pointer font-bold">Impor riwayat rider lama</summary>
       <p className="mt-2 mb-3 text-sm text-muted-foreground">
-        Supaya turnover bisa dihitung mundur, unggah berkas CSV dengan kolom: <b>Kode MTR</b>, <b>Tanggal bergabung</b>, <b>Tanggal berhenti</b> (kosongkan bila masih aktif), <b>Kategori</b> (mundur / diberhentikan / kontrak), dan <b>Alasan</b>.
-        Tanggal berformat YYYY-MM-DD atau DD/MM/YYYY. Tanggal berhenti hanya untuk rider yang sekarang nonaktif. Datanya bisa diambil dari Pulse (join date) atau Excel.
+        Unggah CSV untuk menghitung turnover mundur. Kolom: <b>Kode MTR</b>, <b>Tanggal bergabung</b>, <b>Tanggal berhenti</b> (kosong bila masih aktif), <b>Kategori</b> (mundur / diberhentikan / kontrak), <b>Alasan</b>. Tanggal: YYYY-MM-DD atau DD/MM/YYYY.
       </p>
       <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
         <span className="btn2 shrink-0">Pilih file CSV</span>

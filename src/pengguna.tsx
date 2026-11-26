@@ -173,7 +173,7 @@ export function Pengguna() {
         <div className="p-4"><Pagination {...pg} /></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain, atau rider yang sudah punya email login, bisa dinaikkan jadi Arcon dari tombol di barisnya. Arcon yang sudah nonaktif dan tidak memegang DS bisa dihapus. Untuk menunjuk atau mengganti Captain dan Arcon di tiap DS, pakai halaman Kelola DS &amp; Captain.
+        Hanya Super-admin yang bisa mengubah status Arcon dan Captain. Captain atau rider ber-email login bisa dinaikkan jadi Arcon lewat tombol di barisnya. Arcon nonaktif tanpa DS bisa dihapus. Ganti Captain/Arcon per DS di Kelola DS &amp; Captain.
       </p>
     </div>
   )

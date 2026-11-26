@@ -66,8 +66,7 @@ export function ImporMotor({ dsBoleh, motors, bisaBuatDs, selesai, tutup }: { ds
     <div className="card">
       <div className="mb-3 flex items-center justify-between"><b>Impor data molis dari CSV</b><button className="btn2" onClick={tutup}><X size={14} />Tutup</button></div>
       <p className="mb-3 text-sm text-muted-foreground">
-        Kolom yang dibaca: <b>DS Location</b> (atau Lokasi), <b>License Plate</b> (atau Plat), dan <b>VIN</b> (nomor rangka, opsional). Kode motor memakai plat nomor, tahun diambil dari VIN, dan baris "Grand Total" diabaikan.
-        Lokasi dicocokkan ke DS yang sudah ada (mis. "Dark Store Alfagift - Galaxy" ke DS GALAXY).
+        Kolom: <b>DS Location</b> (atau Lokasi), <b>License Plate</b> (atau Plat), <b>VIN</b> (opsional). Kode motor = plat, tahun dari VIN, baris "Grand Total" diabaikan. Lokasi dicocokkan ke DS yang ada.
       </p>
       <label className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-input p-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/40">
         <span className="btn2 shrink-0">Pilih file CSV</span>

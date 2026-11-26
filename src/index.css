@@ -1290,3 +1290,187 @@ table thead th :is(div, span) { color: inherit; }
 
 /* Shift tengah (opsional): warna tepi kartu jadwal Rider di Cyber */
 :root[data-gaya="cyber"] li.card[data-shift="tengah"] { --neon: #a6ff3d; }
+
+/* ════════════════════════════════════════════════════════════════
+   CYBER + KACA CAIR — bagian dari gaya Cyber, di mode gelap maupun terang. Unsur HUD (label //, chevron », bidik, garis neon) dipertahankan,
+   tetapi sudut potong diganti sudut membulat dan permukaan datar diganti kaca buram bertepi kilap. Warna per mode lewat variabel --kaca-*.
+   Aturan pembaca: panel berisi tabel hampir solid (angka harus terbaca), blur hanya di panel, bar menu, dropdown, dan dialog.
+   Bar menu dan dropdown tetap kaca gelap di kedua mode (teksnya terang). Lembar cetak (.cetak) tidak tersentuh.
+   Untuk kembali ke Cyber sudut tajam, hapus blok ini. ":root:root" hanya menaikkan prioritas agar menimpa aturan Cyber di atas.
+   ════════════════════════════════════════════════════════════════ */
+:root:root[data-gaya="cyber"] {
+  --r-kaca: 0.9rem;
+  /* aksen utama: rose ke violet ke indigo (lebih tenang dari pink panas); versi bergerak dipakai menu aktif */
+  --grad-aksen: linear-gradient(135deg, #f472b6 0%, #a855f7 55%, #6366f1 100%);
+  --grad-aksen-gerak: linear-gradient(110deg, #f472b6, #a855f7, #6366f1, #a855f7, #f472b6);
+}
+:root:root[data-gaya="cyber"].dark {
+  --kaca-tepi: rgb(255 255 255 / 0.2);
+  --kaca-kilap: rgb(255 255 255 / 0.4);
+  --kaca-garis: transparent;
+  --kaca-isi: rgb(30 17 70 / 0.5);
+  --kaca-padat: rgb(24 13 58 / 0.9);
+  --kaca-bayang: rgb(0 0 0 / 0.8);
+  --kaca-btn: rgb(255 255 255 / 0.08);
+  --kaca-input: rgb(255 255 255 / 0.06);
+  --kaca-input-tepi: rgb(255 255 255 / 0.2);
+  --kaca-dialog: rgb(24 12 58 / 0.74);
+  --kaca-bar: rgb(12 6 32 / 0.45);
+  --kaca-baris: rgb(150 170 255 / 0.4);
+}
+:root:root[data-gaya="cyber"]:not(.dark) {
+  --kaca-tepi: rgb(255 255 255 / 0.9);
+  --kaca-kilap: rgb(255 255 255 / 1);
+  --kaca-garis: rgb(90 70 200 / 0.16);
+  --kaca-isi: rgb(255 255 255 / 0.44);
+  --kaca-padat: rgb(255 255 255 / 0.86);
+  --kaca-bayang: rgb(70 50 170 / 0.32);
+  --kaca-btn: rgb(255 255 255 / 0.6);
+  --kaca-input: rgb(255 255 255 / 0.62);
+  --kaca-input-tepi: rgb(20 26 74 / 0.28);
+  --kaca-dialog: rgb(255 255 255 / 0.8);
+  --kaca-bar: rgb(18 10 46 / 0.8);
+  --kaca-baris: rgb(50 60 150 / 0.3);
+}
+/* garis antarbaris tabel dipertegas sedikit */
+:root:root[data-gaya="cyber"] :is(.tbl td, table tbody td):not(.cetak *) { border-bottom: 1px solid var(--kaca-baris); }
+
+/* latar berwarna lembut supaya kaca punya sesuatu untuk dibiaskan */
+:root:root[data-gaya="cyber"].dark body {
+  background-image:
+    radial-gradient(60rem 44rem at 0% 0%, rgb(124 92 255 / 0.4), transparent 70%),
+    radial-gradient(56rem 42rem at 100% 0%, rgb(56 189 248 / 0.2), transparent 70%),
+    radial-gradient(58rem 44rem at 100% 100%, rgb(244 114 182 / 0.2), transparent 70%),
+    radial-gradient(52rem 40rem at 0% 100%, rgb(45 212 191 / 0.14), transparent 70%),
+    linear-gradient(180deg, #0f0b2b 0%, #0a0720 100%);
+  background-size: auto;
+  background-attachment: fixed;
+}
+:root:root[data-gaya="cyber"]:not(.dark) body {
+  background-color: #eef2ff;
+  background-image:
+    radial-gradient(70rem 40rem at 85% 0%, rgb(255 255 255 / 0.55), transparent 70%),
+    linear-gradient(125deg, #ddd6fe 0%, #c7d2fe 32%, #bae6fd 62%, #a7f3d0 100%);
+  background-size: auto;
+  background-attachment: fixed;
+}
+
+
+/* panel dan kartu angka */
+:root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) {
+  border-radius: var(--r-kaca); clip-path: none; border: 1px solid var(--kaca-tepi);
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 60%), var(--kaca-isi);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
+  box-shadow: inset 0 1px 0 var(--kaca-kilap), inset 1px 0 0 rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px var(--kaca-garis), 0 20px 44px -22px var(--kaca-bayang);
+}
+:root:root[data-gaya="cyber"] .stat:not(.cetak *) { box-shadow: inset 4px 0 0 var(--neon, var(--cy)), inset 0 1px 0 var(--kaca-kilap), 0 0 0 1px var(--kaca-garis), 0 20px 44px -22px var(--kaca-bayang); }
+/* sudut kartu: busur neon cyan (kiri-atas) dan magenta (kanan-bawah) mengikuti lengkung kaca, menggantikan garis diagonal */
+:root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { position: relative; }
+:root:root[data-gaya="cyber"] .card:not(.cetak *)::before { content: ''; position: absolute; top: -1px; left: -1px; bottom: auto; right: auto; width: 2.4rem; height: 2.4rem; border-top: 2px solid var(--cy); border-left: 2px solid var(--cy); border-top-left-radius: var(--r-kaca); background: none; box-shadow: none; pointer-events: none; }
+:root:root[data-gaya="cyber"] .card:not(.cetak *)::after { content: ''; position: absolute; bottom: -1px; right: -1px; top: auto; left: auto; width: 2.4rem; height: 2.4rem; border-bottom: 2px solid var(--mg); border-right: 2px solid var(--mg); border-bottom-right-radius: var(--r-kaca); background: none; box-shadow: none; pointer-events: none; }
+:root:root[data-gaya="cyber"] .stat:not(.cetak *)::before { content: ''; position: absolute; top: -1px; left: -1px; width: 1.6rem; height: 1.6rem; border-top: 2px solid var(--cy); border-left: 2px solid var(--cy); border-top-left-radius: var(--r-kaca); pointer-events: none; }
+/* panel berisi tabel: hampir solid dan blur lebih ringan, supaya angka tetap terbaca dan layar padat tidak berat */
+:root:root[data-gaya="cyber"] .card:has(table):not(.cetak *) {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent 50%), var(--kaca-padat);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* kartu angka: tinta neon lembut dari sudut kiri-atas menggantikan batang kiri */
+:root:root[data-gaya="cyber"] .stat:not(.cetak *) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neon, var(--cy)) 14%, transparent), rgb(255 255 255 / 0.04) 72%), var(--kaca-isi);
+}
+:root:root[data-gaya="cyber"] .stat:not(.cetak *):hover { border-color: var(--kaca-kilap); box-shadow: inset 0 1px 0 var(--kaca-kilap), 0 0 36px -10px var(--neon, var(--cy)), 0 20px 44px -22px var(--kaca-bayang); }
+:root:root[data-gaya="cyber"] .stat > div:first-child { border-radius: 0.85rem; background: color-mix(in srgb, var(--neon, var(--cy)) 26%, var(--kaca-btn)); }
+/* kotak kecil di dalam kartu (kelas rounded-*) ikut membulat, bukan 0 seperti Cyber sudut tajam */
+:root:root[data-gaya="cyber"] :is(.rounded-xl, .rounded-2xl):not(.cetak *) { border-radius: 0.5rem; }
+:root:root[data-gaya="cyber"] .rounded-lg:not(.cetak *) { border-radius: 0.4rem; }
+:root:root[data-gaya="cyber"] .rounded-md:not(.cetak *) { border-radius: 0.3rem; }
+
+/* tombol, isian, lencana, tab: bulat dan berkilap */
+:root:root[data-gaya="cyber"] .btn { border-radius: 0; clip-path: polygon(0 0, calc(100% - var(--potong)) 0, 100% var(--potong), 100% 100%, var(--potong) 100%, 0 calc(100% - var(--potong))); background: var(--grad-aksen); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), inset 0 -2px 6px rgb(0 0 0 / 0.16); }
+:root:root[data-gaya="cyber"] .btn2 { border-radius: 0; background: var(--kaca-btn); border: 1px solid color-mix(in srgb, var(--cy) 55%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 var(--kaca-kilap), 0 0 0 1px var(--kaca-garis); }
+:root:root[data-gaya="cyber"] .btn2:hover:not(:disabled) { background: color-mix(in srgb, var(--cy) 18%, var(--kaca-btn)); border-color: var(--kaca-kilap); }
+:root:root[data-gaya="cyber"] .inp { border-radius: 0; background: var(--kaca-input); border: 1px solid var(--kaca-input-tepi); border-bottom: 2px solid var(--cy); box-shadow: inset 0 1px 0 var(--kaca-kilap); }
+:root:root[data-gaya="cyber"]:not(.dark) .badge { border: 1px solid rgb(20 26 74 / 0.35); }
+:root:root[data-gaya="cyber"] .tab-on, :root:root[data-gaya="cyber"] .tab-on:hover { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); background: var(--grad-aksen); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 22px -4px rgb(168 85 247 / 0.6); }
+
+/* kepala tabel: tinta tipis dan garis cyan tipis (di terang berteks tinta, bukan blok gelap) */
+:root:root[data-gaya="cyber"].dark :is(table thead th, .tbl th):not(.cetak *) { background: rgb(0 200 255 / 0.1); border-bottom: 2px solid var(--cy); }
+:root:root[data-gaya="cyber"]:not(.dark) :is(table thead th, .tbl th):not(.cetak *) { background: rgb(20 26 74 / 0.07); color: var(--ink); border-bottom: 2px solid var(--cy); }
+:root:root[data-gaya="cyber"]:not(.dark) :is(table thead th, .tbl th):not(.cetak *) .text-primary { color: #b0108d; }
+
+/* bar menu atas (layar lebar): kaca gelap di kedua mode, garis neon tipis menggantikan strip bahaya */
+@media (min-width: 768px) {
+  :root:root[data-gaya="cyber"] .app-shell > aside { background: var(--kaca-bar); -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7); }
+  :root:root[data-gaya="cyber"] .app-shell > aside > nav { clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); border-radius: 0; background: rgb(255 255 255 / 0.07); -webkit-backdrop-filter: blur(26px) saturate(1.8); backdrop-filter: blur(26px) saturate(1.8); border: 1px solid rgb(255 255 255 / 0.2); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 18px 44px -16px rgb(139 92 246 / 0.6); }
+  :root:root[data-gaya="cyber"] .nav-on, :root:root[data-gaya="cyber"] .nav-on:hover { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); border-radius: 0; background: var(--grad-aksen-gerak); background-size: 220% 100%; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 24px -2px rgb(168 85 247 / 0.6); }
+  :root:root[data-gaya="cyber"] .app-shell > aside > div:last-child, :root:root[data-gaya="cyber"] .sidebar-bg .ring-1 { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border-radius: 0; background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.2); }
+}
+
+/* dropdown (kaca gelap di kedua mode, teksnya terang) dan dialog */
+:root:root[data-gaya="cyber"] .select-hud { border-radius: 0; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); border: 1px solid var(--cy); background: rgb(20 10 48 / 0.82); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 24px 50px -16px rgb(0 0 0 / 0.85); }
+:root:root[data-gaya="cyber"] [role="alertdialog"] { border-radius: 1.5rem; border: 1px solid var(--kaca-tepi); background: var(--kaca-dialog); -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7); box-shadow: inset 0 1px 0 var(--kaca-kilap), 0 0 0 1px var(--kaca-garis), 0 30px 70px -20px var(--kaca-bayang); }
+
+/* aturan warna: ungu dan cyan untuk struktur, pink hanya untuk aksi utama, hijau/kuning/merah hanya untuk status */
+/* tombol status di tabel: aktif hijau, nonaktif redup */
+:root:root[data-gaya="cyber"] .tbl .btn2.text-success { background: color-mix(in srgb, var(--success) 16%, transparent); border-color: color-mix(in srgb, var(--success) 55%, transparent); color: var(--success); }
+:root:root[data-gaya="cyber"] .tbl .btn2.text-muted-foreground { background: transparent; border-color: var(--kaca-input-tepi); color: var(--muted-foreground); }
+/* lencana netral (peran, "belum punya DS"): abu-abu kaca, bukan biru-ungu mencolok */
+:root:root[data-gaya="cyber"] .badge.bg-muted { background: color-mix(in srgb, var(--foreground) 8%, transparent); border-color: var(--kaca-input-tepi); color: var(--muted-foreground); }
+/* chip tanggal di pojok: tinta cyan tipis, tidak lagi blok putih terang */
+:root:root[data-gaya="cyber"] header > span.font-mono { border-radius: 9999px; background: color-mix(in srgb, var(--cy) 10%, transparent); border: 1px solid var(--kaca-input-tepi); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* pilihan DS di dalam baris tabel: tenang (hanya garis bawah tipis) sampai disentuh, supaya tabel tidak penuh kotak */
+:root:root[data-gaya="cyber"] .tbl button.inp { background: transparent; border-color: transparent; border-bottom-color: color-mix(in srgb, var(--cy) 35%, transparent); box-shadow: none; }
+:root:root[data-gaya="cyber"] .tbl button.inp:is(:hover, :focus-visible) { background: var(--kaca-input); border-color: var(--kaca-input-tepi); border-bottom-color: var(--cy); }
+
+/* padat: bar menu, judul halaman, penggaris, dan kartu dirapatkan supaya isi halaman mulai lebih atas (dulu sekitar 210px sebelum isi pertama) */
+@media (min-width: 768px) {
+  :root:root[data-gaya="cyber"] .app-shell > aside { padding: 8px 20px; gap: 12px; }
+  :root:root[data-gaya="cyber"] .app-shell > aside > nav { padding: 4px; gap: 2px; }
+  :root:root[data-gaya="cyber"] .nav { padding: 0.28rem 0.7rem; font-size: 0.78rem; }
+}
+:root:root[data-gaya="cyber"] .app-shell header { padding: 2px 20px 0; }
+:root:root[data-gaya="cyber"] header h2 { font-size: 1.2rem; }
+:root:root[data-gaya="cyber"] header > div:first-child { width: 2.25rem; height: 2.25rem; }
+:root:root[data-gaya="cyber"] main::before { height: 7px; margin-bottom: 0.4rem; }
+:root:root[data-gaya="cyber"] main { padding-top: 10px; }
+:root:root[data-gaya="cyber"] main .card { padding: 0.875rem 1rem; margin-bottom: 0.625rem; }
+
+/* baris tabel yang disorot diberi garis neon di kiri */
+:root:root[data-gaya="cyber"] .tbl tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--cy); }
+
+/* animasi pendukung kesan Cyberpunk: hanya transform, opacity, dan filter ringan; mati bila pengguna memilih "kurangi gerakan" */
+@media (prefers-reduced-motion: no-preference) {
+  /* sinar pemindai tipis turun pelan di seluruh layar (di belakang dialog, tidak bisa diklik) */
+  :root:root[data-gaya="cyber"] #root::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 55; pointer-events: none; opacity: 0.32; background: linear-gradient(90deg, transparent, var(--cy), var(--mg), transparent); box-shadow: 0 0 18px 4px color-mix(in srgb, var(--cy) 40%, transparent); animation: sinar 9s linear infinite; }
+  @keyframes sinar { from { transform: translateY(-8vh); } to { transform: translateY(108vh); } }
+  /* busur neon di sudut kartu berdenyut pelan, bergantian */
+  :root:root[data-gaya="cyber"] .card:not(.cetak *)::before { animation: denyut-sudut 3.6s ease-in-out infinite; }
+  :root:root[data-gaya="cyber"] .card:not(.cetak *)::after { animation: denyut-sudut 3.6s ease-in-out -1.8s infinite; }
+  @keyframes denyut-sudut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  /* judul halaman sesekali bergeser seperti glitch (sekitar 0,3 detik tiap 7 detik) */
+  :root:root[data-gaya="cyber"] header h2 { animation: glitch 7s steps(1) infinite; }
+  @keyframes glitch {
+    0%, 92%, 100% { filter: none; transform: none; }
+    93% { filter: drop-shadow(-2px 0 0 var(--mg)) drop-shadow(2px 0 0 var(--cy)); transform: translateX(1px); }
+    95% { filter: drop-shadow(2px 0 0 var(--mg)) drop-shadow(-2px 0 0 var(--cy)); transform: translateX(-1px) skewX(-4deg); }
+    97% { filter: none; transform: none; }
+  }
+  /* chevron di judul berkilau mengalir */
+  :root:root[data-gaya="cyber"] header h2::after { background: linear-gradient(90deg, var(--mg) 0%, var(--mg) 35%, var(--cy) 50%, var(--mg) 65%, var(--mg) 100%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: aliran 2.4s linear infinite; }
+  @keyframes aliran { from { background-position: 0 0; } to { background-position: 100% 0; } }
+  /* tombol utama: kilat menyapu saat disentuh */
+  :root:root[data-gaya="cyber"] .btn { position: relative; overflow: hidden; }
+  :root:root[data-gaya="cyber"] .btn::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%); transform: translateX(-130%); }
+  :root:root[data-gaya="cyber"] .btn:hover:not(:disabled)::before { transform: translateX(130%); transition: transform 0.7s ease; }
+}
+
+/* tanpa dukungan blur, atau pengguna meminta transparansi dikurangi: semua permukaan jadi hampir solid */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { background-color: var(--kaca-padat); }
+  :root:root[data-gaya="cyber"] [role="alertdialog"] { background: var(--kaca-padat); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root:root[data-gaya="cyber"] :is(.card, .stat, .btn2, .select-hud, [role="alertdialog"], .app-shell > aside, .app-shell > aside > nav) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { background-color: var(--kaca-padat); }
+  :root:root[data-gaya="cyber"] [role="alertdialog"] { background: var(--kaca-padat); }
+}
