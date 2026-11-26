@@ -446,3 +446,59 @@ test('perapian 0063: satu pemformat tanggal untuk semua pesan, dan pesan berjam 
   assert.deepEqual(await jatuh('2026-11-23T17:05:00Z'), []) // 00.05 hari berikutnya: sudah lewat, tidak ikut hari baru
   await db.exec(`delete from pesan_wa where nama = 'Pesan malam'`)
 })
+
+test('sumber BO (0074): pesan Fulfillment dari clock-in BO, Captain tetap bawaan, dan fungsi internal tertutup dari API', async () => {
+  const n = 20 // hari yang sudah lewat: budget penuh, tanpa jadwal dan absensi Captain, jadi hanya clock-in BO yang bicara
+  const masuk = (ds, hub, kode, jam) => db.exec(`insert into kehadiran_bo (hub, ds_id, kode_mtr, tanggal, masuk_lokal, zona, masuk_wib, sumber)
+    values ('${hub}', '${ds}', '${kode}', ${tgl(n)}, '${jam}', 'WIB', (${tgl(n)} + '${jam}'::time)::timestamptz, 'api')`)
+  await masuk(GALAXY, 'Hub Galaxy', 'M1', '05:50'); await masuk(GALAXY, 'Hub Galaxy', 'M2', '07:30'); await masuk(GALAXY, 'Hub Galaxy', 'M3', '13:59')
+  await masuk(ALSUT, 'Hub Alsut', 'M5', '05:50')
+  // budget hari itu dipastikan lewat kuota khusus, supaya tes tidak bergantung pada kuota DS yang diubah tes lain
+  await db.exec(`insert into kuota_harian (ds_id, tanggal, kuota_pagi, kuota_siang, kuota_tengah) values ('${GALAXY}', ${tgl(n)}, 2, 1, 0), ('${ALSUT}', ${tgl(n)}, 1, 1, 0)`)
+  const bo =async (sesi, ds = 'Galaxy') => (await q(`select * from laporan_wa_bo($1, ${tgl(n)}) where ds_nama = $2`, [sesi, ds]))[0]
+
+  // pagi: budget 2, dua clock-in (satu tepat, satu telat)
+  const pagi = await bo('laporan_pagi')
+  assert.match(pagi.pesan, /\*Fulfillment Shift Pagi \(Clock-in BO\)\*/)
+  assert.match(pagi.pesan, /Terpenuhi: 2 dari 2 rider \(100%\)/)
+  assert.match(pagi.pesan, /Clock-in BO: 2 · Tepat waktu: 1/)
+  assert.deepEqual([pagi.n_terpenuhi, pagi.n_kebutuhan, pagi.n_belum], [2, 2, 0])
+  // siang: rekap hari ini ikut, dan DS yang punya budget tapi belum ada clock-in tetap dilaporkan 0 dari budget
+  const siang = await bo('laporan_siang')
+  assert.match(siang.pesan, /Terpenuhi: 1 dari 1 rider \(100%\)/)
+  assert.match(siang.pesan, /\*Rekap hari ini\*\nPagi: 2\/2 · Siang: 1\/1/)
+  const alsutSiang = await bo('laporan_siang', 'Alam Sutera')
+  assert.deepEqual([alsutSiang.n_terpenuhi, alsutSiang.n_kebutuhan], [0, 1])
+  // seharian: jumlah semua shift
+  const hari = await bo('laporan_hari')
+  assert.deepEqual([hari.n_terpenuhi, hari.n_kebutuhan], [3, 3])
+  assert.match(hari.pesan, /\*Fulfillment Seharian \(Clock-in BO\)\*/)
+  // pengingat bukan laporan: tidak ada versi BO
+  await assert.rejects(q(`select * from laporan_wa_bo('ingat_pagi', ${tgl(n)})`), /Sesi tidak dikenal/)
+
+  // gabungan: judul menyebut Clock-in BO dan angka total dari dua DS; tanpa p_sumber tetap dari Captain (hari ini tanpa jadwal: tidak ada baris)
+  const g = await q(`select * from laporan_wa_gabung('laporan_pagi', ${tgl(n)}, 'https://orca.test', null, '120363999@g.us', null, 'bo')`)
+  assert.equal(g.length, 1)
+  assert.match(g[0].pesan, /FULFILLMENT · SHIFT PAGI · CLOCK-IN BO/)
+  assert.match(g[0].pesan, /3 dari 3 \(100%\) · 2 DS/)
+  assert.equal((await q(`select * from laporan_wa_gabung('laporan_pagi', ${tgl(n)}, 'https://orca.test', null, '120363999@g.us')`)).length, 0)
+  // pengingat tetap dari Captain walau sumber BO, dan sumber yang tidak dikenal ditolak
+  await q(`select * from laporan_wa_gabung('ingat_pagi', ${tgl(n)}, 'https://orca.test', null, null, null, 'bo')`)
+  await assert.rejects(q(`select * from laporan_wa_gabung('laporan_pagi', ${tgl(n)}, 'https://orca.test', null, null, null, 'lain')`), /Sumber tidak dikenal/)
+
+  // pesan terjadwal: sumber BO hanya untuk pesan Fulfillment
+  await db.exec(`insert into pesan_wa (nama, jenis, shift, jam, sumber) values ('Fulfillment BO', 'fulfillment_shift', 'pagi', '09:00', 'bo')`)
+  await assert.rejects(db.exec(`insert into pesan_wa (nama, jenis, shift, jam, sumber) values ('x', 'pengingat_captain', 'pagi', '07:00', 'bo')`), /check constraint/i)
+  await assert.rejects(db.exec(`insert into pesan_wa (nama, jenis, jam, sumber) values ('x', 'budget', '09:00', 'bo')`), /check constraint/i)
+  await assert.rejects(db.exec(`insert into pesan_wa (nama, jenis, shift, jam, sumber) values ('x', 'fulfillment_shift', 'pagi', '09:00', 'lain')`), /check constraint/i)
+  await db.exec(`delete from pesan_wa where nama = 'Fulfillment BO'`)
+
+  // fungsi internal tidak bisa dipanggil lewat API
+  for (const peran of ['anon', 'authenticated']) {
+    await db.exec(`reset role; set role ${peran}`)
+    await assert.rejects(q(`select * from laporan_wa_bo('laporan_pagi')`), /permission denied/)
+    await assert.rejects(q(`select * from laporan_wa_pilih('laporan_pagi', ${tgl(n)}, 'bo')`), /permission denied/)
+    await assert.rejects(q(`select * from aktual_bo_semua(${tgl(n)}, ${tgl(n)})`), /permission denied/)
+    await db.exec('reset role')
+  }
+})
