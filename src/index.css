@@ -1631,6 +1631,12 @@ table thead th :is(div, span) { color: inherit; }
   -webkit-text-stroke: 0; text-shadow: none;
   filter: drop-shadow(1.5px 0 0 var(--border)) drop-shadow(-1.5px 0 0 var(--border)) drop-shadow(0 1.5px 0 var(--border)) drop-shadow(0 -1.5px 0 var(--border)) drop-shadow(3px 3px 0 var(--primary)); }
 
+/* mode gelap: isi judul silver (krom) karena gradasi es neon bagian ungunya menyatu dengan latar gelap; tepi tinta hitam agar bentuk huruf tajam */
+:root.dark[data-sketsa]:not([data-gaya]) header h2 {
+  background-image: linear-gradient(180deg, #ffffff 0%, #c9d1e6 40%, #7d88a8 50%, #e4eaf8 58%, #ffffff 100%);
+  filter: drop-shadow(1.5px 0 0 #0b0618) drop-shadow(-1.5px 0 0 #0b0618) drop-shadow(0 1.5px 0 #0b0618) drop-shadow(0 -1.5px 0 #0b0618) drop-shadow(3px 3px 0 var(--primary));
+}
+
 /* tabel dan scheduler: bingkai tinta ala panel komik, header dengan tetesan cat, garis kolom putus-putus */
 :root[data-sketsa]:not([data-gaya]) .overflow-x-auto:has(> table) { border: 4px solid var(--border); border-radius: var(--card-radius); box-shadow: 6px 6px 0 var(--edge); background: var(--card); margin: 2px 8px 10px 2px; }
 :root[data-sketsa]:not([data-gaya]) .card .overflow-x-auto:has(> table) { box-shadow: 4px 4px 0 var(--edge); }
