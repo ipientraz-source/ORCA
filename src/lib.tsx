@@ -205,16 +205,26 @@ function useTema() {
   return { gelap, pilih }
 }
 
-// Gaya tampilan: Neobrutalism (bawaan) atau Cyberpunk. Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya="cyber" di <html>.
+// Gaya tampilan: Neobrutalism (bawaan), Cyberpunk, atau Formal (bersih ala Linear). Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya di <html>
+// (cyber atau formal; Neo tanpa atribut).
+type Gaya = 'neo' | 'cyber' | 'formal'
+const DAFTAR_GAYA: { id: Gaya; label: string; judul: string }[] = [
+  { id: 'neo', label: 'Neo', judul: 'Gaya Neobrutalism' },
+  { id: 'cyber', label: 'Cyber', judul: 'Gaya Cyberpunk' },
+  { id: 'formal', label: 'Formal', judul: 'Gaya Formal (bersih dan tenang)' },
+]
 function useGaya() {
-  const [cyber, setCyber] = useState(() => document.documentElement.dataset.gaya === 'cyber')
-  const pilih = (c: boolean) => {
-    if (c) document.documentElement.dataset.gaya = 'cyber'
-    else delete document.documentElement.dataset.gaya
-    store.set('gaya', c ? 'cyber' : 'neo')
-    setCyber(c)
+  const [gaya, setGaya] = useState<Gaya>(() => {
+    const g = document.documentElement.dataset.gaya
+    return g === 'cyber' || g === 'formal' ? g : 'neo'
+  })
+  const pilih = (g: Gaya) => {
+    if (g === 'neo') delete document.documentElement.dataset.gaya
+    else document.documentElement.dataset.gaya = g
+    store.set('gaya', g)
+    setGaya(g)
   }
-  return { cyber, pilih }
+  return { gaya, pilih }
 }
 
 // Versi ikon (untuk bar gelap yang sempit): tombol gaya (petir) + tombol terang/gelap
@@ -223,7 +233,12 @@ export function TemaToggle({ className = '' }: { className?: string }) {
   const gaya = useGaya()
   return (
     <>
-      <button onClick={() => gaya.pilih(!gaya.cyber)} title={gaya.cyber ? 'Ganti ke gaya Neobrutalism' : 'Ganti ke gaya Cyberpunk'} aria-label="Ganti gaya tampilan" aria-pressed={gaya.cyber} className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
+      <button
+        onClick={() => gaya.pilih(DAFTAR_GAYA[(DAFTAR_GAYA.findIndex((x) => x.id === gaya.gaya) + 1) % DAFTAR_GAYA.length].id)}
+        title={`${DAFTAR_GAYA.find((x) => x.id === gaya.gaya)?.judul}. Klik untuk ganti gaya`}
+        aria-label="Ganti gaya tampilan"
+        className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}
+      >
         <Zap size={16} />
       </button>
       <button onClick={() => pilih(!gelap)} title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'} aria-label="Ganti tema" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
@@ -244,8 +259,9 @@ export function TemaSwitch() {
   return (
     <div className="inline-flex items-center gap-2">
       <div role="group" aria-label="Pilih gaya tampilan" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
-        <button onClick={() => gaya.pilih(false)} aria-pressed={!gaya.cyber} title="Gaya Neobrutalism" className={teks(!gaya.cyber)}>Neo</button>
-        <button onClick={() => gaya.pilih(true)} aria-pressed={gaya.cyber} title="Gaya Cyberpunk" className={teks(gaya.cyber)}>Cyber</button>
+        {DAFTAR_GAYA.map((g) => (
+          <button key={g.id} onClick={() => gaya.pilih(g.id)} aria-pressed={gaya.gaya === g.id} title={g.judul} className={teks(gaya.gaya === g.id)}>{g.label}</button>
+        ))}
       </div>
       <div role="group" aria-label="Pilih tema" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
         <button onClick={() => pilih(false)} aria-pressed={!gelap} aria-label="Tema terang" title="Tema terang" className={item(!gelap)}><Sun size={15} /></button>
