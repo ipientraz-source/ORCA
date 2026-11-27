@@ -1745,6 +1745,7 @@ table thead th :is(div, span) { color: inherit; }
 /* tombol ikon bar atas versi HP (petir = ganti gaya, bulan/matahari = ganti tema) */
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]) { border: 2.5px solid #0b0618; border-radius: var(--control-radius); background: var(--lime-grad); color: #0b0618; box-shadow: 2px 2px 0 #0b0618; }
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]):hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #0b0618; }
+/* ════════════════════════════════════════════════════════════════
    FORMAL — gaya ketiga (bersih dan tenang, terinspirasi Linear). Aktif lewat data-gaya="formal" di <html>.
    Netral abu + satu aksen indigo, font Inter, garis 1px, sudut 6-10px, bayangan nyaris tidak ada. Terang dan gelap.
    Neo adalah dasar global, jadi blok ini menimpa aturan Neo secara menyeluruh (selektor :root:root[...] menang atas Neo dan Cyber).
