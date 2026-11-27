@@ -1525,7 +1525,7 @@ table thead th :is(div, span) { color: inherit; }
 }
 :root[data-sketsa]:not([data-gaya]) {
   --font-komik: 'Bangers', 'Comic Sans MS', 'Segoe Print', cursive;
-  --font-ui: 'Comic Neue', 'Comic Sans MS', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-ui: 'Comic Sans MS', 'Comic Sans', 'Comic Neue', system-ui, sans-serif;
   --card-radius: 14px 6px 12px 7px / 7px 12px 6px 14px;
   --control-radius: 8px 4px 9px 5px / 5px 9px 4px 8px;
   --card-shadow: 6px 6px 0 var(--edge), inset -7px -7px 0 var(--cel);
@@ -1622,9 +1622,14 @@ table thead th :is(div, span) { color: inherit; }
 /* ──────── TAHAP 2: font judul, tabel dan scheduler, paginasi, dropdown, kalender, chart ──────── */
 
 /* font judul: Titan One (huruf gelembung tebal ala graffiti) menggantikan Bangers */
-:root[data-sketsa]:not([data-gaya]) { --font-judul: 'Knewave', 'Rammetto One', 'Comic Sans MS', cursive; }
-:root[data-sketsa]:not([data-gaya]) :is(h1, h2, h3) { font-family: var(--font-judul); font-weight: 400; letter-spacing: 0.01em; }
-:root[data-sketsa]:not([data-gaya]) header h2 { font-family: var(--font-judul); font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem); letter-spacing: 0.02em; -webkit-text-stroke: 2.5px var(--border); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--primary); }
+:root[data-sketsa]:not([data-gaya]) { --font-judul: 'Comic Sans MS', 'Comic Sans', 'Comic Neue', cursive; }
+:root[data-sketsa]:not([data-gaya]) :is(h1, h2, h3) { font-family: var(--font-judul); font-weight: 700; letter-spacing: 0; }
+:root[data-sketsa]:not([data-gaya]) header h2 { font-family: var(--font-judul); font-size: clamp(1.3rem, 1rem + 1.1vw, 1.9rem); font-weight: 700; letter-spacing: 0;
+  /* isi es neon: gradasi vertikal putih, biru langit, ungu; tepi tinta, bayangan ungu lewat drop-shadow agar ikut bentuk huruf */
+  background: linear-gradient(180deg, #ffffff 0%, #7fd6ff 50%, #8a2ff5 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  /* ketebalan: garis tinta 1,5px di luar huruf (empat drop-shadow) tanpa memakan isi huruf, lalu bayangan ungu */
+  -webkit-text-stroke: 0; text-shadow: none;
+  filter: drop-shadow(1.5px 0 0 var(--border)) drop-shadow(-1.5px 0 0 var(--border)) drop-shadow(0 1.5px 0 var(--border)) drop-shadow(0 -1.5px 0 var(--border)) drop-shadow(3px 3px 0 var(--primary)); }
 
 /* tabel dan scheduler: bingkai tinta ala panel komik, header dengan tetesan cat, garis kolom putus-putus */
 :root[data-sketsa]:not([data-gaya]) .overflow-x-auto:has(> table) { border: 4px solid var(--border); border-radius: var(--card-radius); box-shadow: 6px 6px 0 var(--edge); background: var(--card); margin: 2px 8px 10px 2px; }
@@ -1644,18 +1649,18 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody tr:hover td { background: var(--primary-soft); }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tfoot td { border-top: 4px solid var(--border); }
 /* scheduler: tanggal bulat bergaya stiker, nomor urut stiker, kode MTR berlabel, hitungan hari kerja huruf gelembung */
-:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full { border: 3px solid var(--border); background-color: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 400; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full { border: 3px solid var(--border); background-color: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 700; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full.bg-primary { background-color: var(--primary); color: #fff; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .text-\[13px\].font-medium, :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .md\:text-sm.font-medium { font-weight: 800; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .font-mono.text-\[11px\] { display: inline-block; margin-top: 2px; padding: 0 6px; border: 2px solid var(--border); border-radius: 6px; background: var(--muted); font-weight: 700; }
-:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .size-8.rounded-lg { border: 3px solid var(--border); background: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 400; }
-:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td.sticky.right-0 > span:first-child { font-family: var(--font-judul); font-size: 1.15rem; font-weight: 400; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .size-8.rounded-lg { border: 3px solid var(--border); background: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 700; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td.sticky.right-0 > span:first-child { font-family: var(--font-judul); font-size: 1.15rem; font-weight: 700; }
 
 /* paginasi: tombol stiker, halaman aktif ungu bergaris tinta */
 :root[data-sketsa]:not([data-gaya]) div:has(> [role="navigation"][aria-label="Halaman"]) { border-top: 4px solid var(--border); background: var(--muted); }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button {
   width: 36px; height: 36px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground);
-  font-family: var(--font-judul); font-size: 0.9rem; font-weight: 400; box-shadow: 3px 3px 0 var(--edge); transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+  font-family: var(--font-judul); font-size: 0.9rem; font-weight: 700; box-shadow: 3px 3px 0 var(--edge); transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
 }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button svg { stroke-width: 3.4; }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--edge); }
@@ -1677,7 +1682,7 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground); box-shadow: 2px 2px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav button svg { stroke-width: 3.2; }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav button:hover { background: var(--kuning); color: #0b0618; }
-:root[data-sketsa]:not([data-gaya]) .tgl-judul { flex: 1; text-align: center; font-family: var(--font-judul); font-size: 1rem; }
+:root[data-sketsa]:not([data-gaya]) .tgl-judul { flex: 1; text-align: center; font-family: var(--font-judul); font-size: 1rem; font-weight: 700; }
 :root[data-sketsa]:not([data-gaya]) .tgl-hari { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; }
 :root[data-sketsa]:not([data-gaya]) .tgl-hari span { font-family: var(--font-ui); font-weight: 700; font-size: 0.72rem; background: var(--kuning); color: #0b0618; border: 2px solid var(--border); border-radius: 6px; padding: 2px 0; }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
