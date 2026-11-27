@@ -13,15 +13,19 @@ const HARI = ['SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB', 'MIN']
 const LEBAR = 300
 const TINGGI = 340
 
-// Ikut berubah saat tombol Neo/Cyber ditekan (atribut data-gaya di <html>)
-function useCyber() {
+// Kalender buatan sendiri dipakai di Cyber dan di Neo bergaya komik (atribut data-sketsa); gaya lain tetap input bawaan.
+// Ikut berubah saat tombol gaya ditekan (atribut data-gaya / data-sketsa di <html>)
+function useKalenderHud() {
   return useSyncExternalStore(
     (cb) => {
       const o = new MutationObserver(cb)
-      o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-gaya'] })
+      o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-gaya', 'data-sketsa'] })
       return () => o.disconnect()
     },
-    () => document.documentElement.dataset.gaya === 'cyber',
+    () => {
+      const h = document.documentElement
+      return h.dataset.gaya === 'cyber' || (h.dataset.gaya === undefined && h.hasAttribute('data-sketsa'))
+    },
     () => false,
   )
 }
@@ -29,8 +33,8 @@ function useCyber() {
 const teks = (s: string) => (s ? new Date(`${s}T00:00:00Z`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '')
 
 export function InputTanggal(p: Props) {
-  const cyber = useCyber()
-  if (!cyber) return <input type="date" className={p.className} value={p.value} min={p.min} max={p.max} onChange={p.onChange} />
+  const hud = useKalenderHud()
+  if (!hud) return <input type="date" className={p.className} value={p.value} min={p.min} max={p.max} onChange={p.onChange} />
   return <KalenderHud {...p} />
 }
 

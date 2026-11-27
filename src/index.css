@@ -1476,3 +1476,230 @@ table thead th :is(div, span) { color: inherit; }
   :root:root[data-gaya="cyber"] :is(.card, .stat):not(.cetak *) { background-color: var(--kaca-padat); }
   :root:root[data-gaya="cyber"] [role="alertdialog"] { background: var(--kaca-padat); }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   NEO KOMIK — gaya bawaan Neobrutalism (atribut data-sketsa dipasang tetap di <html> pada index.html; hanya berlaku saat bukan Cyber/Formal; hapus atributnya untuk kembali ke Neo polos).
+   Versi graffiti total: outline tinta tebal 3-4px, bayangan keras, cel-shading dan kilau pada kartu, warna cat jenuh (lime, oranye, pink, biru, ungu),
+   titik semprotan, cipratan dan tetesan cat, panah petir dan bintang di tepi halaman, tembok bata di sidebar, judul huruf gelembung.
+   ATURAN: semua hiasan berada DI BELAKANG teks (z-index -1 / latar) dan lebih redup dari huruf. Lembar cetak (.cetak) tidak tersentuh.
+   ════════════════════════════════════════════════════════════════ */
+:root[data-sketsa]:not([data-gaya]):not(.dark) {
+  --background: #fffdf6;
+  --foreground: #0b0618;
+  --muted: #efe6ff;
+  --muted-foreground: #4f4378;
+  --border: #0b0618;
+  --input: #0b0618;
+  --edge: #0b0618;
+  --edge-primary: #0b0618;
+  --ring: #9a4dff;
+  --primary: #8a2ff5;
+  --primary-hover: #7a1fe0;
+  --primary-active: #6a14c8;
+  --primary-deep: #0b0618;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e2d3ff;
+  --primary-soft-foreground: #4a12a8;
+  --kuning: #d6f542;
+  --sidebar: #3a0ca3;
+  --sidebar-foreground: #ffffff;
+  --judul-isi: #ffa31a;
+  --hatch: rgb(11 6 24 / 0.34);
+  --cel: rgb(11 6 24 / 0.13);
+  --kilau: rgb(255 255 255 / 0.6);
+  --titik: rgb(138 47 245 / 0.11);
+}
+:root.dark[data-sketsa]:not([data-gaya]) {
+  --background: #0d0721;
+  --card: #1b1040;
+  --muted: #2a1a5e;
+  --primary: #8a2ff5;
+  --primary-soft: #33207a;
+  --sidebar: #2a0f78;
+  --kuning: #d6f542;
+  --judul-isi: #d6f542;
+  --hatch: rgb(214 245 66 / 0.3);
+  --cel: rgb(0 0 0 / 0.32);
+  --kilau: rgb(255 255 255 / 0.13);
+  --titik: rgb(214 245 66 / 0.07);
+}
+:root[data-sketsa]:not([data-gaya]) {
+  --font-komik: 'Bangers', 'Comic Sans MS', 'Segoe Print', cursive;
+  --font-ui: 'Comic Neue', 'Comic Sans MS', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --card-radius: 14px 6px 12px 7px / 7px 12px 6px 14px;
+  --control-radius: 8px 4px 9px 5px / 5px 9px 4px 8px;
+  --card-shadow: 6px 6px 0 var(--edge), inset -7px -7px 0 var(--cel);
+  --card-shadow-hover: 9px 9px 0 var(--edge), inset -7px -7px 0 var(--cel);
+}
+
+/* latar: titik halftone + seni graffiti di tepi kiri dan kanan (lapisan tetap di belakang semua isi, memudar ke tengah agar teks aman) */
+:root[data-sketsa]:not([data-gaya]) body { background-image: radial-gradient(var(--titik) 1.3px, transparent 1.7px); background-size: 14px 14px; background-attachment: scroll; }
+:root[data-sketsa]:not([data-gaya]) body::before, :root[data-sketsa]:not([data-gaya]) body::after {
+  content: ''; position: fixed; top: 0; bottom: 0; width: clamp(30px, 8vw, 170px); opacity: 0.9; z-index: -1; pointer-events: none; background-repeat: no-repeat; background-size: auto 100%;
+}
+:root[data-sketsa]:not([data-gaya]) body::before { left: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 625'%3E%3Cpath transform='translate(87 85) rotate(5) scale(1.19)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(87 212) rotate(24) scale(1.06)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffa31a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(95 360) rotate(10) scale(1.08)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffa31a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(42 508) rotate(-11) scale(0.86)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffa31a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='40' y='40' width='8' height='24' rx='4' fill='%23ff3b3b' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='44' cy='40' r='21' fill='%23ff3b3b' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='47' cy='-22' r='2' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='52' cy='-0' r='3' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='99' cy='58' r='4' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='84' cy='32' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='75' cy='5' r='5' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='44' cy='6' r='5' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='93' cy='66' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='44' cy='74' r='4' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='80' cy='16' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='26' y='89' width='8' height='20' rx='4' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='30' cy='89' r='12' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='43' cy='53' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='34' cy='68' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='44' cy='71' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='90' cy='64' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='84' cy='75' r='3' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='54' cy='117' r='4' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='41' cy='50' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='33' cy='116' r='3' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='21' y='170' width='8' height='43' rx='4' fill='%23ff4fb8' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='25' cy='170' r='11' fill='%23ff4fb8' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='54' cy='124' r='3' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='56' cy='165' r='3' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='67' cy='159' r='2' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='55' cy='160' r='2' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='67' cy='133' r='4' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='25' cy='190' r='3' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='57' cy='123' r='6' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='34' cy='143' r='3' fill='%23ff4fb8' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='46' y='256' width='8' height='35' rx='4' fill='%238a2ff5' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='50' cy='256' r='11' fill='%238a2ff5' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='72' cy='248' r='2' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='86' cy='209' r='3' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='52' cy='214' r='4' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='75' cy='266' r='6' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='105' cy='253' r='3' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='62' cy='283' r='3' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='77' cy='238' r='6' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='21' y='328' width='8' height='26' rx='4' fill='%23ff3b3b' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='25' cy='328' r='13' fill='%23ff3b3b' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='46' cy='383' r='2' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='51' cy='321' r='2' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='29' cy='291' r='3' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='59' cy='359' r='4' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='82' cy='313' r='5' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='50' cy='309' r='2' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='45' cy='281' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='78' cy='356' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='-1' y='409' width='8' height='15' rx='4' fill='%232f9bff' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='3' cy='409' r='14' fill='%232f9bff' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='40' cy='376' r='3' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='9' cy='377' r='4' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='56' cy='386' r='3' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='380' r='5' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='7' cy='473' r='6' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='7' y='470' width='8' height='36' rx='4' fill='%23b8f23a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='11' cy='470' r='11' fill='%23b8f23a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='13' cy='490' r='6' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='56' cy='490' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='40' cy='496' r='3' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='11' cy='493' r='5' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='76' cy='480' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='31' cy='533' r='3' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='502' r='4' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='0' y='574' width='8' height='40' rx='4' fill='%238a2ff5' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='4' cy='574' r='12' fill='%238a2ff5' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='27' cy='625' r='2' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='45' cy='591' r='5' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='60' cy='589' r='2' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='19' cy='516' r='2' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='620' r='4' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='99,125 104,137 117,138 107,147 110,159 99,153 88,159 91,147 81,138 94,137' fill='%23ffa31a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='109,316 112,324 121,325 115,331 117,340 109,335 101,340 103,331 97,325 106,324' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='115,437 119,447 130,448 122,455 124,466 115,460 106,466 108,455 100,448 111,447' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position: left center; -webkit-mask-image: linear-gradient(90deg, #000 20%, transparent 95%); mask-image: linear-gradient(90deg, #000 20%, transparent 95%); }
+:root[data-sketsa]:not([data-gaya]) body::after { right: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 625'%3E%3Cpath transform='translate(133 87) rotate(23) scale(0.84) scale(-1,1)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(116 204) rotate(3) scale(0.96) scale(-1,1)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffa31a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(136 358) rotate(-30) scale(0.90) scale(-1,1)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpath transform='translate(167 486) rotate(-25) scale(1.24) scale(-1,1)' d='M-34 6L-4 -18L-8 -4L22 -16L-2 16L2 4L-34 6Z' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='149' y='13' width='8' height='41' rx='4' fill='%23ff3b3b' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='153' cy='13' r='19' fill='%23ff3b3b' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='127' cy='43' r='2' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='87' cy='32' r='3' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='84' cy='40' r='4' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='104' cy='23' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='117' cy='-17' r='6' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='138' cy='-42' r='3' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='103' cy='53' r='5' fill='%23ff3b3b' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='182' y='99' width='8' height='34' rx='4' fill='%232f9bff' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='186' cy='99' r='23' fill='%232f9bff' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='164' cy='68' r='2' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='176' cy='68' r='6' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='135' cy='56' r='4' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='158' cy='143' r='2' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='141' cy='79' r='6' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='137' cy='64' r='6' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='161' cy='68' r='2' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='151' cy='113' r='5' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='142' cy='51' r='3' fill='%232f9bff' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='190' y='188' width='8' height='16' rx='4' fill='%23b8f23a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='194' cy='188' r='13' fill='%23b8f23a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='152' cy='206' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='177' cy='157' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='188' cy='256' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='145' cy='194' r='2' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='154' cy='167' r='5' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='178' y='242' width='8' height='43' rx='4' fill='%23ffa31a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='182' cy='242' r='12' fill='%23ffa31a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='154' cy='202' r='4' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='166' cy='222' r='6' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='152' cy='245' r='6' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='148' cy='248' r='4' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='173' cy='213' r='2' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='142' cy='235' r='5' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='149' cy='291' r='5' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='169' cy='183' r='3' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='135' cy='249' r='5' fill='%23ffa31a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='164' y='351' width='8' height='17' rx='4' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='168' cy='351' r='20' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='145' cy='287' r='3' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='114' cy='319' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='119' cy='301' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='105' cy='316' r='6' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='146' cy='292' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='125' cy='410' r='4' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='167' cy='299' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='184' y='417' width='8' height='15' rx='4' fill='%238a2ff5' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='188' cy='417' r='14' fill='%238a2ff5' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='127' cy='449' r='5' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='181' cy='465' r='4' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='122' cy='413' r='6' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='163' cy='438' r='6' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='150' cy='421' r='2' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='172' cy='398' r='5' fill='%238a2ff5' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='154' y='469' width='8' height='40' rx='4' fill='%23b8f23a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='158' cy='469' r='21' fill='%23b8f23a' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='112' cy='499' r='4' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='132' cy='507' r='4' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='143' cy='442' r='5' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='133' cy='536' r='5' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='127' cy='501' r='6' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='132' cy='447' r='5' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='130' cy='434' r='3' fill='%23b8f23a' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Crect x='138' y='567' width='8' height='43' rx='4' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='142' cy='567' r='12' fill='%23ffe14d' stroke-width='3.5' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='105' cy='536' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='126' cy='599' r='2' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='103' cy='527' r='5' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='139' cy='542' r='4' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Ccircle cx='109' cy='522' r='3' fill='%23ffe14d' stroke-width='2' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='71,67 75,76 84,77 77,83 79,92 71,87 63,92 65,83 58,77 67,76' fill='%23ffe14d' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='85,293 89,304 101,305 92,312 95,324 85,318 75,324 78,312 69,305 81,304' fill='%23ffa31a' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3Cpolygon points='140,515 144,524 153,525 146,531 148,540 140,535 132,540 134,531 127,525 136,524' fill='%23ff3b3b' stroke-width='3' stroke='%230b0618' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position: right center; -webkit-mask-image: linear-gradient(270deg, #000 20%, transparent 95%); mask-image: linear-gradient(270deg, #000 20%, transparent 95%); }
+
+/* sidebar: tembok bata */
+:root[data-sketsa]:not([data-gaya]) .sidebar-bg { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='32'%3E%3Cpath d='M0 0H64M0 16H64M0 32H64M0 0V16M32 0V16M64 0V16M16 16V32M48 16V32' fill='none' stroke='rgba(11,6,24,0.32)' stroke-width='2'/%3E%3C/svg%3E"); }
+
+/* huruf: judul gelembung (isi oranye/lime, tepi tinta, bayangan ungu); tab, tombol, menu Comic Neue tebal; data tetap huruf biasa */
+:root[data-sketsa]:not([data-gaya]) :is(h1, h2, h3) { font-family: var(--font-komik); font-weight: 400; letter-spacing: 0.04em; }
+:root[data-sketsa]:not([data-gaya]) header h2 { font-size: 1.5rem; color: var(--judul-isi); -webkit-text-stroke: 2px var(--border); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--primary); }
+:root[data-sketsa]:not([data-gaya]) :is(.btn, .btn2, .tab, .tab-on, .nav, .nav-on) { font-family: var(--font-ui); font-weight: 700; letter-spacing: 0; }
+:root[data-sketsa]:not([data-gaya]) :is(.btn, .btn2, .tab, .tab-on) { font-size: 0.9rem; }
+:root[data-sketsa]:not([data-gaya]) :is(.nav, .nav-on) { font-size: 0.85rem; }
+/* garis bawah header halaman: tinta tebal + pita ungu */
+:root[data-sketsa]:not([data-gaya]) header.sticky, :root[data-sketsa]:not([data-gaya]) header:has(> h2), :root[data-sketsa]:not([data-gaya]) header:has(h2) { border-bottom: 4px solid var(--border); box-shadow: 0 5px 0 var(--primary); }
+
+/* kartu angka: cat lime, oranye, pink, biru langit */
+:root[data-sketsa]:not([data-gaya]):not(.dark) .stat:nth-child(4n+1) { background: #b8f23a; }
+:root[data-sketsa]:not([data-gaya]):not(.dark) .stat:nth-child(4n+2) { background: #ffb84d; }
+:root[data-sketsa]:not([data-gaya]):not(.dark) .stat:nth-child(4n+3) { background: #ff9bdc; }
+:root[data-sketsa]:not([data-gaya]):not(.dark) .stat:nth-child(4n+4) { background: #8fd3ff; }
+:root.dark[data-sketsa]:not([data-gaya]) .stat:nth-child(4n+1) { background: #3a4a00; }
+:root.dark[data-sketsa]:not([data-gaya]) .stat:nth-child(4n+2) { background: #5a3a00; }
+:root.dark[data-sketsa]:not([data-gaya]) .stat:nth-child(4n+3) { background: #5e1f55; }
+:root.dark[data-sketsa]:not([data-gaya]) .stat:nth-child(4n+4) { background: #0f3a5e; }
+/* label kartu angka mode terang: ungu sangat gelap agar tetap jelas di atas warna cat yang jenuh */
+:root[data-sketsa]:not([data-gaya]):not(.dark) .stat :is(span, .text-muted-foreground) { color: #2a1a55; }
+
+/* kartu: garis tinta 4px, bayangan keras 6px, cel-shading (bayangan dalam kanan-bawah) */
+:root[data-sketsa]:not([data-gaya]) :is(.card, .stat):not(.cetak *) { border-width: 4px; position: relative; isolation: isolate; }
+:root[data-sketsa]:not([data-gaya]) .stat:hover:not(.cetak *) { transform: translate(-2px, -2px); }
+/* titik semprotan (stipple) di sudut kanan-bawah, di belakang huruf */
+:root[data-sketsa]:not([data-gaya]) :is(.card, .stat):not(.cetak *)::after {
+  content: ''; position: absolute; z-index: -1; right: 0; bottom: 0; width: 64px; height: 64px; pointer-events: none; border-radius: 0 0 4px 0;
+  background: radial-gradient(circle, var(--hatch) 1.6px, transparent 2.1px) 0 0 / 7px 7px;
+  -webkit-mask-image: linear-gradient(to bottom right, transparent 45%, #000 45%);
+  mask-image: linear-gradient(to bottom right, transparent 45%, #000 45%);
+}
+/* kilau toon di kiri-atas kartu angka (juga di belakang huruf) */
+:root[data-sketsa]:not([data-gaya]) .stat:not(.cetak *)::before {
+  content: ''; position: absolute; z-index: -1; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, var(--kilau) 0 9%, transparent 9% 13%, var(--kilau) 13% 16%, transparent 16%);
+}
+
+/* tombol: tinta 3px, bayangan 4px, kilau toon di bagian atas tombol utama; isian tinta 3px */
+:root[data-sketsa]:not([data-gaya]) :is(.btn, .btn2):not(.cetak *) { border-width: 3px; border-radius: var(--control-radius); box-shadow: 4px 4px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .btn:not(:disabled):not(.cetak *) { background-image: linear-gradient(180deg, rgb(255 255 255 / 0.26) 0 40%, transparent 40%); }
+:root[data-sketsa]:not([data-gaya]) :is(.btn, .btn2):hover:not(:disabled):not(.cetak *) { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) :is(.btn, .btn2):active:not(:disabled):not(.cetak *) { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .inp:not(.cetak *) { border-width: 3px; border-radius: var(--control-radius); }
+:root[data-sketsa]:not([data-gaya]) :is(.tab, .tab-on, .badge) { border-radius: var(--control-radius); }
+:root[data-sketsa]:not([data-gaya]) .tab-on, :root[data-sketsa]:not([data-gaya]) .tab-on:hover { box-shadow: 4px 4px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .badge { border-width: 2.5px; }
+:root[data-sketsa]:not([data-gaya]) .tbl th { color: #0c0d08; }
+
+/* chart fulfillment: batang dan legendanya warna cat cerah (token tua hanya untuk teks); mode gelap sudah cerah dari Neo */
+:root[data-sketsa]:not([data-gaya]):not(.dark) :is(.rounded-t.border-b-0, .size-2\.5.rounded-sm).bg-success { background-color: #3fdc8a; }
+:root[data-sketsa]:not([data-gaya]):not(.dark) :is(.rounded-t.border-b-0, .size-2\.5.rounded-sm).bg-warning { background-color: #ffc531; }
+:root[data-sketsa]:not([data-gaya]):not(.dark) :is(.rounded-t.border-b-0, .size-2\.5.rounded-sm).bg-danger { background-color: #ff5a6a; }
+:root[data-sketsa]:not([data-gaya]) .bar-belum::after { background: repeating-linear-gradient(135deg, rgb(11 6 24 / 0.4) 0 2px, transparent 2px 6px); }
+
+/* popup dropdown (Select) dan menu Unduh; pemilih tanggal Neo adalah input bawaan browser sehingga tidak ikut */
+:root[data-sketsa]:not([data-gaya]) .select-hud:not(.tanggal-hud) { border: 4px solid var(--border); border-radius: var(--card-radius); background: var(--card); box-shadow: 7px 7px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .select-hud [role="listbox"] { padding: 6px; scrollbar-width: thin; scrollbar-color: var(--primary) transparent; }
+:root[data-sketsa]:not([data-gaya]) .select-hud > .border-b { border-bottom: 3px solid var(--border); background: var(--muted); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"] { font-weight: 600; font-size: 0.875rem; padding: 8px 12px; margin: 2px 0; border: 2px solid transparent; border-radius: var(--control-radius); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][aria-selected="true"] { background: var(--primary-soft); color: var(--primary-soft-foreground); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][data-aktif="true"] { background: var(--kuning); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"] svg { stroke-width: 3.5; color: var(--primary); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][data-aktif="true"] svg { color: #0c0d08; }
+:root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] { padding: 6px; }
+:root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] > button { font-family: var(--font-ui); font-weight: 700; border: 2px solid transparent; border-radius: var(--control-radius); }
+:root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] > button:hover { background: var(--kuning); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
+
+/* tabel: header lime bergaris tinta 4px, garis baris putus-putus tebal, baris selang-seling (kuning muda terang / lilac gelap), penanda ungu saat hover */
+:root[data-sketsa]:not([data-gaya]) .tbl thead th { border-top: 4px solid var(--border); border-bottom-width: 4px; }
+:root[data-sketsa]:not([data-gaya]) .tbl td { border-bottom: 2px dashed color-mix(in srgb, var(--border) 55%, transparent); }
+:root[data-sketsa]:not([data-gaya]) .tbl tbody tr:last-child td { border-bottom: 4px solid var(--border); }
+:root[data-sketsa]:not([data-gaya]):not(.dark) .tbl tbody tr:nth-child(even) td { background: rgb(255 225 77 / 0.2); }
+:root.dark[data-sketsa]:not([data-gaya]) .tbl tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--primary-soft) 60%, transparent); }
+:root[data-sketsa]:not([data-gaya]) .tbl tbody tr:hover td { background: var(--primary-soft); }
+:root[data-sketsa]:not([data-gaya]) .tbl tbody tr:hover td:first-child { box-shadow: inset 6px 0 0 var(--primary); }
+
+/* ──────── TAHAP 2: font judul, tabel dan scheduler, paginasi, dropdown, kalender, chart ──────── */
+
+/* font judul: Titan One (huruf gelembung tebal ala graffiti) menggantikan Bangers */
+:root[data-sketsa]:not([data-gaya]) { --font-judul: 'Knewave', 'Rammetto One', 'Comic Sans MS', cursive; }
+:root[data-sketsa]:not([data-gaya]) :is(h1, h2, h3) { font-family: var(--font-judul); font-weight: 400; letter-spacing: 0.01em; }
+:root[data-sketsa]:not([data-gaya]) header h2 { font-family: var(--font-judul); font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem); letter-spacing: 0.02em; -webkit-text-stroke: 2.5px var(--border); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--primary); }
+
+/* tabel dan scheduler: bingkai tinta ala panel komik, header dengan tetesan cat, garis kolom putus-putus */
+:root[data-sketsa]:not([data-gaya]) .overflow-x-auto:has(> table) { border: 4px solid var(--border); border-radius: var(--card-radius); box-shadow: 6px 6px 0 var(--edge); background: var(--card); margin: 2px 8px 10px 2px; }
+:root[data-sketsa]:not([data-gaya]) .card .overflow-x-auto:has(> table) { box-shadow: 4px 4px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) table thead th { font-family: var(--font-ui); font-weight: 800; letter-spacing: 0.05em; border-right: 3px solid var(--border); }
+:root[data-sketsa]:not([data-gaya]) table thead th:last-child { border-right: 0; }
+:root[data-sketsa]:not([data-gaya]) table thead th:not(.sticky) { position: relative; }
+:root[data-sketsa]:not([data-gaya]) table thead th:not(.sticky)::after {
+  content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: 12px; z-index: 2; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='12'%3E%3Crect x='7' y='-3' width='7' height='11' rx='3.5' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='27' y='-3' width='6' height='8' rx='3' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='43' y='-3' width='8' height='13' rx='4' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3C/svg%3E") repeat-x 0 0 / 56px 12px;
+}
+:root[data-sketsa]:not([data-gaya]) table tbody tr:first-child td { padding-top: 1rem; }
+:root[data-sketsa]:not([data-gaya]) .tbl td + td { border-left: 2px dotted color-mix(in srgb, var(--border) 30%, transparent); }
+/* zebra berlapis di atas warna kartu yang opak, supaya kolom yang menempel (sticky) tetap menutupi isi yang tergulir */
+:root[data-sketsa]:not([data-gaya]):not(.dark) table.border-spacing-0 tbody tr:nth-child(even) td { background: linear-gradient(rgb(255 225 77 / 0.22), rgb(255 225 77 / 0.22)), var(--card); }
+:root.dark[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody tr:nth-child(even) td { background: linear-gradient(color-mix(in srgb, var(--primary-soft) 60%, transparent), color-mix(in srgb, var(--primary-soft) 60%, transparent)), var(--card); }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody tr:hover td { background: var(--primary-soft); }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tfoot td { border-top: 4px solid var(--border); }
+/* scheduler: tanggal bulat bergaya stiker, nomor urut stiker, kode MTR berlabel, hitungan hari kerja huruf gelembung */
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full { border: 3px solid var(--border); background-color: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 400; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full.bg-primary { background-color: var(--primary); color: #fff; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .text-\[13px\].font-medium, :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .md\:text-sm.font-medium { font-weight: 800; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .font-mono.text-\[11px\] { display: inline-block; margin-top: 2px; padding: 0 6px; border: 2px solid var(--border); border-radius: 6px; background: var(--muted); font-weight: 700; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .size-8.rounded-lg { border: 3px solid var(--border); background: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 400; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td.sticky.right-0 > span:first-child { font-family: var(--font-judul); font-size: 1.15rem; font-weight: 400; }
+
+/* paginasi: tombol stiker, halaman aktif ungu bergaris tinta */
+:root[data-sketsa]:not([data-gaya]) div:has(> [role="navigation"][aria-label="Halaman"]) { border-top: 4px solid var(--border); background: var(--muted); }
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button {
+  width: 36px; height: 36px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground);
+  font-family: var(--font-judul); font-size: 0.9rem; font-weight: 400; box-shadow: 3px 3px 0 var(--edge); transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+}
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button svg { stroke-width: 3.4; }
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button[aria-current="page"] { background: var(--primary); color: #fff; box-shadow: 3px 3px 0 var(--edge), inset -3px -3px 0 var(--cel); }
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:disabled { opacity: 0.35; box-shadow: none; }
+
+/* dropdown tertutup dan kotak tanggal: panah/ikon berupa stiker lime, bayangan keras, menekan saat terbuka */
+:root[data-sketsa]:not([data-gaya]) :is(button[aria-haspopup="listbox"], button[aria-haspopup="dialog"]) > svg {
+  flex: none; width: 22px; height: 22px; padding: 2px; background: var(--kuning); color: #0b0618; border: 2.5px solid var(--border); border-radius: 7px; stroke-width: 3.5; box-shadow: 2px 2px 0 var(--edge);
+}
+:root[data-sketsa]:not([data-gaya]) .inp:not(textarea) { box-shadow: 3px 3px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .inp:focus { box-shadow: 5px 5px 0 var(--primary); }
+:root[data-sketsa]:not([data-gaya]) :is(button[aria-haspopup="listbox"], button[aria-haspopup="dialog"]):hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) :is(button[aria-haspopup="listbox"], button[aria-haspopup="dialog"])[aria-expanded="true"] { background: var(--primary-soft); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--edge); }
+
+/* kalender (kotak tanggal buatan sendiri, aktif di Neo komik) */
+:root[data-sketsa]:not([data-gaya]) .tanggal-hud { border: 4px solid var(--border); border-radius: var(--card-radius); background: var(--card); box-shadow: 7px 7px 0 var(--edge); padding: 10px; }
+:root[data-sketsa]:not([data-gaya]) .tgl-nav { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+:root[data-sketsa]:not([data-gaya]) .tgl-nav button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground); box-shadow: 2px 2px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .tgl-nav button svg { stroke-width: 3.2; }
+:root[data-sketsa]:not([data-gaya]) .tgl-nav button:hover { background: var(--kuning); color: #0b0618; }
+:root[data-sketsa]:not([data-gaya]) .tgl-judul { flex: 1; text-align: center; font-family: var(--font-judul); font-size: 1rem; }
+:root[data-sketsa]:not([data-gaya]) .tgl-hari { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; }
+:root[data-sketsa]:not([data-gaya]) .tgl-hari span { font-family: var(--font-ui); font-weight: 700; font-size: 0.72rem; background: var(--kuning); color: #0b0618; border: 2px solid var(--border); border-radius: 6px; padding: 2px 0; }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button { height: 36px; border: 2px solid transparent; border-radius: var(--control-radius); background: transparent; color: var(--foreground); font-family: var(--font-ui); font-weight: 700; font-size: 0.9rem; }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; border-color: var(--border); box-shadow: 2px 2px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button[data-luar] { color: var(--muted-foreground); opacity: 0.6; }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button[data-ini] { border: 2px dashed var(--border); }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button[aria-pressed="true"] { background: var(--primary); color: #fff; border: 3px solid var(--border); box-shadow: 3px 3px 0 var(--edge); opacity: 1; }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button:disabled { opacity: 0.3; cursor: not-allowed; background: repeating-linear-gradient(135deg, transparent 0 4px, var(--hatch) 4px 6px); }
+:root[data-sketsa]:not([data-gaya]) .tgl-kaki { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 3px dashed var(--border); }
+:root[data-sketsa]:not([data-gaya]) .tgl-kaki button { padding: 6px 12px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground); font-family: var(--font-ui); font-weight: 700; box-shadow: 3px 3px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .tgl-kaki button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; }
+:root[data-sketsa]:not([data-gaya]) .tgl-kaki button:disabled { opacity: 0.4; box-shadow: none; }
+
+/* chart batang: garis dasar tinta, garis bantu, batang gelembung (bayangan kanan + kilau), angka di atas batang tebal */
+:root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] { border-bottom: 4px solid var(--border); padding-bottom: 0; background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--border) 20%, transparent) 0 2px, transparent 2px 25%); }
+:root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] div.rounded-t { position: relative; border-width: 3px; border-bottom-width: 0; border-radius: 12px 12px 0 0; box-shadow: 4px 0 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] div.rounded-t::before { content: ''; position: absolute; left: 16%; top: 8%; width: 14%; height: 60%; border-radius: 99px; background: rgb(255 255 255 / 0.55); z-index: 1; }
+:root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] .font-mono { font-size: 11px; font-weight: 800; color: var(--foreground); }
+/* chart garis: garis tebal berbayangan tinta, titik bergaris tinta */
+:root[data-sketsa]:not([data-gaya]) svg[role="img"] path[fill="none"] { stroke-width: 4; filter: drop-shadow(2px 3px 0 rgb(11 6 24 / 0.5)); }
+:root[data-sketsa]:not([data-gaya]) svg[role="img"] circle { r: 5px; stroke: var(--border); stroke-width: 2.5px; }
+:root[data-sketsa]:not([data-gaya]) svg[role="img"] rect[transform] { stroke: var(--border); stroke-width: 2px; }
+:root[data-sketsa]:not([data-gaya]) svg[role="img"] line[stroke-dasharray] { stroke: var(--border); opacity: 0.45; stroke-width: 1.6; }
+:root[data-sketsa]:not([data-gaya]) svg[role="img"] text { font-weight: 700; }
