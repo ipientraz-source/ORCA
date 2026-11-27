@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Inbox, Moon, Search, Sun, X, Zap, type LucideIcon } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Cpu, Inbox, Layers, Moon, Search, SprayCan, Sun, X, type LucideIcon } from 'lucide-react'
 
 export const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 
@@ -216,10 +216,10 @@ function useTema() {
 // Gaya tampilan: Neobrutalism (bawaan), Cyberpunk, atau Formal (bersih ala Linear). Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya di <html>
 // (cyber atau formal; Neo tanpa atribut).
 type Gaya = 'neo' | 'cyber' | 'formal'
-const DAFTAR_GAYA: { id: Gaya; nama: string; judul: string }[] = [
-  { id: 'neo', nama: 'Neobrutalism', judul: 'Gaya Neobrutalism' },
-  { id: 'cyber', nama: 'Cyberpunk', judul: 'Gaya Cyberpunk' },
-  { id: 'formal', nama: 'Linear', judul: 'Gaya Linear (bersih dan tenang)' },
+const DAFTAR_GAYA: { id: Gaya; nama: string; judul: string; Ikon: LucideIcon }[] = [
+  { id: 'neo', nama: 'Neobrutalism', judul: 'Gaya Neobrutalism', Ikon: SprayCan },
+  { id: 'cyber', nama: 'Cyberpunk', judul: 'Gaya Cyberpunk', Ikon: Cpu },
+  { id: 'formal', nama: 'Linear', judul: 'Gaya Linear (bersih dan tenang)', Ikon: Layers },
 ]
 // Sumber kebenaran: atribut data-gaya di <html>. Dibaca lewat useSyncExternalStore supaya semua pemilih gaya (desktop dan HP) selalu sinkron.
 function useGaya() {
@@ -249,30 +249,42 @@ export function useGayaAktif() {
   return useGaya().gaya
 }
 
-// Menu kecil pemilih gaya untuk bar HP (ikon petir membuka daftar gaya)
-function MenuGaya({ className = '' }: { className?: string }) {
+// Pemilih gaya berbasis ikon (tanpa nama di layar): tombol menampilkan ikon gaya yang aktif, klik membuka baris tiga ikon.
+// Nama tetap ada sebagai tooltip dan label aksesibilitas. kotak = bentuk tombol bingkai (desktop); tanpa kotak = tombol polos untuk bar HP.
+function MenuGaya({ className = '', kotak = false }: { className?: string; kotak?: boolean }) {
   const { gaya, pilih } = useGaya()
   const [buka, setBuka] = useState(false)
-  const kotak = useRef<HTMLDivElement>(null)
+  const bungkus = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!buka) return
-    const luar = (e: MouseEvent) => { if (!kotak.current?.contains(e.target as Node)) setBuka(false) }
+    const luar = (e: MouseEvent) => { if (!bungkus.current?.contains(e.target as Node)) setBuka(false) }
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setBuka(false) }
     document.addEventListener('mousedown', luar)
     document.addEventListener('keydown', esc)
     return () => { document.removeEventListener('mousedown', luar); document.removeEventListener('keydown', esc) }
   }, [buka])
+  const aktif = DAFTAR_GAYA.find((g) => g.id === gaya) ?? DAFTAR_GAYA[0]
+  const dasar = kotak
+    ? 'inline-flex size-9 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-muted'
+    : 'p-2 rounded-md transition-colors hover:bg-foreground/10'
   return (
-    <div ref={kotak} className="relative">
-      <button onClick={() => setBuka((b) => !b)} aria-haspopup="menu" aria-expanded={buka} title="Pilih gaya tampilan" aria-label="Ganti gaya tampilan" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
-        <Zap size={16} />
+    <div ref={bungkus} className="relative">
+      <button onClick={() => setBuka((x) => !x)} aria-haspopup="menu" aria-expanded={buka} title={`Tampilan: ${aktif.nama}`} aria-label="Ganti gaya tampilan" className={`${dasar} ${className}`}>
+        <aktif.Ikon size={kotak ? 17 : 16} />
       </button>
       {buka && (
-        <div role="menu" className="select-hud absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-card p-1 text-foreground shadow-lg">
+        <div role="menu" aria-label="Pilih gaya tampilan" className="select-hud rise absolute right-0 top-full z-50 mt-1 flex gap-1 rounded-xl border border-border bg-card p-1 text-foreground shadow-lg">
           {DAFTAR_GAYA.map((g) => (
-            <button key={g.id} role="menuitemradio" aria-checked={gaya === g.id} onClick={() => { pilih(g.id); setBuka(false) }} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted ${gaya === g.id ? 'font-semibold text-primary' : ''}`}>
-              <span className="flex-1">{g.nama}</span>
-              {gaya === g.id && <Check size={15} aria-hidden />}
+            <button
+              key={g.id}
+              role="menuitemradio"
+              aria-checked={gaya === g.id}
+              aria-label={g.judul}
+              title={g.nama}
+              onClick={() => { pilih(g.id); setBuka(false) }}
+              className={`inline-flex size-10 items-center justify-center rounded-lg transition-colors hover:bg-muted ${gaya === g.id ? 'bg-primary-soft text-primary' : ''}`}
+            >
+              <g.Ikon size={18} />
             </button>
           ))}
         </div>
@@ -294,15 +306,12 @@ export function TemaToggle({ className = '' }: { className?: string }) {
   )
 }
 
-// Pemilih tampilan: dropdown gaya (Neo / Cyber / Formal) + SATU tombol terang/gelap sekali klik
+// Pemilih tampilan: ikon gaya (klik untuk memilih Neo / Cyber / Linear) + SATU tombol terang/gelap sekali klik
 export function TemaSwitch() {
   const { gelap, pilih } = useTema()
-  const gaya = useGaya()
   return (
     <div className="inline-flex items-center gap-2">
-      <div className="w-40">
-        <Select className="w-full" lebarMin={176} value={gaya.gaya} onChange={(v) => gaya.pilih(v as Gaya)} opsi={DAFTAR_GAYA.map((g) => ({ value: g.id, label: g.nama }))} />
-      </div>
+      <MenuGaya kotak />
       <button
         onClick={() => pilih(!gelap)}
         title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
