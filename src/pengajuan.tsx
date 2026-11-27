@@ -46,12 +46,61 @@ export function AntreanPengajuan({ onSelesai }: { onSelesai?: () => void }) {
   const menunggu = aju.rows.filter((a) => a.status === 'menunggu')
   const selesai = aju.rows.filter((a) => a.status !== 'menunggu')
   const pg = usePage(selesai, [])
+  const pgM = usePage(menunggu, [])
+  // Keputusan massal: centang beberapa pengajuan lalu setujui atau tolak sekaligus. Dikerjakan satu per satu lewat putuskan_pengajuan yang sama
+  // dengan tombol di kartu, dari yang paling lama, jadi aturan database tetap berlaku untuk tiap pengajuan.
+  const [pilih, setPilih] = useState<Set<string>>(new Set())
+  const [catatanM, setCatatanM] = useState('')
+  const [sibukM, setSibukM] = useState(false)
+  const terpilih = menunggu.filter((a) => pilih.has(a.id))
+  const ganti = (id: string, on: boolean) => setPilih((p) => { const n = new Set(p); if (on) n.add(id); else n.delete(id); return n })
+  const putusMassal = async (setuju: boolean) => {
+    const urut = [...terpilih].sort((x, y) => x.dibuat.localeCompare(y.dibuat))
+    if (!urut.length) return
+    if (!setuju && !catatanM.trim()) return toast('Isi alasan penolakan di kolom catatan')
+    const jadi = urut.filter((a) => a.jenis === 'jadi_arcon')
+    const sama = new Map<string, number>()
+    for (const a of jadi) if (a.ds_id) sama.set(a.ds_id, (sama.get(a.ds_id) ?? 0) + 1)
+    const bentrok = [...sama].filter(([, n]) => n > 1).map(([id]) => dsl.rows.find((d) => d.id === id)?.nama ?? 'DS')
+    const diganti = jadi.filter((a) => { const lama = dsl.rows.find((d) => d.id === a.ds_id)?.arcon_id; return !!lama && lama !== a.pemohon_id }).length
+    const msg = `${setuju ? 'Setujui' : 'Tolak'} ${urut.length} pengajuan (${jadi.length} jadi Arcon, ${urut.length - jadi.length} DS baru)?`
+      + (setuju && diganti ? ` ${diganti} di antaranya menggantikan Arcon yang sekarang.` : '')
+      + (setuju && bentrok.length ? ` Perhatian: ${bentrok.join(', ')} diajukan lebih dari satu orang; diproses dari yang terlama, sehingga yang terakhir menjadi Arcon-nya.` : '')
+    if (!(await konfirmasi(msg, { judul: setuju ? 'Setujui pengajuan terpilih?' : 'Tolak pengajuan terpilih?', ya: setuju ? `Setujui ${urut.length}` : `Tolak ${urut.length}`, bahaya: !setuju }))) return
+    setSibukM(true)
+    const beres: string[] = []
+    const gagal: string[] = []
+    for (const a of urut) {
+      const r = await sb.rpc('putuskan_pengajuan', { p_id: a.id, p_setuju: setuju, p_catatan: catatanM })
+      if (r.error) gagal.push(`${a.pemohon_nama}: ${r.error.message}`)
+      else beres.push(a.id)
+    }
+    setSibukM(false)
+    setPilih((p) => { const n = new Set(p); beres.forEach((id) => n.delete(id)); return n })
+    if (!gagal.length) setCatatanM('')
+    if (beres.length) toast.ok(`${beres.length} pengajuan ${setuju ? 'disetujui' : 'ditolak'}`)
+    if (gagal.length) toast(`${gagal.length} pengajuan gagal diproses. ${gagal[0]}`)
+    muat()
+  }
   if (!aju.rows.length) return aju.err ? <Err msg={aju.err} /> : null
   return (
     <div className="mb-4 space-y-2">
       <Err msg={aju.err} />
       <h3 className="text-sm font-semibold">Pengajuan Arcon <span className="text-muted-foreground">({menunggu.length} menunggu)</span></h3>
-      {menunggu.map((a) => <Menunggu key={a.id} a={a} dsl={dsl.rows} arcon={arcon.rows} selesai={muat} />)}
+      {menunggu.length > 1 && (
+        <div className="card !mb-0 flex flex-wrap items-center gap-2 !p-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" className="size-4" checked={terpilih.length === menunggu.length} onChange={(e) => setPilih(e.target.checked ? new Set(menunggu.map((a) => a.id)) : new Set())} />
+            Pilih semua ({menunggu.length})
+          </label>
+          <span className="text-xs text-muted-foreground">{terpilih.length} dipilih</span>
+          <input className="inp min-w-48 flex-1" placeholder="Catatan untuk yang dipilih (wajib bila ditolak)" value={catatanM} disabled={!terpilih.length} onChange={(e) => setCatatanM(e.target.value)} />
+          <button className="btn" disabled={sibukM || !terpilih.length} onClick={() => putusMassal(true)}>{sibukM ? 'Memproses…' : `Setujui terpilih (${terpilih.length})`}</button>
+          <button className="btn2 text-danger" disabled={sibukM || !terpilih.length} onClick={() => putusMassal(false)}>Tolak terpilih</button>
+        </div>
+      )}
+      {pgM.rows.map((a) => <Menunggu key={a.id} a={a} dsl={dsl.rows} arcon={arcon.rows} selesai={muat} dipilih={pilih.has(a.id)} onPilih={menunggu.length > 1 ? (on) => ganti(a.id, on) : undefined} />)}
+      <Pagination {...pgM} />
       {!!selesai.length && (
         <details className="rounded-xl border border-border bg-card">
           <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold">Riwayat keputusan ({selesai.length})</summary>
@@ -178,7 +227,7 @@ function FormJadiArcon({ dsl, selesai }: { dsl: Ds[]; selesai: () => void }) {
   )
 }
 
-function Menunggu({ a, dsl, arcon, selesai }: { a: Aju; dsl: Ds[]; arcon: { id: string; nama: string }[]; selesai: () => void }) {
+function Menunggu({ a, dsl, arcon, selesai, dipilih = false, onPilih }: { a: Aju; dsl: Ds[]; arcon: { id: string; nama: string }[]; selesai: () => void; dipilih?: boolean; onPilih?: (on: boolean) => void }) {
   const [catatan, setCatatan] = useState('')
   const [sibuk, setSibuk] = useState(false)
   const lama = a.jenis === 'jadi_arcon' ? dsl.find((d) => d.id === a.ds_id)?.arcon_id ?? null : null
@@ -193,8 +242,9 @@ function Menunggu({ a, dsl, arcon, selesai }: { a: Aju; dsl: Ds[]; arcon: { id: 
     setSibuk(false)
   }
   return (
-    <div className="card !mb-0 space-y-2 !border-warning/40">
+    <div className={`card !mb-0 space-y-2 !border-warning/40 ${dipilih ? 'ring-2 ring-primary' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
+        {onPilih && <input type="checkbox" className="size-4" checked={dipilih} onChange={(e) => onPilih(e.target.checked)} aria-label={`Pilih pengajuan ${a.pemohon_nama}`} />}
         <span className="badge bg-primary-soft text-primary">{a.jenis === 'ds_baru' ? 'DS baru' : 'Jadi Arcon'}</span>
         <b>{rincian(a)}</b>
         <span className="ml-auto text-xs text-muted-foreground">{a.pemohon_nama} · {tgl(a.dibuat)}</span>
