@@ -1692,6 +1692,11 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) .tgl-kaki button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; }
 :root[data-sketsa]:not([data-gaya]) .tgl-kaki button:disabled { opacity: 0.4; box-shadow: none; }
 
+/* lebar sedang (sidebar + empat kartu angka sejajar): ikon dekoratif kartu disembunyikan agar angka dan label tidak saling menimpa */
+@media (min-width: 768px) and (max-width: 1180px) {
+  :root[data-sketsa]:not([data-gaya]) .stat > div:first-child { display: none; }
+}
+
 /* chart batang: garis dasar tinta, garis bantu, batang gelembung (bayangan kanan + kilau), angka di atas batang tebal */
 :root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] { border-bottom: 4px solid var(--border); padding-bottom: 0; background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--border) 20%, transparent) 0 2px, transparent 2px 25%); }
 :root[data-sketsa]:not([data-gaya]) [role="img"][aria-label^="Grafik"] div.rounded-t { position: relative; border-width: 3px; border-bottom-width: 0; border-radius: 12px 12px 0 0; box-shadow: 4px 0 0 var(--edge); }
