@@ -735,6 +735,8 @@ table thead th :is(div, span) { color: inherit; }
 /* Batang grafik yang laporannya belum lengkap: garis diagonal (bukan memudar, supaya warna tetap cerah di semua tema) */
 .bar-belum { position: relative; overflow: hidden; }
 .bar-belum::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.32) 0 4px, transparent 4px 9px); }
+/* Formal: garis tipis dan terang (putih) supaya batang tetap tenang, bukan blok gelap */
+:root:root[data-gaya="formal"] .bar-belum::after { background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.4) 0 1.5px, transparent 1.5px 6px); }
 
 /* ---- HP (di bawah md): lebih padat dan rapi, berlaku di gaya Neo maupun Cyber ---- */
 /* Label kartu angka dulu mewarisi tinggi baris induk (24px) sehingga renggang; jadikan blok dengan baris rapat. */
