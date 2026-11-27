@@ -275,30 +275,24 @@ function DashboardCaptain() {
 }
 
 // Dashboard Super-admin dan Arcon: tiga halaman, absensi Captain, On-time Performance (clock-in BO, aktual), dan Budget Trend (naik turunnya budget).
-// Pengalih tab di kanan atas menggeser ke halaman yang dipilih.
+// Dropdown di kiri atas memilih halaman, dengan animasi geser sesuai arah perpindahan.
 type Halaman = 'captain' | 'bo' | 'budget'
-const HALAMAN: { id: Halaman; nama: string; singkat: string; Ikon: typeof Gauge }[] = [
-  { id: 'captain', nama: 'Absensi Captain', singkat: 'Absensi', Ikon: ClipboardCheck },
-  { id: 'bo', nama: 'On-time Performance', singkat: 'On-time', Ikon: Gauge },
-  { id: 'budget', nama: 'Budget Trend', singkat: 'Budget', Ikon: TrendingUp },
+const HALAMAN: { id: Halaman; nama: string; Ikon: typeof Gauge }[] = [
+  { id: 'captain', nama: 'Absensi Captain', Ikon: ClipboardCheck },
+  { id: 'bo', nama: 'On-time Performance', Ikon: Gauge },
+  { id: 'budget', nama: 'Budget Trend', Ikon: TrendingUp },
 ]
 export function Dashboard() {
   const [hal, setHal] = useState<Halaman>('captain')
   const [geser, setGeser] = useState('') // animasi hanya setelah tab dipilih, bukan saat Dashboard pertama dibuka
   const idx = (h: Halaman) => HALAMAN.findIndex((x) => x.id === h)
+  const Ikon = HALAMAN[idx(hal)].Ikon // ikon halaman yang sedang dibuka
   const pindah = (h: Halaman) => { if (h === hal) return; setGeser(idx(h) > idx(hal) ? 'geser-kanan' : 'geser-kiri'); setHal(h) }
   return (
     <div className="overflow-x-clip pr-1.5">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <b className="flex-1 text-base">{HALAMAN[idx(hal)].nama}</b>
-        <div role="tablist" aria-label="Halaman Dashboard" className="flex flex-wrap gap-1">
-          {HALAMAN.map(({ id, singkat, nama, Ikon }) => (
-            <button key={id} type="button" role="tab" aria-selected={hal === id} onClick={() => pindah(id)} title={`Buka ${nama}`} className={`tab inline-flex items-center gap-1.5 !text-xs ${hal === id ? 'tab-on' : ''}`}>
-              <Ikon size={15} />
-              {singkat}
-            </button>
-          ))}
-        </div>
+      <div className="mb-3 flex items-center gap-2">
+        <Ikon size={18} className="shrink-0 text-primary" aria-hidden />
+        <div className="w-64 max-w-full"><Select value={hal} onChange={(v) => pindah(v as Halaman)} opsi={HALAMAN.map((x) => ({ value: x.id, label: x.nama }))} /></div>
       </div>
       <div key={hal} className={geser}>
         {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : <DashboardCaptain />}
