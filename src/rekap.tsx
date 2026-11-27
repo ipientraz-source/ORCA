@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
-import { CalendarDays, ClipboardCheck, ClipboardX, Download, Gauge, TrendingUp, UserX } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ClipboardCheck, ClipboardX, Download, Gauge, TrendingUp, UserX } from 'lucide-react'
 import { InputTanggal } from './tanggal'
 import { ambilSemua } from './laporan-order'
 import { DashboardBo } from './dashboard-bo'
@@ -275,7 +275,7 @@ function DashboardCaptain() {
 }
 
 // Dashboard Super-admin dan Arcon: tiga halaman, absensi Captain, On-time Performance (clock-in BO, aktual), dan Budget Trend (naik turunnya budget).
-// Dropdown di kiri atas memilih halaman, dengan animasi geser sesuai arah perpindahan.
+// Tombol ikon di kanan atas membuka menu halaman, dengan animasi geser sesuai arah perpindahan.
 type Halaman = 'captain' | 'bo' | 'budget'
 const HALAMAN: { id: Halaman; nama: string; Ikon: typeof Gauge }[] = [
   { id: 'captain', nama: 'Absensi Captain', Ikon: ClipboardCheck },
@@ -287,14 +287,52 @@ export function Dashboard() {
   const [geser, setGeser] = useState('') // animasi hanya setelah tab dipilih, bukan saat Dashboard pertama dibuka
   const idx = (h: Halaman) => HALAMAN.findIndex((x) => x.id === h)
   const Ikon = HALAMAN[idx(hal)].Ikon // ikon halaman yang sedang dibuka
+  const [buka, setBuka] = useState(false)
+  const kotak = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!buka) return
+    const luar = (e: MouseEvent) => { if (!kotak.current?.contains(e.target as Node)) setBuka(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setBuka(false) }
+    document.addEventListener('mousedown', luar)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', luar); document.removeEventListener('keydown', esc) }
+  }, [buka])
   const pindah = (h: Halaman) => { if (h === hal) return; setGeser(idx(h) > idx(hal) ? 'geser-kanan' : 'geser-kiri'); setHal(h) }
   return (
     <div className="overflow-x-clip pr-1.5">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <b className="min-w-0 flex-1 text-base">{HALAMAN[idx(hal)].nama}</b>
-        <div className="flex items-center gap-2">
-          <Ikon size={18} className="shrink-0 text-primary" aria-hidden />
-          <div className="w-52"><Select className="w-full" value={hal} onChange={(v) => pindah(v as Halaman)} opsi={HALAMAN.map((x) => ({ value: x.id, label: x.nama }))} /></div>
+        <div ref={kotak} className="relative">
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={buka}
+            aria-label="Pilih halaman dashboard"
+            title="Pilih halaman"
+            onClick={() => setBuka((b) => !b)}
+            className={`inp !w-auto inline-flex items-center gap-1.5 !px-2.5 ${buka ? '!border-primary' : ''}`}
+          >
+            <Ikon size={18} className="text-primary" aria-hidden />
+            <ChevronDown size={14} className={`text-muted-foreground transition-transform ${buka ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
+          {buka && (
+            <div role="menu" className="rise absolute right-0 top-full z-[60] mt-1.5 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-2xl">
+              {HALAMAN.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={x.id === hal}
+                  onClick={() => { pindah(x.id); setBuka(false) }}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted ${x.id === hal ? 'font-semibold text-primary' : ''}`}
+                >
+                  <x.Ikon size={16} className="shrink-0" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">{x.nama}</span>
+                  {x.id === hal && <Check size={15} aria-hidden />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <div key={hal} className={geser}>
