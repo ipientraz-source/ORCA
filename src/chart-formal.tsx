@@ -129,3 +129,28 @@ export function KpiSpark({ label, nilai, deret, selisih, tone = 'normal' }: { la
     </div>
   )
 }
+
+// ── Cincin progres bersarang (satu hue, tiga shade): satu cincin per shift, angka total di tengah ──
+export function Rings({ items, tengah, label }: { items: { nama: string; nilai: number | null; detail: string }[]; tengah: string; label: string }) {
+  const W = 360, H = 170, cx = 90, cy = 85, R0 = 70, gap = 17, sw = 11
+  const shade = [1, 0.62, 0.34]
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: 420 }} className="block text-primary" role="img" aria-label={label}>
+      <title>{label}</title>
+      {items.map((it, i) => {
+        const R = R0 - i * gap, C = 2 * Math.PI * R, v = Math.max(0, Math.min(100, it.nilai ?? 0))
+        return (
+          <g key={it.nama}>
+            <circle cx={cx} cy={cy} r={R} fill="none" stroke={GARIS} strokeWidth={sw} />
+            {it.nilai !== null && <circle cx={cx} cy={cy} r={R} fill="none" stroke="currentColor" strokeOpacity={shade[i] ?? 0.3} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${((C * v) / 100).toFixed(1)} ${C.toFixed(1)}`} transform={`rotate(-90 ${cx} ${cy})`} />}
+            <rect x={190} y={34 + i * 38} width="10" height="10" rx="2.5" fill="currentColor" fillOpacity={shade[i] ?? 0.3} />
+            <text x={208} y={43 + i * 38} fontSize="12" fontWeight="500" fill={INK}>{it.nama}</text>
+            <text x={208} y={58 + i * 38} fontSize="11" fill={REDUP}>{it.detail}</text>
+            <text x={W - 6} y={43 + i * 38} textAnchor="end" fontSize="13" fontWeight="600" fill={INK}>{it.nilai === null ? '–' : Math.round(it.nilai) + '%'}</text>
+          </g>
+        )
+      })}
+      <text x={cx} y={cy + 7} textAnchor="middle" fontSize="20" fontWeight="600" fill={INK}>{tengah}</text>
+    </svg>
+  )
+}
