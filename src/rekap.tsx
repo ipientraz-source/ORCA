@@ -290,9 +290,12 @@ export function Dashboard() {
   const pindah = (h: Halaman) => { if (h === hal) return; setGeser(idx(h) > idx(hal) ? 'geser-kanan' : 'geser-kiri'); setHal(h) }
   return (
     <div className="overflow-x-clip pr-1.5">
-      <div className="mb-3 flex items-center gap-2">
-        <Ikon size={18} className="shrink-0 text-primary" aria-hidden />
-        <div className="w-64 max-w-full"><Select value={hal} onChange={(v) => pindah(v as Halaman)} opsi={HALAMAN.map((x) => ({ value: x.id, label: x.nama }))} /></div>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <b className="min-w-0 flex-1 text-base">{HALAMAN[idx(hal)].nama}</b>
+        <div className="flex items-center gap-2">
+          <Ikon size={18} className="shrink-0 text-primary" aria-hidden />
+          <div className="w-52"><Select className="w-full" value={hal} onChange={(v) => pindah(v as Halaman)} opsi={HALAMAN.map((x) => ({ value: x.id, label: x.nama }))} /></div>
+        </div>
       </div>
       <div key={hal} className={geser}>
         {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : <DashboardCaptain />}
