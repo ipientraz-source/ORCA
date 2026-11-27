@@ -194,10 +194,18 @@ export function Pagination({ hal, total, jumlah, setHal, ukuran, setUkuran }: { 
   )
 }
 
+// Peralihan tema yang halus: kelas ganti-tema dipasang sebentar di <html> supaya warna berubah memudar (diatur di CSS), lalu dilepas
+function peralihan() {
+  const el = document.documentElement
+  el.classList.add('ganti-tema')
+  window.setTimeout(() => el.classList.remove('ganti-tema'), 320)
+}
+
 // Tombol mode terang / gelap (pilihan disimpan di perangkat)
 function useTema() {
   const [gelap, setGelap] = useState(() => document.documentElement.classList.contains('dark'))
   const pilih = (g: boolean) => {
+    peralihan()
     document.documentElement.classList.toggle('dark', g)
     store.set('tema', g ? 'gelap' : 'terang')
     setGelap(g)
@@ -211,7 +219,7 @@ type Gaya = 'neo' | 'cyber' | 'formal'
 const DAFTAR_GAYA: { id: Gaya; nama: string; judul: string }[] = [
   { id: 'neo', nama: 'Neobrutalism', judul: 'Gaya Neobrutalism' },
   { id: 'cyber', nama: 'Cyberpunk', judul: 'Gaya Cyberpunk' },
-  { id: 'formal', nama: 'Formal', judul: 'Gaya Formal (bersih dan tenang)' },
+  { id: 'formal', nama: 'Linear', judul: 'Gaya Linear (bersih dan tenang)' },
 ]
 // Sumber kebenaran: atribut data-gaya di <html>. Dibaca lewat useSyncExternalStore supaya semua pemilih gaya (desktop dan HP) selalu sinkron.
 function useGaya() {
@@ -228,6 +236,7 @@ function useGaya() {
     (): Gaya => 'neo',
   )
   const pilih = (g: Gaya) => {
+    peralihan()
     if (g === 'neo') delete document.documentElement.dataset.gaya
     else document.documentElement.dataset.gaya = g
     store.set('gaya', g)

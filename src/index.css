@@ -159,6 +159,12 @@ h1, h2, h3 { font-family: var(--font-display); }
 .geser-kiri { animation: geser-dari-kiri 0.3s ease-out; }
 @media (prefers-reduced-motion: reduce) { .geser-kanan, .geser-kiri { animation: none; } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* Peralihan tema: warna memudar sebentar saat gaya/mode diganti (kelas dipasang lib.tsx selama 320ms). Dilewati bila pengguna meminta gerak dikurangi. */
+@media (prefers-reduced-motion: no-preference) {
+  :root.ganti-tema *, :root.ganti-tema *::before, :root.ganti-tema *::after {
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, fill 200ms ease, stroke 200ms ease, box-shadow 200ms ease !important;
+  }
+}
 /* backwards (bukan both): setelah selesai, elemen tidak menyisakan transform. Sisa transform membuat dialog fixed di dalamnya mengikuti halaman, bukan layar. */
 .rise { animation: rise 0.28s ease-out backwards; }
 /* Layar sentuh: iOS Safari memperbesar halaman saat mengisi kolom berfont di bawah 16px dan tidak mengecilkannya lagi.
@@ -1893,3 +1899,29 @@ table thead th :is(div, span) { color: inherit; }
 
 /* goresan ikon hairline (gaya Linear): glyph garis asli dengan goresan tipis; Neo komik memakai glyph lain yang tebal, lihat src/ikon-gaya.tsx */
 :root:root[data-gaya="formal"] svg.lucide { stroke-width: 1.6; }
+
+/* ── Gerak ala Linear (hanya gaya Linear/formal): halus dan cepat, tanpa pantulan, easing keluar-cepat ── */
+@keyframes lin-masuk { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes lin-pindah-kanan { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+@keyframes lin-pindah-kiri { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes lin-muncul { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes lin-gambar { to { stroke-dashoffset: 0; } }
+@keyframes lin-pudar { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* halaman masuk: pudar + naik 4px (backwards agar tidak menyisakan transform yang menggeser dialog fixed) */
+  :root:root[data-gaya="formal"] .rise { animation: lin-masuk 160ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  /* pergantian halaman Dashboard: geser halus 8px sambil memudar, bukan geser 36px */
+  :root:root[data-gaya="formal"] .geser-kanan { animation: lin-pindah-kanan 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+  :root:root[data-gaya="formal"] .geser-kiri { animation: lin-pindah-kiri 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+  /* dropdown, menu, dan dialog: skala 0,97 + pudar, tumbuh dari tepi atas */
+  :root:root[data-gaya="formal"] :is(.select-hud.rise, [role="alertdialog"].rise) { animation: lin-muncul 120ms cubic-bezier(0.22, 1, 0.36, 1) backwards; transform-origin: 50% 0; }
+  /* hover/fokus: warna berubah 120ms, bukan loncat */
+  :root:root[data-gaya="formal"] :is(a, button, .btn, .btn2, .tab, .nav, .inp, .badge, .stat, .card, tr, td, th, [role="option"], [role="menuitem"], [role="menuitemradio"]) {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  /* chart: garis tergambar sekali, isi memudar berurutan */
+  :root:root[data-gaya="formal"] .cf-garis { stroke-dasharray: 1; stroke-dashoffset: 1; animation: lin-gambar 700ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards; }
+  :root:root[data-gaya="formal"] .cf-pudar { animation: lin-pudar 320ms ease-out backwards; }
+}

@@ -61,8 +61,8 @@ function AreaTargetSvg({ data, target = 95, label, W }: { data: TitikTanggal[]; 
           <text x={l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill={REDUP}>{v}</text>
         </g>
       ))}
-      <path d={area} fill="currentColor" fillOpacity="0.1" />
-      <path d={garis} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={area} className="cf-pudar" fill="currentColor" fillOpacity="0.1" />
+      <path d={garis} className="cf-garis" pathLength={1} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       <line x1={l} x2={W - r} y1={y(target)} y2={y(target)} stroke={INK} strokeWidth="1" strokeDasharray="3 4" opacity="0.55" />
       <text x={W - r + 6} y={y(target) + 4} fontSize="11" fill={REDUP}>target {target}%</text>
       {data.map((p, i) => p.nilai !== null && <circle key={p.tanggal} cx={x(i)} cy={y(p.nilai)} r="8" fill="transparent"><title>{`${tgl(p.tanggal)}: ${Math.round(p.nilai)}%`}</title></circle>)}
@@ -104,9 +104,9 @@ function HeatmapSvg({ dsList, hariList, sel, label, W }: { dsList: { id: string;
             const px = labelW + c * step, py = r * baris
             const ket = `${d.nama}, ${tgl(h)}: ${v.belum ? 'belum dilaporkan' : v.rate === null ? 'tidak ada budget' : Math.round(v.rate * 100) + '%'}`
             return v.rate === null || v.belum ? (
-              <rect key={h} x={px + 0.75} y={py + 0.75} width={cw - 1.5} height={cw - 1.5} rx="3" fill="none" stroke={REDUP} strokeWidth="1" strokeDasharray="2 2"><title>{ket}</title></rect>
+              <rect key={h} className="cf-pudar" style={{ animationDelay: `${c * 22}ms` }} x={px + 0.75} y={py + 0.75} width={cw - 1.5} height={cw - 1.5} rx="3" fill="none" stroke={REDUP} strokeWidth="1" strokeDasharray="2 2"><title>{ket}</title></rect>
             ) : (
-              <rect key={h} x={px} y={py} width={cw} height={cw} rx="3" fill="currentColor" fillOpacity={taraf(v.rate)}><title>{ket}</title></rect>
+              <rect key={h} className="cf-pudar" style={{ animationDelay: `${c * 22}ms` }} x={px} y={py} width={cw} height={cw} rx="3" fill="currentColor" fillOpacity={taraf(v.rate)}><title>{ket}</title></rect>
             )
           })}
         </g>
@@ -160,7 +160,7 @@ export function Rings({ items, tengah, label }: { items: { nama: string; nilai: 
       {items.map((it, i) => {
         const R = R0 - i * gap, C = 2 * Math.PI * R, v = Math.max(0, Math.min(100, it.nilai ?? 0))
         return (
-          <g key={it.nama}>
+          <g key={it.nama} className="cf-pudar" style={{ animationDelay: `${i * 40}ms` }}>
             <circle cx={cx} cy={cy} r={R} fill="none" stroke={GARIS} strokeWidth={sw} />
             {it.nilai !== null && <circle cx={cx} cy={cy} r={R} fill="none" stroke="currentColor" strokeOpacity={shade[i] ?? 0.3} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${((C * v) / 100).toFixed(1)} ${C.toFixed(1)}`} transform={`rotate(-90 ${cx} ${cy})`} />}
             <rect x={190} y={34 + i * 38} width="10" height="10" rx="2.5" fill="currentColor" fillOpacity={shade[i] ?? 0.3} />
@@ -213,7 +213,7 @@ function KolomBertumpukSvg({ data, tandai, label, W }: { data: KolomHari[]; tand
           const bag = [d.pagi, d.tengah, d.siang]
           const ban = tandai?.get(d.tanggal) ?? 0
           return (
-            <g key={d.tanggal}>
+            <g key={d.tanggal} className="cf-pudar" style={{ animationDelay: `${i * 14}ms` }}>
               {bag.map((v, k) => {
                 const y1 = y(acc + v), y0 = y(acc)
                 acc += v
@@ -250,7 +250,7 @@ function DumbbellSvg({ items, label, W }: { items: BarisDumbbell[]; label: strin
       {items.map((it, i) => {
         const yy = 16 + i * rowH, d = it.awal === null ? it.akhir : it.akhir - it.awal
         return (
-          <g key={it.nama}>
+          <g key={it.nama} className="cf-pudar" style={{ animationDelay: `${i * 40}ms` }}>
             <text x={l - 12} y={yy + 4} textAnchor="end" fontSize="12" fill={INK}><title>{it.nama}</title>{ringkas(it.nama)}</text>
             <line x1={l} x2={W - r} y1={yy} y2={yy} stroke={GARIS} strokeWidth="1" />
             {it.awal !== null && it.awal !== it.akhir && <line x1={x(it.awal)} x2={x(it.akhir)} y1={yy} y2={yy} stroke="currentColor" strokeWidth="2" />}
