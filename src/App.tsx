@@ -11,7 +11,6 @@ import { JadwalDs, JadwalSemua } from './jadwal'
 import { Dashboard, Rekap } from './rekap'
 import { DataRider } from './riders'
 import { Kelola, KelolaArcon } from './kelola'
-import { BudgetTrend } from './budget-trend'
 import { Pengguna } from './pengguna'
 import { Armada } from './armada'
 import { Riwayat } from './riwayat'
@@ -34,9 +33,7 @@ const SUPER: Tab[] = [
   { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
   { nama: 'Dash Attendance', desc: 'Sinkron clock-in dari BO, pasangkan hub ke DS, atur jam shift', Icon: UserCheck, View: () => <KehadiranBo /> },
   { nama: 'WA Automation', desc: 'Atur pesan WhatsApp otomatis dan lihat riwayat kirim', Icon: Send, View: () => <PengaturanWa /> },
-  { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },
-  { nama: 'Budget Trend', desc: 'Naik turunnya budget rider dari waktu ke waktu, bahan presentasi', Icon: TrendingUp, View: () => <BudgetTrend /> },
-  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
+  { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
@@ -66,9 +63,7 @@ const ARCON: Tab[] = [
   { nama: 'Schedule Compliance', desc: 'Jadwal vs kehadiran sebenarnya, kunci absensi mingguan', Icon: ClipboardList, View: Rekap },
   { nama: 'Dash Attendance', desc: 'Clock-in rider dari BO untuk DS Anda', Icon: UserCheck, View: () => <KehadiranBo bacaSaja /> },
   { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider DS Anda', Icon: Receipt, View: ({ dsList }) => <LaporanOrderMenu ds={null} dsList={dsList} /> },
-  { nama: 'Hub Control', desc: 'Budget rider per shift dan Captain untuk DS Anda', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },
-  { nama: 'Budget Trend', desc: 'Naik turunnya budget rider di DS Anda dari waktu ke waktu', Icon: TrendingUp, View: () => <BudgetTrend /> },
-  { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
+  { nama: 'Hub Control', desc: 'Budget rider per shift dan Captain untuk DS Anda', Icon: Building2, View: ({ me, dsList }) => <KelolaArcon me={me} dsList={dsList} /> },  { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: ({ dsList }) => <ImporData terbatas={dsList} /> },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut DS Anda', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Activity Log', desc: 'Aktivitas DS Anda beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]

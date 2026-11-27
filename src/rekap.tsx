@@ -6,6 +6,7 @@ import { CalendarDays, ClipboardCheck, ClipboardX, Download, Gauge, TrendingUp, 
 import { InputTanggal } from './tanggal'
 import { ambilSemua } from './laporan-order'
 import { DashboardBo } from './dashboard-bo'
+import { BudgetTrend } from './budget-trend'
 
 type DsRow = {
   ds_id: string; ds_nama: string; dijadwalkan: number; terisi: number; patuh: number; alpha: number; tukar: number
@@ -273,23 +274,34 @@ function DashboardCaptain() {
   )
 }
 
-// Dashboard Super-admin dan Arcon: dua halaman, absensi Captain dan On-time Performance (clock-in BO, aktual). Satu tombol menggeser ke halaman lainnya.
+// Dashboard Super-admin dan Arcon: tiga halaman, absensi Captain, On-time Performance (clock-in BO, aktual), dan Budget Trend (naik turunnya budget).
+// Pengalih tab di kanan atas menggeser ke halaman yang dipilih.
+type Halaman = 'captain' | 'bo' | 'budget'
+const HALAMAN: { id: Halaman; nama: string; singkat: string; Ikon: typeof Gauge }[] = [
+  { id: 'captain', nama: 'Absensi Captain', singkat: 'Absensi', Ikon: ClipboardCheck },
+  { id: 'bo', nama: 'On-time Performance', singkat: 'On-time', Ikon: Gauge },
+  { id: 'budget', nama: 'Budget Trend', singkat: 'Budget', Ikon: TrendingUp },
+]
 export function Dashboard() {
-  const [bo, setBo] = useState(false)
-  const [geser, setGeser] = useState(false) // animasi hanya setelah tombol ditekan, bukan saat Dashboard pertama dibuka
-  const Ikon = bo ? ClipboardCheck : Gauge // ikon halaman tujuan
-  const tujuan = bo ? 'Absensi Captain' : 'On-time Performance'
+  const [hal, setHal] = useState<Halaman>('captain')
+  const [geser, setGeser] = useState('') // animasi hanya setelah tab dipilih, bukan saat Dashboard pertama dibuka
+  const idx = (h: Halaman) => HALAMAN.findIndex((x) => x.id === h)
+  const pindah = (h: Halaman) => { if (h === hal) return; setGeser(idx(h) > idx(hal) ? 'geser-kanan' : 'geser-kiri'); setHal(h) }
   return (
-    <div className="overflow-x-clip">
-      <div className="mb-3 flex items-center gap-3">
-        <b className="flex-1 text-base">{bo ? 'On-time Performance' : 'Absensi Captain'}</b>
-        <button type="button" onClick={() => { setGeser(true); setBo(!bo) }} className="inline-flex items-center gap-1.5 rounded-md border border-primary/50 bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary-soft-foreground transition-colors hover:bg-primary hover:text-primary-foreground" title={`Geser ke ${tujuan}`} aria-label={`Geser ke ${tujuan}`}>
-          <Ikon size={15} />
-          {bo ? 'Absensi' : 'On-time'}
-        </button>
+    <div className="overflow-x-clip pr-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <b className="flex-1 text-base">{HALAMAN[idx(hal)].nama}</b>
+        <div role="tablist" aria-label="Halaman Dashboard" className="flex flex-wrap gap-1">
+          {HALAMAN.map(({ id, singkat, nama, Ikon }) => (
+            <button key={id} type="button" role="tab" aria-selected={hal === id} onClick={() => pindah(id)} title={`Buka ${nama}`} className={`tab inline-flex items-center gap-1.5 !text-xs ${hal === id ? 'tab-on' : ''}`}>
+              <Ikon size={15} />
+              {singkat}
+            </button>
+          ))}
+        </div>
       </div>
-      <div key={bo ? 'bo' : 'captain'} className={!geser ? '' : bo ? 'geser-kanan' : 'geser-kiri'}>
-        {bo ? <DashboardBo /> : <DashboardCaptain />}
+      <div key={hal} className={geser}>
+        {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : <DashboardCaptain />}
       </div>
     </div>
   )
