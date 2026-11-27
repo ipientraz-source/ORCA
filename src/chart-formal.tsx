@@ -1,20 +1,40 @@
 // Chart bergaya Linear untuk tema Formal: garis tipis, satu hue ungu (currentColor, kelas text-primary), tanpa bayangan dan gradasi.
 // Semua warna dari token tema, jadi ikut terang/gelap. Komponen hanya menerima angka dan tanggal; tidak membaca data sendiri.
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 const GARIS = 'var(--border)'
 const REDUP = 'var(--muted-foreground)'
 const INK = 'var(--foreground)'
 const PERMUKAAN = 'var(--card)'
 
+// Lebar kartu diukur supaya grafik digambar 1:1 (huruf, garis, dan kotak tidak ikut membesar di layar lebar)
+function useLebar() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(640)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ukur = () => setW(Math.max(300, Math.floor(el.clientWidth)))
+    ukur()
+    const ro = new ResizeObserver(ukur)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, w] as const
+}
+function Ukur({ children }: { children: (w: number) => ReactNode }) {
+  const [ref, w] = useLebar()
+  return <div ref={ref} className="w-full">{children(w)}</div>
+}
+
 export type TitikTanggal = { tanggal: string; nilai: number | null } // nilai dalam persen 0..100, null = belum ada data
 const tgl = (s: string) => `${+s.slice(8)}/${+s.slice(5, 7)}`
 
 // ── Area tipis + garis target + titik akhir disorot ──
-export function AreaTarget({ data, target = 95, label }: { data: TitikTanggal[]; target?: number; label: string }) {
+function AreaTargetSvg({ data, target = 95, label, W }: { data: TitikTanggal[]; target?: number; label: string; W: number }) {
   const ada = data.filter((d) => d.nilai !== null) as { tanggal: string; nilai: number }[]
   if (!ada.length) return null
-  const W = 640, H = 190, l = 34, r = 78, t = 14, b = 26
+  const H = 190, l = 34, r = 78, t = 14, b = 26
   const min = Math.max(0, Math.floor((Math.min(...ada.map((d) => d.nilai), target) - 5) / 10) * 10)
   const x = (i: number) => l + (data.length === 1 ? (W - l - r) / 2 : (i * (W - l - r)) / (data.length - 1))
   const y = (v: number) => t + ((100 - v) * (H - t - b)) / (100 - min)
@@ -33,7 +53,7 @@ export function AreaTarget({ data, target = 95, label }: { data: TitikTanggal[];
   const akhir = data[k].nilai as number
   const langkah = Math.max(1, Math.ceil(data.length / 7))
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block text-primary" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full text-primary" role="img" aria-label={label}>
       <title>{label}</title>
       {ticks.map((v) => (
         <g key={v}>
@@ -55,9 +75,9 @@ export function AreaTarget({ data, target = 95, label }: { data: TitikTanggal[];
 
 // ── Heatmap DS x hari: satu hue, makin gelap makin terpenuhi; kotak putus-putus = belum dilaporkan ──
 export type SelHeat = { rate: number | null; belum: boolean }
-export function Heatmap({ dsList, hariList, sel, label }: { dsList: { id: string; nama: string }[]; hariList: string[]; sel: (dsId: string, tanggal: string) => SelHeat; label: string }) {
+function HeatmapSvg({ dsList, hariList, sel, label, W }: { dsList: { id: string; nama: string }[]; hariList: string[]; sel: (dsId: string, tanggal: string) => SelHeat; label: string; W: number }) {
   if (!dsList.length || !hariList.length) return null
-  const W = 640, labelW = 190, n = hariList.length, step = (W - labelW) / n, cw = Math.max(8, Math.min(28, step - 3)), baris = cw + 3
+  const labelW = 190, n = hariList.length, step = Math.min((W - labelW) / n, 44), cw = Math.max(8, Math.min(28, step - 3)), baris = cw + 3
   const H = dsList.length * baris + 52
   const langkah = Math.max(1, Math.ceil(n / 10))
   const taraf = (v: number) => (v >= 0.95 ? 1 : v >= 0.9 ? 0.7 : v >= 0.8 ? 0.42 : 0.2)
@@ -74,7 +94,7 @@ export function Heatmap({ dsList, hariList, sel, label }: { dsList: { id: string
     </g>
   )
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block text-primary" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full text-primary" role="img" aria-label={label}>
       <title>{label}</title>
       {dsList.map((d, r) => (
         <g key={d.id}>
@@ -135,7 +155,7 @@ export function Rings({ items, tengah, label }: { items: { nama: string; nilai: 
   const W = 360, H = 170, cx = 90, cy = 85, R0 = 70, gap = 17, sw = 11
   const shade = [1, 0.62, 0.34]
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: 420 }} className="block text-primary" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full text-primary" role="img" aria-label={label}>
       <title>{label}</title>
       {items.map((it, i) => {
         const R = R0 - i * gap, C = 2 * Math.PI * R, v = Math.max(0, Math.min(100, it.nilai ?? 0))
@@ -153,4 +173,107 @@ export function Rings({ items, tengah, label }: { items: { nama: string; nilai: 
       <text x={cx} y={cy + 7} textAnchor="middle" fontSize="20" fontWeight="600" fill={INK}>{tengah}</text>
     </svg>
   )
+}
+
+// Ringkas nama DS yang berawalan sama (mis. "Dark Store Alfagift - ...") ke bagian yang membedakan, lalu potong bila panjang
+function bikinRingkas(names: string[], maks: number) {
+  const awal = (x: string) => x.split(' - ')[0]
+  const bersama = new Set(names.map(awal).filter((a, i, arr) => arr.indexOf(a) !== i))
+  return (x: string) => {
+    const r = x.includes(' - ') && bersama.has(awal(x)) ? x.slice(awal(x).length + 3) : x
+    return r.length > maks ? r.slice(0, maks - 1) + '…' : r
+  }
+}
+
+// ── Kolom bertumpuk tiga shade (Pagi/Middle/Siang) per hari, titik kecil di atas kolom = ada perubahan ──
+export type KolomHari = { tanggal: string; pagi: number; tengah: number; siang: number }
+function KolomBertumpukSvg({ data, tandai, label, W }: { data: KolomHari[]; tandai?: Map<string, number>; label: string; W: number }) {
+  if (!data.length) return null
+  const H = 210, l = 36, r = 10, t = 16, b = 26, n = data.length
+  const total = (d: KolomHari) => d.pagi + d.tengah + d.siang
+  const mx = Math.max(...data.map(total), 1) * 1.1
+  const y = (v: number) => t + (H - t - b) - (v / mx) * (H - t - b)
+  const lebar = (W - l - r) / n, bw = Math.max(3, Math.min(24, lebar * 0.7))
+  const x = (i: number) => l + lebar * (i + 0.5)
+  const langkah = Math.max(1, Math.ceil(n / 8))
+  const shade = [1, 0.62, 0.34]
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(mx * f))
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full text-primary" role="img" aria-label={label}>
+        <title>{label}</title>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={l} x2={W - r} y1={y(v)} y2={y(v)} stroke={GARIS} strokeWidth="1" />
+            <text x={l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill={REDUP}>{v}</text>
+          </g>
+        ))}
+        {data.map((d, i) => {
+          let acc = 0
+          const bag = [d.pagi, d.tengah, d.siang]
+          const ban = tandai?.get(d.tanggal) ?? 0
+          return (
+            <g key={d.tanggal}>
+              {bag.map((v, k) => {
+                const y1 = y(acc + v), y0 = y(acc)
+                acc += v
+                return v > 0 ? <rect key={k} x={x(i) - bw / 2} y={y1} width={bw} height={Math.max(1, y0 - y1 - (k < 2 ? 1.5 : 0))} rx={k === 2 && bw > 6 ? 3 : 0} fill="currentColor" fillOpacity={shade[k]} /> : null
+              })}
+              <rect x={x(i) - lebar / 2} y={t} width={lebar} height={H - t - b} fill="transparent"><title>{`${tgl(d.tanggal)}: total ${total(d)} (pagi ${d.pagi}, middle ${d.tengah}, siang ${d.siang})${ban ? `, ${ban} perubahan` : ''}`}</title></rect>
+              {ban > 0 && <circle cx={x(i)} cy={y(total(d)) - 7} r="2.8" fill={INK} />}
+              {(i % langkah === 0 || i === n - 1) && <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill={REDUP}>{tgl(d.tanggal)}</text>}
+            </g>
+          )
+        })}
+      </svg>
+      <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+        {['Pagi', 'Middle', 'Siang'].map((nm, i) => <span key={nm} className="flex items-center gap-1.5 text-primary"><span className="inline-block size-2.5 rounded-sm bg-current" style={{ opacity: shade[i] }} /><span className="text-muted-foreground">{nm}</span></span>)}
+        {tandai && <span className="flex items-center gap-1.5"><span className="inline-block size-1.5 rounded-full bg-foreground" />ada perubahan budget</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── Dumbbell: dari awal ke akhir per baris (lingkaran kosong = awal, titik penuh = akhir), selisih di kanan ──
+export type BarisDumbbell = { nama: string; awal: number | null; akhir: number }
+function DumbbellSvg({ items, label, W }: { items: BarisDumbbell[]; label: string; W: number }) {
+  if (!items.length) return null
+  const l = 232, r = 64, rowH = 30, H = items.length * rowH + 32
+  const semua = items.flatMap((i) => [i.akhir, ...(i.awal === null ? [] : [i.awal])])
+  const lo = Math.max(0, Math.min(...semua) - 4), hi = Math.max(...semua) + 4
+  const x = (v: number) => l + ((v - lo) * (W - l - r)) / Math.max(1, hi - lo)
+  const ringkas = bikinRingkas(items.map((i) => i.nama), 30)
+  const sel = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full text-primary" role="img" aria-label={label}>
+      <title>{label}</title>
+      {items.map((it, i) => {
+        const yy = 16 + i * rowH, d = it.awal === null ? it.akhir : it.akhir - it.awal
+        return (
+          <g key={it.nama}>
+            <text x={l - 12} y={yy + 4} textAnchor="end" fontSize="12" fill={INK}><title>{it.nama}</title>{ringkas(it.nama)}</text>
+            <line x1={l} x2={W - r} y1={yy} y2={yy} stroke={GARIS} strokeWidth="1" />
+            {it.awal !== null && it.awal !== it.akhir && <line x1={x(it.awal)} x2={x(it.akhir)} y1={yy} y2={yy} stroke="currentColor" strokeWidth="2" />}
+            {it.awal !== null && <circle cx={x(it.awal)} cy={yy} r="5" fill={PERMUKAAN} stroke={REDUP} strokeWidth="2"><title>{`awal ${it.awal}`}</title></circle>}
+            <circle cx={x(it.akhir)} cy={yy} r="6" fill="currentColor"><title>{`akhir ${it.akhir}`}</title></circle>
+            <text x={W - r + 12} y={yy + 4} fontSize="12" fontWeight="600" fill={d === 0 ? REDUP : INK}>{it.awal === null ? `baru ${it.akhir}` : sel(d)}</text>
+          </g>
+        )
+      })}
+      <text x={l} y={H - 6} fontSize="11" fill={REDUP}>○ awal   ● akhir (rider/hari)</text>
+    </svg>
+  )
+}
+
+export function AreaTarget(p: Omit<Parameters<typeof AreaTargetSvg>[0], 'W'>) {
+  return <Ukur>{(W) => <AreaTargetSvg {...p} W={W} />}</Ukur>
+}
+export function Heatmap(p: Omit<Parameters<typeof HeatmapSvg>[0], 'W'>) {
+  return <Ukur>{(W) => <HeatmapSvg {...p} W={W} />}</Ukur>
+}
+export function KolomBertumpuk(p: Omit<Parameters<typeof KolomBertumpukSvg>[0], 'W'>) {
+  return <Ukur>{(W) => <KolomBertumpukSvg {...p} W={W} />}</Ukur>
+}
+export function Dumbbell(p: Omit<Parameters<typeof DumbbellSvg>[0], 'W'>) {
+  return <Ukur>{(W) => <DumbbellSvg {...p} W={W} />}</Ukur>
 }

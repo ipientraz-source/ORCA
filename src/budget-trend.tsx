@@ -3,7 +3,8 @@
 // Super-admin melihat semua DS, Arcon hanya DS yang dipegang (dibatasi database). Hanya baca.
 import { useMemo, useState } from 'react'
 import { Building2, Copy, Download, Layers, TrendingDown, TrendingUp } from 'lucide-react'
-import { sb, useRows, Err, Kosong, Select, Stat, usePage, Pagination, toCsv, download, toast, today, addDays, tanggal } from './lib'
+import { sb, useRows, Err, Kosong, Select, Stat, usePage, Pagination, toCsv, download, toast, today, addDays, tanggal, useGayaAktif } from './lib'
+import { Dumbbell, KolomBertumpuk } from './chart-formal'
 
 type Harian = { tanggal: string; pagi: number; tengah: number; siang: number; jml_ds: number }
 type PerDs = {
@@ -80,6 +81,7 @@ function Grafik({ data, ubahHari }: { data: Harian[]; ubahHari: Map<string, numb
 }
 
 export function BudgetTrend() {
+  const formal = useGayaAktif() === 'formal' // tampilan Formal: kolom bertumpuk dan dumbbell (data sama)
   const hariIni = today()
   const [per, setPer] = useState('60')
   const [dari, setDari] = useState(addDays(hariIni, -29))
@@ -198,8 +200,20 @@ export function BudgetTrend() {
 
           <div className="card">
             <b className="mb-2 block">Budget total per hari</b>
-            <Grafik data={har.rows} ubahHari={ubahHari} />
+            {formal
+              ? <KolomBertumpuk data={har.rows} tandai={ubahHari} label="Budget total per hari: kolom bertumpuk pagi, middle, siang" />
+              : <Grafik data={har.rows} ubahHari={ubahHari} />}
           </div>
+
+          {formal && baris.some((d) => d.sel !== 0) && (
+            <div className="card">
+              <b className="mb-2 block">Perubahan terbesar per DS</b>
+              <Dumbbell
+                items={baris.filter((d) => d.sel !== 0).sort((a, b) => Math.abs(b.sel) - Math.abs(a.sel) || a.ds_nama.localeCompare(b.ds_nama)).slice(0, 8).map((d) => ({ nama: d.ds_nama, awal: d.a, akhir: d.z }))}
+                label="Perubahan budget dari awal ke akhir periode untuk DS dengan perubahan terbesar"
+              />
+            </div>
+          )}
 
           <div className="card">
             <div className="mb-3 flex flex-wrap items-center gap-2">
