@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactElement } from '
 import type { Session } from '@supabase/supabase-js'
 import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, UserCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me, dsAktif } from './lib'
+import { IkonMenu } from './ikon-gaya'
 import { RiderApp, JadwalSaya, SayaRider } from './rider'
 import { LaporanOrderMenu } from './laporan-order'
 import { PengaturanWa } from './pengaturan-wa'
@@ -399,7 +400,7 @@ function AdminApp({ email }: { email: string }) {
         <nav className="space-y-1 flex-1 overflow-y-auto overflow-x-hidden">
           {tabs.map((t, i) => (
             <button key={t.nama} onClick={() => setTab(i)} className={`nav ${i === tab ? 'nav-on' : ''}`}>
-              <t.Icon size={18} />
+              <IkonMenu Icon={t.Icon} size={18} />
               {t.nama}
               {t.nama === 'Hub Control' && me.peran === 'super_admin' && <LencanaPengajuan />}
             </button>
@@ -431,7 +432,7 @@ function AdminApp({ email }: { email: string }) {
           ))}
         </nav>
 
-        <header className="px-4 md:px-5 py-2.5 flex flex-wrap items-center gap-3 border-b border-border bg-card/80 backdrop-blur md:sticky md:top-0 z-10"><div className="size-9 rounded-xl bg-primary-soft text-primary flex items-center justify-center"><cur.Icon size={18} /></div>
+        <header className="px-4 md:px-5 py-2.5 flex flex-wrap items-center gap-3 border-b border-border bg-card/80 backdrop-blur md:sticky md:top-0 z-10"><div className="size-9 rounded-xl bg-primary-soft text-primary flex items-center justify-center"><IkonMenu Icon={cur.Icon} size={18} /></div>
           <div className="flex-1 min-w-60">
             <h2 className="text-base md:text-lg font-bold leading-tight">{cur.nama}</h2>
             <p className="text-xs text-muted-foreground leading-snug">{cur.desc}</p>

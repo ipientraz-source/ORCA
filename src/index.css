@@ -1748,6 +1748,9 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]):not(.dark) select.inp { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b0618' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
 :root.dark[data-sketsa]:not([data-gaya]) select.inp { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f1f5dc' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
 
+/* ikon menu, header, dan kartu angka di Neo komik: goresan tebal dan isi duotone (bentuk glyph-nya juga lain, lihat src/ikon-gaya.tsx) */
+:root[data-sketsa]:not([data-gaya]) :is(.nav, .nav-on) svg, :root[data-sketsa]:not([data-gaya]) header > div:first-child svg, :root[data-sketsa]:not([data-gaya]) .stat > div:first-child svg { stroke-width: 2.6; fill: color-mix(in srgb, currentColor 22%, transparent); }
+
 /* tombol ikon bar atas versi HP (petir = ganti gaya, bulan/matahari = ganti tema) */
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]) { border: 2.5px solid #0b0618; border-radius: var(--control-radius); background: var(--lime-grad); color: #0b0618; box-shadow: 2px 2px 0 #0b0618; }
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]):hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #0b0618; }
@@ -1887,3 +1890,6 @@ table thead th :is(div, span) { color: inherit; }
 :root:root[data-gaya="formal"].dark [class*="bg-[#38e8d8]"]:not(.cetak *) { background: #0f2c29; color: #5fd6c9; border-color: color-mix(in srgb, #5fd6c9 28%, transparent); }
 :root:root[data-gaya="formal"] [class*="bg-primary"][class*="shadow-[2px_2px_0_var(--edge)]"]:not(.cetak *) { background: var(--primary-soft); color: var(--primary-soft-foreground); border-color: color-mix(in srgb, var(--primary) 30%, transparent); box-shadow: none; }
 :root:root[data-gaya="formal"] [class*="shadow-[2px_2px_0_var(--edge)]"]:not(.cetak *) { box-shadow: none; }
+
+/* goresan ikon hairline (gaya Linear): glyph garis asli dengan goresan tipis; Neo komik memakai glyph lain yang tebal, lihat src/ikon-gaya.tsx */
+:root:root[data-gaya="formal"] svg.lucide { stroke-width: 1.6; }
