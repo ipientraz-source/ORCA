@@ -1603,12 +1603,12 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) .select-hud > .border-b { border-bottom: 3px solid var(--border); background: var(--muted); }
 :root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"] { font-weight: 600; font-size: 0.875rem; padding: 8px 12px; margin: 2px 0; border: 2px solid transparent; border-radius: var(--control-radius); }
 :root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][aria-selected="true"] { background: var(--primary-soft); color: var(--primary-soft-foreground); }
-:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][data-aktif="true"] { background: var(--kuning); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][data-aktif="true"] { background: var(--lime-grad); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"] svg { stroke-width: 3.5; color: var(--primary); }
 :root[data-sketsa]:not([data-gaya]) .select-hud li[role="option"][data-aktif="true"] svg { color: #0c0d08; }
 :root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] { padding: 6px; }
 :root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] > button { font-family: var(--font-ui); font-weight: 700; border: 2px solid transparent; border-radius: var(--control-radius); }
-:root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] > button:hover { background: var(--kuning); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .select-hud[role="menu"] > button:hover { background: var(--lime-grad); color: #0c0d08; border-color: var(--border); box-shadow: 3px 3px 0 var(--edge); }
 
 /* tabel: header lime bergaris tinta 4px, garis baris putus-putus tebal, baris selang-seling (kuning muda terang / lilac gelap), penanda ungu saat hover */
 :root[data-sketsa]:not([data-gaya]) .tbl thead th { border-top: 4px solid var(--border); border-bottom-width: 4px; }
@@ -1637,6 +1637,13 @@ table thead th :is(div, span) { color: inherit; }
   filter: drop-shadow(1.5px 0 0 #0b0618) drop-shadow(-1.5px 0 0 #0b0618) drop-shadow(0 1.5px 0 #0b0618) drop-shadow(0 -1.5px 0 #0b0618) drop-shadow(3px 3px 0 var(--primary));
 }
 
+/* permukaan lime (hijau stabilo): gradasi toon (kilau terang di atas, bayangan lime lebih gelap di bawah) agar punya volume seperti elemen lain, bukan warna datar */
+:root[data-sketsa]:not([data-gaya]) { --lime-grad: linear-gradient(180deg, #f6ffb8 0%, #e2f95a 30%, #d6f542 60%, #b3db1e 100%); }
+:root[data-sketsa]:not([data-gaya]) :is(table thead th, .tbl th) { background-image: var(--lime-grad); box-shadow: inset 0 -5px 0 rgb(11 6 24 / 0.12); }
+:root[data-sketsa]:not([data-gaya]) :is(.nav-on, .nav-on:hover) { background: var(--lime-grad); box-shadow: 4px 4px 0 #0c0c0f, inset 0 -4px 0 rgb(11 6 24 / 0.14); }
+:root[data-sketsa]:not([data-gaya]) header .bg-primary-soft { background-image: var(--lime-grad); box-shadow: 3px 3px 0 var(--edge), inset 0 -3px 0 rgb(11 6 24 / 0.14); }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 :is(thead th .rounded-full, tbody td .size-8.rounded-lg) { background-image: var(--lime-grad); }
+
 /* tabel dan scheduler: bingkai tinta ala panel komik, header dengan tetesan cat, garis kolom putus-putus */
 :root[data-sketsa]:not([data-gaya]) .overflow-x-auto:has(> table) { border: 4px solid var(--border); border-radius: var(--card-radius); box-shadow: 6px 6px 0 var(--edge); background: var(--card); margin: 2px 8px 10px 2px; }
 :root[data-sketsa]:not([data-gaya]) .card .overflow-x-auto:has(> table) { box-shadow: 4px 4px 0 var(--edge); }
@@ -1645,7 +1652,7 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) table thead th:not(.sticky) { position: relative; }
 :root[data-sketsa]:not([data-gaya]) table thead th:not(.sticky)::after {
   content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: 12px; z-index: 2; pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='12'%3E%3Crect x='7' y='-3' width='7' height='11' rx='3.5' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='27' y='-3' width='6' height='8' rx='3' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='43' y='-3' width='8' height='13' rx='4' fill='%23d6f542' stroke='%230b0618' stroke-width='2.2'/%3E%3C/svg%3E") repeat-x 0 0 / 56px 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='12'%3E%3Crect x='7' y='-3' width='7' height='11' rx='3.5' fill='%23bde324' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='27' y='-3' width='6' height='8' rx='3' fill='%23bde324' stroke='%230b0618' stroke-width='2.2'/%3E%3Crect x='43' y='-3' width='8' height='13' rx='4' fill='%23bde324' stroke='%230b0618' stroke-width='2.2'/%3E%3C/svg%3E") repeat-x 0 0 / 56px 12px;
 }
 :root[data-sketsa]:not([data-gaya]) table tbody tr:first-child td { padding-top: 1rem; }
 :root[data-sketsa]:not([data-gaya]) .tbl td + td { border-left: 2px dotted color-mix(in srgb, var(--border) 30%, transparent); }
@@ -1659,7 +1666,7 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 thead th .rounded-full.bg-primary { background-color: var(--primary); color: #fff; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .text-\[13px\].font-medium, :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .md\:text-sm.font-medium { font-weight: 800; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .font-mono.text-\[11px\] { display: inline-block; margin-top: 2px; padding: 0 6px; border: 2px solid var(--border); border-radius: 6px; background: var(--muted); font-weight: 700; }
-:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .size-8.rounded-lg { border: 3px solid var(--border); background: var(--kuning); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 700; }
+:root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td .size-8.rounded-lg { border: 3px solid var(--border); background: var(--lime-grad); color: #0b0618; box-shadow: 2px 2px 0 var(--edge); font-family: var(--font-judul); font-weight: 700; }
 :root[data-sketsa]:not([data-gaya]) table.border-spacing-0 tbody td.sticky.right-0 > span:first-child { font-family: var(--font-judul); font-size: 1.15rem; font-weight: 700; }
 
 /* paginasi: tombol stiker, halaman aktif ungu bergaris tinta */
@@ -1669,13 +1676,13 @@ table thead th :is(div, span) { color: inherit; }
   font-family: var(--font-judul); font-size: 0.9rem; font-weight: 700; box-shadow: 3px 3px 0 var(--edge); transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
 }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button svg { stroke-width: 3.4; }
-:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:hover:not(:disabled) { background: var(--lime-grad); color: #0b0618; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button[aria-current="page"] { background: var(--primary); color: #fff; box-shadow: 3px 3px 0 var(--edge), inset -3px -3px 0 var(--cel); }
 :root[data-sketsa]:not([data-gaya]) [role="navigation"][aria-label="Halaman"] button:disabled { opacity: 0.35; box-shadow: none; }
 
 /* dropdown tertutup dan kotak tanggal: panah/ikon berupa stiker lime, bayangan keras, menekan saat terbuka */
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-haspopup="listbox"], button[aria-haspopup="dialog"]) > svg {
-  flex: none; width: 22px; height: 22px; padding: 2px; background: var(--kuning); color: #0b0618; border: 2.5px solid var(--border); border-radius: 7px; stroke-width: 3.5; box-shadow: 2px 2px 0 var(--edge);
+  flex: none; width: 22px; height: 22px; padding: 2px; background: var(--lime-grad); color: #0b0618; border: 2.5px solid var(--border); border-radius: 7px; stroke-width: 3.5; box-shadow: 2px 2px 0 var(--edge);
 }
 :root[data-sketsa]:not([data-gaya]) .inp:not(textarea) { box-shadow: 3px 3px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) .inp:focus { box-shadow: 5px 5px 0 var(--primary); }
@@ -1687,20 +1694,20 @@ table thead th :is(div, span) { color: inherit; }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground); box-shadow: 2px 2px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) .tgl-nav button svg { stroke-width: 3.2; }
-:root[data-sketsa]:not([data-gaya]) .tgl-nav button:hover { background: var(--kuning); color: #0b0618; }
+:root[data-sketsa]:not([data-gaya]) .tgl-nav button:hover { background: var(--lime-grad); color: #0b0618; }
 :root[data-sketsa]:not([data-gaya]) .tgl-judul { flex: 1; text-align: center; font-family: var(--font-judul); font-size: 1rem; font-weight: 700; }
 :root[data-sketsa]:not([data-gaya]) .tgl-hari { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; }
-:root[data-sketsa]:not([data-gaya]) .tgl-hari span { font-family: var(--font-ui); font-weight: 700; font-size: 0.72rem; background: var(--kuning); color: #0b0618; border: 2px solid var(--border); border-radius: 6px; padding: 2px 0; }
+:root[data-sketsa]:not([data-gaya]) .tgl-hari span { font-family: var(--font-ui); font-weight: 700; font-size: 0.72rem; background: var(--lime-grad); color: #0b0618; border: 2px solid var(--border); border-radius: 6px; padding: 2px 0; }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid button { height: 36px; border: 2px solid transparent; border-radius: var(--control-radius); background: transparent; color: var(--foreground); font-family: var(--font-ui); font-weight: 700; font-size: 0.9rem; }
-:root[data-sketsa]:not([data-gaya]) .tgl-grid button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; border-color: var(--border); box-shadow: 2px 2px 0 var(--edge); }
+:root[data-sketsa]:not([data-gaya]) .tgl-grid button:hover:not(:disabled) { background: var(--lime-grad); color: #0b0618; border-color: var(--border); box-shadow: 2px 2px 0 var(--edge); }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid button[data-luar] { color: var(--muted-foreground); opacity: 0.6; }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid button[data-ini] { border: 2px dashed var(--border); }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid button[aria-pressed="true"] { background: var(--primary); color: #fff; border: 3px solid var(--border); box-shadow: 3px 3px 0 var(--edge); opacity: 1; }
 :root[data-sketsa]:not([data-gaya]) .tgl-grid button:disabled { opacity: 0.3; cursor: not-allowed; background: repeating-linear-gradient(135deg, transparent 0 4px, var(--hatch) 4px 6px); }
 :root[data-sketsa]:not([data-gaya]) .tgl-kaki { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 3px dashed var(--border); }
 :root[data-sketsa]:not([data-gaya]) .tgl-kaki button { padding: 6px 12px; border: 3px solid var(--border); border-radius: var(--control-radius); background: var(--card); color: var(--foreground); font-family: var(--font-ui); font-weight: 700; box-shadow: 3px 3px 0 var(--edge); }
-:root[data-sketsa]:not([data-gaya]) .tgl-kaki button:hover:not(:disabled) { background: var(--kuning); color: #0b0618; }
+:root[data-sketsa]:not([data-gaya]) .tgl-kaki button:hover:not(:disabled) { background: var(--lime-grad); color: #0b0618; }
 :root[data-sketsa]:not([data-gaya]) .tgl-kaki button:disabled { opacity: 0.4; box-shadow: none; }
 
 /* lebar sedang (sidebar + empat kartu angka sejajar): ikon dekoratif kartu disembunyikan agar angka dan label tidak saling menimpa */
