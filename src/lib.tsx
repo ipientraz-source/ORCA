@@ -235,6 +235,11 @@ function useGaya() {
   return { gaya, pilih }
 }
 
+// Gaya yang sedang aktif ('neo' | 'cyber' | 'formal'), ikut berubah saat pemilih gaya diganti. Dipakai komponen yang tampil beda per gaya (mis. chart Formal).
+export function useGayaAktif() {
+  return useGaya().gaya
+}
+
 // Menu kecil pemilih gaya untuk bar HP (ikon petir membuka daftar gaya)
 function MenuGaya({ className = '' }: { className?: string }) {
   const { gaya, pilih } = useGaya()
