@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Inbox, Moon, Search, Sun, X, Zap, type LucideIcon } from 'lucide-react'
 
@@ -205,27 +205,74 @@ function useTema() {
   return { gelap, pilih }
 }
 
-// Gaya tampilan: Neobrutalism (bawaan) atau Cyberpunk. Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya="cyber" di <html>.
+// Gaya tampilan: Neobrutalism (bawaan), Cyberpunk, atau Formal (bersih ala Linear). Disimpan di perangkat; CSS-nya aktif lewat atribut data-gaya di <html>
+// (cyber atau formal; Neo tanpa atribut).
+type Gaya = 'neo' | 'cyber' | 'formal'
+const DAFTAR_GAYA: { id: Gaya; nama: string; judul: string }[] = [
+  { id: 'neo', nama: 'Neobrutalism', judul: 'Gaya Neobrutalism' },
+  { id: 'cyber', nama: 'Cyberpunk', judul: 'Gaya Cyberpunk' },
+  { id: 'formal', nama: 'Formal', judul: 'Gaya Formal (bersih dan tenang)' },
+]
+// Sumber kebenaran: atribut data-gaya di <html>. Dibaca lewat useSyncExternalStore supaya semua pemilih gaya (desktop dan HP) selalu sinkron.
 function useGaya() {
-  const [cyber, setCyber] = useState(() => document.documentElement.dataset.gaya === 'cyber')
-  const pilih = (c: boolean) => {
-    if (c) document.documentElement.dataset.gaya = 'cyber'
-    else delete document.documentElement.dataset.gaya
-    store.set('gaya', c ? 'cyber' : 'neo')
-    setCyber(c)
+  const gaya = useSyncExternalStore(
+    (cb) => {
+      const o = new MutationObserver(cb)
+      o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-gaya'] })
+      return () => o.disconnect()
+    },
+    (): Gaya => {
+      const g = document.documentElement.dataset.gaya
+      return g === 'cyber' || g === 'formal' ? g : 'neo'
+    },
+    (): Gaya => 'neo',
+  )
+  const pilih = (g: Gaya) => {
+    if (g === 'neo') delete document.documentElement.dataset.gaya
+    else document.documentElement.dataset.gaya = g
+    store.set('gaya', g)
   }
-  return { cyber, pilih }
+  return { gaya, pilih }
 }
 
-// Versi ikon (untuk bar gelap yang sempit): tombol gaya (petir) + tombol terang/gelap
-export function TemaToggle({ className = '' }: { className?: string }) {
-  const { gelap, pilih } = useTema()
-  const gaya = useGaya()
+// Menu kecil pemilih gaya untuk bar HP (ikon petir membuka daftar gaya)
+function MenuGaya({ className = '' }: { className?: string }) {
+  const { gaya, pilih } = useGaya()
+  const [buka, setBuka] = useState(false)
+  const kotak = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!buka) return
+    const luar = (e: MouseEvent) => { if (!kotak.current?.contains(e.target as Node)) setBuka(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setBuka(false) }
+    document.addEventListener('mousedown', luar)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', luar); document.removeEventListener('keydown', esc) }
+  }, [buka])
   return (
-    <>
-      <button onClick={() => gaya.pilih(!gaya.cyber)} title={gaya.cyber ? 'Ganti ke gaya Neobrutalism' : 'Ganti ke gaya Cyberpunk'} aria-label="Ganti gaya tampilan" aria-pressed={gaya.cyber} className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
+    <div ref={kotak} className="relative">
+      <button onClick={() => setBuka((b) => !b)} aria-haspopup="menu" aria-expanded={buka} title="Pilih gaya tampilan" aria-label="Ganti gaya tampilan" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
         <Zap size={16} />
       </button>
+      {buka && (
+        <div role="menu" className="select-hud absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-card p-1 text-foreground shadow-lg">
+          {DAFTAR_GAYA.map((g) => (
+            <button key={g.id} role="menuitemradio" aria-checked={gaya === g.id} onClick={() => { pilih(g.id); setBuka(false) }} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted ${gaya === g.id ? 'font-semibold text-primary' : ''}`}>
+              <span className="flex-1">{g.nama}</span>
+              {gaya === g.id && <Check size={15} aria-hidden />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Versi ikon (untuk bar gelap yang sempit): menu gaya (petir) + satu tombol terang/gelap
+export function TemaToggle({ className = '' }: { className?: string }) {
+  const { gelap, pilih } = useTema()
+  return (
+    <>
+      <MenuGaya className={className} />
       <button onClick={() => pilih(!gelap)} title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'} aria-label="Ganti tema" className={`p-2 rounded-md transition-colors hover:bg-foreground/10 ${className}`}>
         {gelap ? <Sun size={16} /> : <Moon size={16} />}
       </button>
@@ -233,24 +280,23 @@ export function TemaToggle({ className = '' }: { className?: string }) {
   )
 }
 
-// Peralihan gaya (Neo / Cyber) + dua ikon terang/gelap, hemat ruang; tooltip menjelaskan
+// Pemilih tampilan: dropdown gaya (Neo / Cyber / Formal) + SATU tombol terang/gelap sekali klik
 export function TemaSwitch() {
   const { gelap, pilih } = useTema()
   const gaya = useGaya()
-  const item = (aktif: boolean) =>
-    `inline-flex size-7 items-center justify-center rounded-md transition-colors ${aktif ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
-  const teks = (aktif: boolean) =>
-    `inline-flex h-7 items-center justify-center rounded-md px-2 font-mono text-[11px] font-bold uppercase transition-colors ${aktif ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
   return (
     <div className="inline-flex items-center gap-2">
-      <div role="group" aria-label="Pilih gaya tampilan" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
-        <button onClick={() => gaya.pilih(false)} aria-pressed={!gaya.cyber} title="Gaya Neobrutalism" className={teks(!gaya.cyber)}>Neo</button>
-        <button onClick={() => gaya.pilih(true)} aria-pressed={gaya.cyber} title="Gaya Cyberpunk" className={teks(gaya.cyber)}>Cyber</button>
+      <div className="w-40">
+        <Select className="w-full" lebarMin={176} value={gaya.gaya} onChange={(v) => gaya.pilih(v as Gaya)} opsi={DAFTAR_GAYA.map((g) => ({ value: g.id, label: g.nama }))} />
       </div>
-      <div role="group" aria-label="Pilih tema" className="inline-flex p-0.5 rounded-lg bg-muted border border-border">
-        <button onClick={() => pilih(false)} aria-pressed={!gelap} aria-label="Tema terang" title="Tema terang" className={item(!gelap)}><Sun size={15} /></button>
-        <button onClick={() => pilih(true)} aria-pressed={gelap} aria-label="Tema gelap" title="Tema gelap" className={item(gelap)}><Moon size={15} /></button>
-      </div>
+      <button
+        onClick={() => pilih(!gelap)}
+        title={gelap ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+        aria-label="Ganti tema"
+        className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-muted"
+      >
+        {gelap ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
     </div>
   )
 }
@@ -371,7 +417,7 @@ export function RiderPick({
 // Pilihan (dropdown) bertema: bisa dicari, bisa dipakai dengan keyboard (↑ ↓ Enter Esc),
 // dan daftarnya tidak terpotong di dalam tabel karena ditampilkan lewat portal.
 export type Opsi = { value: string; label: string }
-export function Select({ value, onChange, opsi, placeholder = 'Pilih…', className = '', disabled = false, cari }: {
+export function Select({ value, onChange, opsi, placeholder = 'Pilih…', className = '', disabled = false, cari, lebarMin = 320 }: {
   value: string
   onChange: (v: string) => void
   opsi: Opsi[]
@@ -379,6 +425,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
   className?: string
   disabled?: boolean
   cari?: boolean // paksa tampilkan kolom cari; default: otomatis bila opsi > 7
+  lebarMin?: number // lebar minimum daftar (px); default 320, daftar pendek (mis. pilihan tema) boleh lebih sempit
 }) {
   const [buka, setBuka] = useState(false)
   const [q, setQ] = useState('')
@@ -396,7 +443,7 @@ export function Select({ value, onChange, opsi, placeholder = 'Pilih…', classN
     const vv = window.visualViewport
     const bawah = (vv ? vv.height + vv.offsetTop : window.innerHeight) - r.bottom
     const keAtas = bawah < 280 && r.top > bawah
-    const width = Math.max(r.width, 320)
+    const width = Math.max(r.width, lebarMin)
     return {
       left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
       width,

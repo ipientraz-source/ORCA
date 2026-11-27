@@ -735,6 +735,8 @@ table thead th :is(div, span) { color: inherit; }
 /* Batang grafik yang laporannya belum lengkap: garis diagonal (bukan memudar, supaya warna tetap cerah di semua tema) */
 .bar-belum { position: relative; overflow: hidden; }
 .bar-belum::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.32) 0 4px, transparent 4px 9px); }
+/* Formal: garis tipis dan terang (putih) supaya batang tetap tenang, bukan blok gelap */
+:root:root[data-gaya="formal"] .bar-belum::after { background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.4) 0 1.5px, transparent 1.5px 6px); }
 
 /* ---- HP (di bawah md): lebih padat dan rapi, berlaku di gaya Neo maupun Cyber ---- */
 /* Label kartu angka dulu mewarisi tinggi baris induk (24px) sehingga renggang; jadikan blok dengan baris rapat. */
@@ -1743,3 +1745,136 @@ table thead th :is(div, span) { color: inherit; }
 /* tombol ikon bar atas versi HP (petir = ganti gaya, bulan/matahari = ganti tema) */
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]) { border: 2.5px solid #0b0618; border-radius: var(--control-radius); background: var(--lime-grad); color: #0b0618; box-shadow: 2px 2px 0 #0b0618; }
 :root[data-sketsa]:not([data-gaya]) :is(button[aria-label="Ganti gaya tampilan"], button[aria-label="Ganti tema"]):hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #0b0618; }
+   FORMAL — gaya ketiga (bersih dan tenang, terinspirasi Linear). Aktif lewat data-gaya="formal" di <html>.
+   Netral abu + satu aksen indigo, font Inter, garis 1px, sudut 6-10px, bayangan nyaris tidak ada. Terang dan gelap.
+   Neo adalah dasar global, jadi blok ini menimpa aturan Neo secara menyeluruh (selektor :root:root[...] menang atas Neo dan Cyber).
+   Neo dan Cyber tidak terpengaruh. Lembar cetak (.cetak) tidak tersentuh.
+   ════════════════════════════════════════════════════════════════ */
+:root:root[data-gaya="formal"] {
+  --background: #f7f7f5;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --muted: #efeeea;
+  --muted-foreground: #6b6b68;
+  --border: #e4e3de;
+  --input: #d3d1c9;
+  --edge: transparent;
+  --edge-primary: transparent;
+  --ring: #5e2aac;
+  --primary: #5e2aac;
+  --primary-hover: #4f2294;
+  --primary-active: #431c7d;
+  --primary-deep: #2e1259;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eee5fb;
+  --primary-soft-foreground: #4f2294;
+  --danger: #a32d2d;   --danger-soft: #fbeaea;
+  --warning: #8a5a0a;  --warning-soft: #fbf1de;
+  --success: #0f6e56;  --success-soft: #e1f3ec;
+  --sidebar: #0e0e0e;
+  --sidebar-foreground: #9a9a96;
+  --kuning: #f1ecf9;
+  --card-radius: 0.625rem;
+  --control-radius: 0.4375rem;
+  --card-shadow: 0 1px 2px rgb(14 14 14 / 0.05);
+  --card-shadow-hover: 0 2px 8px rgb(14 14 14 / 0.08);
+  --font-formal: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root:root[data-gaya="formal"].dark {
+  --background: #0e0e0e;
+  --foreground: #f7f7f5;
+  --card: #151515;
+  --muted: #1c1c1c;
+  --muted-foreground: #9a9a96;
+  --border: #2a2a2a;
+  --input: #3a3a3a;
+  --ring: #b589f0;
+  --primary: #5e2aac;
+  --primary-hover: #6e3bc4;
+  --primary-active: #4f2294;
+  --primary-deep: #2e1259;
+  --primary-soft: #231838;
+  --primary-soft-foreground: #b589f0;
+  --danger: #e8a0a0;   --danger-soft: #2b1517;
+  --warning: #e5a23c;  --warning-soft: #2a2010;
+  --success: #a8e0c8;  --success-soft: #0f2a1d;
+  --sidebar: #080808;
+  --sidebar-foreground: #9a9a96;
+  --kuning: #231838;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --card-shadow-hover: 0 2px 10px rgb(0 0 0 / 0.5);
+}
+
+/* huruf dan latar */
+:root:root[data-gaya="formal"] body { font-family: var(--font-formal); background-image: none; letter-spacing: -0.003em; }
+:root:root[data-gaya="formal"] :is(h1, h2, h3) { font-family: var(--font-formal); font-weight: 600; letter-spacing: -0.015em; text-transform: none; }
+:root:root[data-gaya="formal"] :is(.font-mono, .stat b, .lbl, .tbl th, table thead th, .btn, .btn2, .badge, .tab) { font-family: var(--font-formal); }
+:root:root[data-gaya="formal"] :is(.font-mono, .tbl td, table tbody td, .stat b) { font-variant-numeric: tabular-nums; }
+:root:root[data-gaya="formal"] ::selection { background: color-mix(in srgb, var(--primary) 28%, transparent); color: inherit; }
+:root:root[data-gaya="formal"] .border { border-width: 1px; }
+:root:root[data-gaya="formal"] :is(.rounded-xl, .rounded-2xl) { border-radius: 0.75rem; }
+:root:root[data-gaya="formal"] .rounded-lg { border-radius: 0.5rem; }
+:root:root[data-gaya="formal"] .rounded-md { border-radius: 0.375rem; }
+:root:root[data-gaya="formal"] .text-primary { color: var(--primary-hover); }
+:root:root[data-gaya="formal"].dark .text-primary { color: var(--primary-soft-foreground); }
+
+/* kartu dan kartu angka: putih seragam, garis tipis */
+:root:root[data-gaya="formal"] :is(.card, .stat):not(.cetak *) { background: var(--card); border: 1px solid var(--border); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+:root:root[data-gaya="formal"] .stat:nth-child(n):not(.cetak *) { background: var(--card); }
+:root:root[data-gaya="formal"].dark .stat:nth-child(n):not(.cetak *) { background: var(--card); }
+:root:root[data-gaya="formal"] .stat:hover:not(.cetak *) { transform: none; border-color: color-mix(in srgb, var(--foreground) 18%, var(--border)); box-shadow: var(--card-shadow-hover); }
+:root:root[data-gaya="formal"] .stat .text-muted-foreground, :root:root[data-gaya="formal"] .stat span { color: var(--muted-foreground); }
+:root:root[data-gaya="formal"].dark .stat .text-muted-foreground, :root:root[data-gaya="formal"].dark .stat span { color: var(--muted-foreground); }
+:root:root[data-gaya="formal"] .stat b { font-weight: 600; letter-spacing: -0.02em; }
+
+/* tombol */
+:root:root[data-gaya="formal"] :is(.btn, .btn2):not(.cetak *) { border: 1px solid transparent; border-radius: var(--control-radius); font-weight: 500; transform: none; }
+:root:root[data-gaya="formal"] .btn:not(.cetak *) { background: var(--primary); color: var(--primary-foreground); border-color: color-mix(in srgb, var(--primary-deep) 55%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(16 18 27 / 0.14); }
+:root:root[data-gaya="formal"] .btn:hover:not(:disabled):not(.cetak *) { background: var(--primary-hover); transform: none; border-color: color-mix(in srgb, var(--primary-deep) 55%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 3px rgb(16 18 27 / 0.18); }
+:root:root[data-gaya="formal"] .btn:active:not(:disabled):not(.cetak *) { background: var(--primary-active); transform: none; box-shadow: none; }
+:root:root[data-gaya="formal"] .btn2:not(.cetak *) { background: var(--card); color: var(--foreground); border-color: var(--input); box-shadow: 0 1px 1px rgb(16 18 27 / 0.04); }
+:root:root[data-gaya="formal"] .btn2:hover:not(:disabled):not(.cetak *) { background: var(--muted); border-color: var(--input); transform: none; box-shadow: 0 1px 1px rgb(16 18 27 / 0.04); }
+:root:root[data-gaya="formal"] .btn2:active:not(:disabled):not(.cetak *) { background: color-mix(in srgb, var(--muted) 70%, var(--border)); transform: none; box-shadow: none; }
+:root:root[data-gaya="formal"] :is(.btn, .btn2):disabled { box-shadow: none; opacity: 0.5; }
+
+/* isian */
+:root:root[data-gaya="formal"] .inp:not(.cetak *) { border: 1px solid var(--input); border-radius: var(--control-radius); background: var(--card); box-shadow: none; }
+:root:root[data-gaya="formal"] .inp:focus:not(.cetak *) { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent); }
+:root:root[data-gaya="formal"] .lbl { font-weight: 500; font-size: 0.75rem; text-transform: none; letter-spacing: 0; color: var(--muted-foreground); }
+
+/* tabel: kepala polos, garis tipis, baris menyala halus saat disorot */
+:root:root[data-gaya="formal"] :is(.tbl th, table thead th) { background: transparent; color: var(--muted-foreground); font-size: 0.75rem; font-weight: 500; text-transform: none; letter-spacing: 0; border-bottom: 1px solid var(--border); }
+:root:root[data-gaya="formal"] :is(.tbl td, table tbody td) { border-bottom: 1px solid var(--border); }
+:root:root[data-gaya="formal"] .tbl tbody tr:hover { background: color-mix(in srgb, var(--muted) 75%, transparent); }
+:root:root[data-gaya="formal"] table thead th .text-primary { color: var(--primary-hover); }
+:root:root[data-gaya="formal"].dark table thead th .text-primary { color: var(--primary-soft-foreground); }
+
+/* lencana dan tab */
+:root:root[data-gaya="formal"] .badge { border: 1px solid transparent; border-radius: 0.375rem; font-weight: 500; font-size: 0.75rem; }
+:root:root[data-gaya="formal"] .tab:not(.cetak *) { border: 1px solid transparent; border-radius: var(--control-radius); font-weight: 500; color: var(--muted-foreground); }
+:root:root[data-gaya="formal"] .tab:hover:not(.cetak *) { background: var(--muted); color: var(--foreground); border-color: transparent; }
+:root:root[data-gaya="formal"] :is(.tab-on, .tab-on:hover):not(.cetak *) { background: var(--primary-soft); color: var(--primary-soft-foreground); border-color: transparent; box-shadow: none; }
+
+/* sidebar: gelap netral, menu aktif abu lembut dengan garis aksen tipis */
+:root:root[data-gaya="formal"] .sidebar-bg { background: var(--sidebar); border-right: 1px solid rgb(255 255 255 / 0.06); }
+:root:root[data-gaya="formal"] .sidebar-bg :is(.text-white\/50, .text-white\/30) { color: rgb(255 255 255 / 0.55); }
+:root:root[data-gaya="formal"] .sidebar-bg .ring-1 { background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.1); border-radius: 0.5rem; box-shadow: none; }
+:root:root[data-gaya="formal"] .nav { border: 1px solid transparent; border-radius: 0.4375rem; font-weight: 500; color: var(--sidebar-foreground); }
+:root:root[data-gaya="formal"] .nav:hover { background: rgb(255 255 255 / 0.06); color: #fff; border-color: transparent; }
+:root:root[data-gaya="formal"] :is(.nav-on, .nav-on:hover) { background: rgb(255 255 255 / 0.1); color: #fff; border-color: transparent; box-shadow: none; font-weight: 500; }
+:root:root[data-gaya="formal"] .nav-on::before { display: block; width: 2px; left: 0; top: 0.5rem; bottom: 0.5rem; border-radius: 2px; background: #a78bfa; }
+:root:root[data-gaya="formal"] :is(.nav-on svg, .nav-on:hover svg) { color: #c4b5fd; opacity: 1; }
+
+/* header halaman */
+:root:root[data-gaya="formal"] :is(header.sticky, header:has(> h2), header:has(h2)) { background: color-mix(in srgb, var(--background) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+:root:root[data-gaya="formal"] header h2 { text-transform: none; letter-spacing: -0.015em; font-weight: 600; }
+:root:root[data-gaya="formal"] header > div:first-child { border: 1px solid var(--border); background: var(--muted); color: var(--primary-hover); border-radius: 0.5rem; }
+:root:root[data-gaya="formal"].dark header > div:first-child { color: var(--primary-soft-foreground); }
+:root:root[data-gaya="formal"] header > span.font-mono { border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); border-radius: 0.375rem; font-weight: 500; }
+
+/* warna shift (Pagi kuning, Middle cyan, Siang indigo) ditulis langsung di komponen: di Formal dibuat lembut dan seragam */
+:root:root[data-gaya="formal"] [class*="bg-[#ffdd00]"]:not(.cetak *) { background: var(--warning-soft); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, transparent); box-shadow: none; }
+:root:root[data-gaya="formal"] [class*="bg-[#38e8d8]"]:not(.cetak *) { background: #dff4f1; color: #0d6b61; border-color: color-mix(in srgb, #0d6b61 28%, transparent); box-shadow: none; }
+:root:root[data-gaya="formal"].dark [class*="bg-[#38e8d8]"]:not(.cetak *) { background: #0f2c29; color: #5fd6c9; border-color: color-mix(in srgb, #5fd6c9 28%, transparent); }
+:root:root[data-gaya="formal"] [class*="bg-primary"][class*="shadow-[2px_2px_0_var(--edge)]"]:not(.cetak *) { background: var(--primary-soft); color: var(--primary-soft-foreground); border-color: color-mix(in srgb, var(--primary) 30%, transparent); box-shadow: none; }
+:root:root[data-gaya="formal"] [class*="shadow-[2px_2px_0_var(--edge)]"]:not(.cetak *) { box-shadow: none; }
