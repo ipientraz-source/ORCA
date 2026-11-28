@@ -1777,7 +1777,9 @@ table thead th :is(div, span) { color: inherit; }
   --card: #ffffff;
   --muted: #efeeea;
   --muted-foreground: #6b6b68;
-  --border: #e4e3de;
+  --border: #d9d7cf;
+  --garis: #cdcac1;
+  --garis-tegas: #b3b0a5;
   --input: #d3d1c9;
   --edge: transparent;
   --edge-primary: transparent;
@@ -1807,7 +1809,9 @@ table thead th :is(div, span) { color: inherit; }
   --card: #151515;
   --muted: #1c1c1c;
   --muted-foreground: #9a9a96;
-  --border: #2a2a2a;
+  --border: #343434;
+  --garis: #3f3f3f;
+  --garis-tegas: #565656;
   --input: #3a3a3a;
   --ring: #b589f0;
   --primary: #5e2aac;
@@ -1928,3 +1932,10 @@ table thead th :is(div, span) { color: inherit; }
   :root:root[data-gaya="formal"] .cf-garis { stroke-dasharray: 1; stroke-dashoffset: 1; animation: lin-gambar 700ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards; }
   :root:root[data-gaya="formal"] .cf-pudar { animation: lin-pudar 320ms ease-out backwards; }
 }
+
+/* garis tabel dan pemisah Linear: tiga tingkat supaya jelas tanpa berat. border = bingkai kartu dan pemisah umum, garis = baris tabel, garis-tegas = bawah header dan baris terakhir */
+:root:root[data-gaya="formal"] :is(.tbl td, table tbody td) { border-bottom-color: var(--garis); }
+:root:root[data-gaya="formal"] :is(.tbl th, table thead th) { border-bottom: 1px solid var(--garis-tegas); }
+:root:root[data-gaya="formal"] :is(.tbl, table.border-spacing-0) tbody tr:last-child td { border-bottom-color: var(--garis-tegas); }
+:root:root[data-gaya="formal"] :is(.border-t, .border-b, .border-y).border-border { border-color: var(--garis); }
+:root:root[data-gaya="formal"] tfoot td { border-top: 1px solid var(--garis-tegas); }
