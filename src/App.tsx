@@ -174,11 +174,11 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
             <div className="font-brand text-xl leading-none"><span className="font-medium">DASH </span><span className="font-extrabold text-primary">ORCA</span></div>
           </div>
           <h1 className="text-2xl font-bold mb-1">Masuk</h1>
-          <p className="text-sm text-muted-foreground mb-6">Pilih cara masuk sesuai peran Anda.</p>
+          <p className="text-sm text-muted-foreground mb-6">Captain, Arcon, Super-admin, dan klien masuk dengan email. Rider masuk dengan Kode MTR.</p>
           <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-lg bg-muted">
             {(['admin', 'rider'] as const).map((t) => (
               <button type="button" key={t} onClick={() => { setTab(t); setErr('') }} className={`tab text-center !px-2 ${tab === t ? 'tab-on' : ''}`}>
-                {t === 'admin' ? 'Captain / Admin' : 'Rider'}
+                {t === 'admin' ? 'Email' : 'Rider (Kode MTR)'}
               </button>
             ))}
           </div>
@@ -194,7 +194,7 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
             value={a}
             onChange={(e) => setA(e.target.value)}
             autoFocus
-            placeholder={tab === 'admin' ? 'nama@dashelectric.co' : 'MTR001'}
+            placeholder={tab === 'admin' ? 'nama@email.com' : 'MTR001'}
           />
           {tab === 'admin' && (
             <>
@@ -207,7 +207,7 @@ function Login({ onKode }: { onKode: (k: string) => void }) {
           )}
           <Err msg={err} />
           <button className="btn btn-lg w-full" disabled={busy || !a.trim() || (tab === 'admin' && !b)}>{busy ? 'Memproses…' : 'Masuk'}</button>
-          <p className="text-xs text-muted-foreground/70 mt-6 text-center">Akun Captain dan Arcon dibuat oleh Super-admin. Belum punya password atau lupa? Klik "Lupa password" di atas.</p>
+          <p className="text-xs text-muted-foreground/70 mt-6 text-center">Akun Captain, Arcon, dan klien dibuat oleh Super-admin. Belum punya password atau lupa? Klik "Lupa password" di atas.</p>
         </form>
         )}
       </div>
@@ -267,7 +267,7 @@ function LupaPassword({ emailAwal, balik }: { emailAwal: string; balik: () => vo
         </div>
       )}
       <label className="lbl">Email</label>
-      <input className="inp w-full mb-4 !py-2.5" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus placeholder="nama@dashelectric.co" />
+      <input className="inp w-full mb-4 !py-2.5" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus placeholder="nama@email.com" />
       <Err msg={err} />
       <button className="btn btn-lg w-full" disabled={busy || !email.trim() || tunggu > 0}>
         {busy ? 'Mengirim…' : tunggu > 0 ? `Kirim ulang dalam ${tunggu} detik` : terkirim ? 'Kirim ulang tautan' : 'Kirim tautan reset'}
@@ -342,7 +342,7 @@ function AdminApp({ email }: { email: string }) {
       if (error) return setGalat(error.message)
       // Bukan orang di tabel riders: coba akun klien (tabel terpisah). Galat (mis. tabel belum ada) dianggap bukan akun klien.
       if (!data) {
-        const k = await sb.from('akun_klien').select('klien_id,nama').eq('email', email.toLowerCase()).maybeSingle()
+        const k = await sb.from('akun_klien').select('klien_id,nama').eq('email', email.toLowerCase()).eq('aktif', true).maybeSingle()
         if (k.data) {
           const kl = await sb.from('klien').select('nama').eq('id', k.data.klien_id).maybeSingle()
           return setMe({ id: k.data.klien_id, nama: kl.data?.nama ?? k.data.nama, peran: 'klien', ds_id: null, email, klien_id: k.data.klien_id })

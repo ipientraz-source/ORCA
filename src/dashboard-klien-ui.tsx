@@ -90,7 +90,7 @@ function Isi({ klien }: { klien: Klien }) {
   const terbatas = useContext(Terbatas)
   const P = usePeriode(klien.id)
   const { rent, ada, preset, kustomSah, dari, sampai } = P
-  const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
+  const dsKlien = useRows<TokoDs>(() => sb.rpc('toko_klien', { p_klien: klien.id }), [klien.id]) // lewat fungsi: akun klien tidak membaca tabel ds
   const [toko, setToko] = useState('')
   const [pd, ps] = dari ? periodeSebelum(dari, sampai) : ['', '']
 
@@ -98,7 +98,8 @@ function Isi({ klien }: { klien: Klien }) {
   const kini = useRows<Hari>(() => (dari ? sb.rpc('dashboard_klien_harian', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
   const lalu = useRows<Hari>(() => (dari ? sb.rpc('dashboard_klien_harian', arg(pd, ps)) : kosong), [klien.id, pd, ps, toko])
   const perToko = useRows<Toko>(() => (dari ? sb.rpc('dashboard_klien_toko', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
-  const bo = useRows<Bo>(() => (dari ? sb.rpc('dashboard_klien_bo', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
+  // Data Dash (clock-in BO) hanya untuk tampilan internal; akun klien tidak memanggilnya dan database juga tidak memberinya
+  const bo = useRows<Bo>(() => (dari && !anda ? sb.rpc('dashboard_klien_bo', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko, anda])
 
   const galat = rent.err || kini.err || perToko.err
   if (galat) return <Err msg={galat} />
@@ -145,10 +146,14 @@ function Isi({ klien }: { klien: Klien }) {
               sub={<Delta v={poin(pod, podLalu)} satuan=" poin" />} />
             <Kpi label="Pesanan per rider per hari" nilai={teksDesimal(perRider)} sumber="klien" rumus={anda ? 'Pesanan selesai ÷ jumlah hari kerja rider (satu rider bekerja satu hari dihitung 1)' : 'Pesanan selesai ÷ jumlah rider-hari'}
               sub={<Delta v={poin(perRider, perRiderLalu)} satuan="" />} />
-            <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus={anda ? 'Rider yang bekerja ÷ kebutuhan rider per shift' : 'Rider yang bekerja ÷ budget rider (clock-in BO)'}
-              sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} {anda ? 'rider yang dibutuhkan' : 'slot rider'}</span> : <span>Belum ada data kehadiran di periode ini</span>} />
-            <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus={anda ? 'Rider yang masuk kerja tepat waktu ÷ rider yang hadir' : 'Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)'}
-              sub={adaBo ? <span>{teksAngka(jb.tepat)} dari {teksAngka(jb.hadir)} rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
+            {!anda && (
+              <>
+                <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus="Rider yang bekerja ÷ budget rider (clock-in BO)"
+                  sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} slot rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
+                <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus="Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)"
+                  sub={adaBo ? <span>{teksAngka(jb.tepat)} dari {teksAngka(jb.hadir)} rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
+              </>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -164,18 +169,58 @@ function Isi({ klien }: { klien: Klien }) {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className={`grid gap-4 ${anda ? '' : 'lg:grid-cols-2'}`}>
             <div className="card">
               <div className="mb-1 flex items-center justify-between gap-2"><b>Toko dengan ketepatan antar terendah</b><Sumber s="klien" /></div>
               <Peringkat toko={perToko.rows} target={target} />
             </div>
-            <div className="card">
-              <div className="mb-1 flex items-center justify-between gap-2"><b>Kehadiran rider per hari</b><Sumber s="dash" /></div>
-              {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">{anda ? 'Belum ada data kehadiran rider untuk toko dan periode ini.' : 'Belum ada data clock-in BO untuk toko dan periode ini.'}</p>}
-            </div>
+            {!anda && (
+              <div className="card">
+                <div className="mb-1 flex items-center justify-between gap-2"><b>Kehadiran rider per hari</b><Sumber s="dash" /></div>
+                {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">Belum ada data clock-in BO untuk toko dan periode ini.</p>}
+              </div>
+            )}
           </div>
 
-          <TabelToko toko={perToko.rows} target={target} klien={klien.nama} />
+          <TabelToko toko={perToko.rows} target={target} klien={klien.nama} onPilih={setToko} />
+          {toko && dari && <RincianToko klienId={klien.id} toko={toko} nama={dsKlien.rows.find((d) => d.id === toko)?.nama ?? ''} dari={dari} sampai={sampai} onSemua={() => setToko('')} />}
+        </>
+      )}
+    </div>
+  )
+}
+
+// Rincian satu toko: ringkasan per hari (pesanan, ontime, late, POD, rider), dibuka dengan mengklik baris toko di tabel
+function RincianToko({ klienId, toko, nama, dari, sampai, onSemua }: { klienId: string; toko: string; nama: string; dari: string; sampai: string; onSemua: () => void }) {
+  const h = useRows<BarisDetail>(() => sb.rpc('dashboard_klien_detail_hari', { p_klien: klienId, p_dari: dari, p_sampai: sampai, p_ds: [toko], p_limit: 200, p_offset: 0 }), [klienId, toko, dari, sampai])
+  const total = Number(h.rows[0]?.total ?? 0)
+  return (
+    <div className="card space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <b>Rincian per hari{nama ? `: ${nama}` : ''}</b>
+        <button className="btn2" onClick={onSemua}>Lihat semua toko</button>
+      </div>
+      {h.err ? <Err msg={h.err} /> : !h.rows.length ? <Kosong teks="Tidak ada data toko ini di periode ini" /> : (
+        <>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="tbl">
+              <thead><tr><th>Tanggal</th><th>Pesanan</th><th>Ontime</th><th>Late</th><th>Ketepatan</th><th>POD sesuai</th><th>Rider</th></tr></thead>
+              <tbody>
+                {h.rows.map((r) => (
+                  <tr key={r.tanggal}>
+                    <td className="whitespace-nowrap">{tanggal(r.tanggal)}</td>
+                    <td>{teksAngka(Number(r.selesai))}</td>
+                    <td>{teksAngka(Number(r.ontime))}</td>
+                    <td className={Number(r.late) > 0 ? 'text-danger' : ''}>{teksAngka(Number(r.late))}</td>
+                    <td>{teksPct(pct(Number(r.ontime), Number(r.selesai)))}</td>
+                    <td>{teksPct(pct(Number(r.pod_sesuai), Number(r.selesai)))}</td>
+                    <td>{r.rider}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {total > h.rows.length && <p className="text-[11px] text-muted-foreground">Menampilkan {h.rows.length} hari terbaru dari {total}. Persempit periode untuk melihat sisanya.</p>}
         </>
       )}
     </div>
@@ -217,7 +262,7 @@ function DetailIsi({ klien }: { klien: Klien }) {
   const terbatas = useContext(Terbatas)
   const P = usePeriode(klien.id)
   const { rent, dari, sampai, preset, kustomSah } = P
-  const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
+  const dsKlien = useRows<TokoDs>(() => sb.rpc('toko_klien', { p_klien: klien.id }), [klien.id]) // lewat fungsi: akun klien tidak membaca tabel ds
   const [toko, setToko] = useState('')
   const [mode, setMode] = useState<'rider' | 'hari'>('rider')
   const [cari, setCari] = useState('')
@@ -465,7 +510,7 @@ function KehadiranHarian({ bo }: { bo: Bo[] }) {
 }
 
 type Urut = 'ds_nama' | 'selesai' | 'kete' | 'late' | 'pod' | 'rider_hari' | 'per_rider'
-function TabelToko({ toko, target, klien }: { toko: Toko[]; target: number | null; klien: string }) {
+function TabelToko({ toko, target, klien, onPilih }: { toko: Toko[]; target: number | null; klien: string; onPilih: (dsId: string) => void }) {
   const anda = useAnda()
   const kolomRider = anda ? 'Hari kerja rider' : 'Rider-hari'
   const [urut, setUrut] = useState<Urut>('selesai')
@@ -494,7 +539,7 @@ function TabelToko({ toko, target, klien }: { toko: Toko[]; target: number | nul
           <thead><tr><Th k="ds_nama">Toko</Th><Th k="selesai">Pesanan</Th><Th k="kete">Ketepatan antar</Th><Th k="late">Late</Th><Th k="pod">POD sesuai</Th><Th k="rider_hari">{kolomRider}</Th><Th k="per_rider">Per rider/hari</Th></tr></thead>
           <tbody>
             {pg.rows.map((t) => (
-              <tr key={t.ds_id}>
+              <tr key={t.ds_id} onClick={() => onPilih(t.ds_id)} onKeyDown={(e) => { if (e.key === 'Enter') onPilih(t.ds_id) }} tabIndex={0} className="cursor-pointer hover:bg-muted/50" title="Klik untuk melihat rincian toko ini">
                 <td>{t.ds_nama}{t.kode_toko && <span className="ml-2 font-mono text-[11px] text-muted-foreground">{t.kode_toko}</span>}</td>
                 <td>{teksAngka(Number(t.selesai))}</td>
                 <td className={target !== null && t.kete !== null && t.kete < target ? 'font-semibold text-danger' : ''}>{teksPct(t.kete)}</td>

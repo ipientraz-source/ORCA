@@ -3,15 +3,17 @@
 // pencocokan lalu dibuang. Semua pemeriksaan "boleh disimpan atau tidak" ada di database (simpan_order_klien, migrasi 0079).
 import { useEffect, useMemo, useState } from 'react'
 import { Download, FileUp, Link2, Plus } from 'lucide-react'
-import { sb, ok, toast, Field, Select, Err, Kosong, useRows, usePage, Pagination, parseCsv, toCsv, download, tanggal } from './lib'
+import { sb, ok, toast, konfirmasi, Field, Select, Err, Kosong, useRows, usePage, Pagination, parseCsv, toCsv, download, tanggal } from './lib'
 import { ambilSemua } from './laporan-order'
 import { bacaXlsx } from './xlsx-baca'
 import { bacaTabelKlien, cocokkanMitra, ringkas, sarankanDs, type CocokMitra, type HasilBaca, type RiderOrca, type StatusMitra } from './data-klien.ts'
 
 type Klien = { id: string; nama: string; target_ketepatan: number | null }
 type DsK = { id: string; nama: string; klien_id: string | null; kode_toko: string | null; aktif: boolean }
-type Unggahan = { id: string; waktu: string; oleh: string | null; berkas: string | null; tgl_awal: string | null; tgl_akhir: string | null; baris_total: number; baris_baru: number; baris_ubah: number; baris_sama: number; baris_tolak: number; baris_lewat: number }
-type HasilSimpan = { unggahan: string; total: number; baru: number; ubah: number; sama: number; tolak: number; lewat: number; ditolak: { baris: number; alasan: string }[]; toko_dilewati: { kode_toko: string; nama_toko: string; baris: number }[] }
+type Unggahan = { id: string; waktu: string; oleh: string | null; berkas: string | null; tgl_awal: string | null; tgl_akhir: string | null; baris_total: number; baris_baru: number; baris_ubah: number; baris_sama: number; baris_tolak: number; baris_lewat: number; baris_tahan: number }
+type AkunKlien = { id: string; email: string; nama: string | null; aktif: boolean }
+type Tahan = { id: string; tanggal: string; ds_id: string; kode_mtr: string; selesai: number; lama_selesai: number; dibuat: string }
+type HasilSimpan = { unggahan: string; total: number; baru: number; ubah: number; sama: number; tolak: number; lewat: number; tahan: number; ditolak: { baris: number; alasan: string }[]; toko_dilewati: { kode_toko: string; nama_toko: string; baris: number }[] }
 
 const waktu = (s: string) => new Date(s).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 const rentang = (a: string | null, b: string | null) => (!a ? '–' : a === b ? tanggal(a) : `${tanggal(a)} – ${tanggal(b ?? a)}`)
@@ -35,8 +37,10 @@ async function sidikBerkas(buf: ArrayBuffer): Promise<string> {
 export function DataKlien() {
   const klien = useRows<Klien>(() => sb.from('klien').select('*').order('nama'), [])
   const [id, setId] = useState('')
-  const [sub, setSub] = useState<'unggah' | 'toko' | 'riwayat'>('unggah')
+  const [sub, setSub] = useState<'unggah' | 'toko' | 'riwayat' | 'tahan' | 'akun'>('unggah')
   const pilih = klien.rows.find((k) => k.id === (id || klien.rows[0]?.id))
+  // Perubahan besar dari unggahan klien yang menunggu keputusan Super-admin (jumlahnya tampil di tab)
+  const tahan = useRows<Tahan>(() => (pilih ? sb.from('order_klien_tahan').select('id,tanggal,ds_id,kode_mtr,selesai,lama_selesai,dibuat').eq('klien_id', pilih.id).eq('status', 'menunggu').order('dibuat', { ascending: false }).limit(1000) : Promise.resolve({ data: [], error: null })), [pilih?.id])
   if (klien.err) return <Err msg={klien.err} />
   return (
     <div className="space-y-3">
@@ -52,13 +56,15 @@ export function DataKlien() {
       {!pilih ? <Kosong teks="Belum ada klien" hint="Tambahkan klien pertama (mis. Alfagift), lalu pasangkan tokonya ke DS dan unggah datanya." /> : (
         <>
           <div role="tablist" aria-label="Bagian data klien" className="flex gap-2">
-            {([['unggah', 'Unggah data'], ['toko', 'Toko klien'], ['riwayat', 'Riwayat unggahan']] as const).map(([k, label]) => (
-              <button key={k} role="tab" aria-selected={sub === k} onClick={() => setSub(k)} className={`tab !px-3 ${sub === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
+            {([['unggah', 'Unggah data'], ['toko', 'Toko klien'], ['tahan', `Perlu persetujuan${tahan.rows.length ? ` (${tahan.rows.length})` : ''}`], ['riwayat', 'Riwayat unggahan'], ['akun', 'Akun klien']] as const).map(([k, label]) => (
+              <button key={k} role="tab" aria-selected={sub === k} onClick={() => setSub(k)} className={`tab !px-3 ${sub === k ? 'tab-on' : tahan.rows.length && k === 'tahan' ? 'border border-warning bg-card text-warning' : 'border border-border bg-card'}`}>{label}</button>
             ))}
           </div>
           {sub === 'unggah' && <Unggah key={pilih.id} klien={pilih} />}
           {sub === 'toko' && <TokoKlien key={pilih.id} klien={pilih} />}
+          {sub === 'tahan' && <Tahanan key={pilih.id} rows={tahan.rows} err={tahan.err} selesai={tahan.reload} />}
           {sub === 'riwayat' && <Riwayat key={pilih.id} klien={pilih} />}
+          {sub === 'akun' && <AkunKlienDaftar key={pilih.id} klien={pilih} />}
         </>
       )}
     </div>
@@ -103,8 +109,10 @@ function Target({ klien }: { klien: Klien }) {
 }
 
 // ───────── toko klien ─────────
-function useDs() {
-  return useRows<DsK>(() => sb.from('ds').select('id,nama,klien_id,kode_toko,aktif').order('nama'), [])
+// Super-admin membaca tabel ds langsung. Akun klien tidak boleh (tabel itu memuat data internal): ia memberi klienSaja dan membaca lewat toko_klien,
+// yang hanya mengembalikan toko milik klien itu.
+function useDs(klienSaja?: string) {
+  return useRows<DsK>(() => (klienSaja ? sb.rpc('toko_klien', { p_klien: klienSaja }) : sb.from('ds').select('id,nama,klien_id,kode_toko,aktif').order('nama')), [klienSaja])
 }
 
 async function pasang(d: DsK, klienId: string | null, kode: string | null): Promise<boolean> {
@@ -172,7 +180,7 @@ type Berkas = { nama: string; sidik: string; hasil: HasilBaca }
 
 // modeKlien (akun klien): tanpa pemasangan toko dan tanpa pencocokan rider ORCA. Keduanya data internal Dash; klien hanya diberi tahu toko mana yang belum terdaftar.
 function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolean }) {
-  const ds = useDs()
+  const ds = useDs(modeKlien ? klien.id : undefined)
   const [berkas, setBerkas] = useState<Berkas | null>(null)
   const [galat, setGalat] = useState('')
   const [sibuk, setSibuk] = useState(false)
@@ -191,7 +199,8 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
     return () => { batal = true }
   }, [berkas, riders, modeKlien])
 
-  const dsPerToko = useMemo(() => new Map(ds.rows.filter((d) => d.klien_id === klien.id && d.kode_toko).map((d) => [d.kode_toko as string, d.id])), [ds.rows, klien.id])
+  // mode klien: toko_klien sudah hanya berisi toko kliennya (tanpa kolom klien_id)
+  const dsPerToko = useMemo(() => new Map(ds.rows.filter((d) => (modeKlien || d.klien_id === klien.id) && d.kode_toko).map((d) => [d.kode_toko as string, d.id])), [ds.rows, klien.id, modeKlien])
   const ring = useMemo(() => (berkas ? ringkas(berkas.hasil.baris) : null), [berkas])
   const belum = ring?.toko.filter((t) => !dsPerToko.has(t.kode)) ?? []
   const siap = berkas ? berkas.hasil.baris.filter((b) => dsPerToko.has(b.kode_toko.toUpperCase())) : []
@@ -221,7 +230,7 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
       if (error) return toast(error.message)
       const h = data as HasilSimpan
       setLaporan(h)
-      toast.ok(`${h.baru} baris baru, ${h.ubah} diperbarui`)
+      toast.ok(`${h.baru} baris baru, ${h.ubah} diperbarui${h.tahan ? `, ${h.tahan} menunggu persetujuan` : ''}`)
       setBerkas(null)
     } finally { setSibuk(false) }
   }
@@ -251,8 +260,15 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
             <span className="badge bg-success-soft text-success">{laporan.baru} baru</span>
             <span className="badge bg-primary-soft text-primary">{laporan.ubah} diperbarui</span>
             <span className="badge bg-muted text-muted-foreground">{laporan.sama} tidak berubah</span>
+            {laporan.tahan > 0 && <span className="badge bg-warning-soft text-warning">{laporan.tahan} menunggu persetujuan</span>}
             {laporan.tolak > 0 && <span className="badge bg-danger-soft text-danger">{laporan.tolak} ditolak</span>}
           </div>
+          {laporan.tahan > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Perubahan besar pada data yang sudah tersimpan (lebih dari 10% dan sedikitnya 5 pesanan) <b>ditahan</b> sampai {modeKlien ? 'tim Dash menyetujuinya' : 'Super-admin menyetujuinya, lihat tab Perlu persetujuan'}.
+              Selama menunggu, data lama tetap berlaku.
+            </p>
+          )}
           {laporan.ditolak.length > 0 && (
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2"><b>{modeKlien ? 'Baris yang ditolak' : 'Baris ditolak database'}</b> (tidak disimpan){laporan.tolak > laporan.ditolak.length && ` · ${laporan.ditolak.length} pertama dari ${laporan.tolak}`}
@@ -373,6 +389,147 @@ function Mitra({ cocok, memuat }: { cocok: CocokMitra[]; memuat: boolean }) {
   )
 }
 
+// ───────── perubahan besar yang ditahan (Super-admin memutuskan) ─────────
+function Tahanan({ rows, err, selesai }: { rows: Tahan[]; err: string; selesai: () => void }) {
+  const ds = useDs()
+  const nama = (id: string) => ds.rows.find((d) => d.id === id)?.nama ?? '–'
+  const pg = usePage(rows, [rows.length])
+  async function putuskan(t: Tahan, setuju: boolean) {
+    const pesan = setuju
+      ? `Setujui perubahan ${t.kode_mtr} pada ${tanggal(t.tanggal)}? Pesanan selesai diganti dari ${t.lama_selesai} menjadi ${t.selesai}. Nilai lamanya tetap tersimpan di riwayat penimpaan.`
+      : `Tolak perubahan ${t.kode_mtr} pada ${tanggal(t.tanggal)}? Angka lama (${t.lama_selesai}) tetap dipakai.`
+    if (!(await konfirmasi(pesan, { ya: setuju ? 'Setujui' : 'Tolak', bahaya: !setuju }))) return
+    if (await ok(sb.rpc('putuskan_tahan', { p_id: t.id, p_setuju: setuju }))) { toast.ok(setuju ? 'Perubahan disetujui' : 'Perubahan ditolak'); selesai() }
+  }
+  if (err) return <Err msg={err} />
+  if (!rows.length) return <Kosong teks="Tidak ada perubahan yang menunggu" hint="Perubahan besar dari unggahan klien (lebih dari 10% dan sedikitnya 5 pesanan) muncul di sini untuk disetujui atau ditolak." />
+  return (
+    <div className="card space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Perubahan di bawah ini mengubah angka yang sudah tersimpan lebih dari 10% dan sedikitnya 5 pesanan. <b>Data lama tetap berlaku</b> sampai kamu menyetujuinya.
+      </p>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="tbl">
+          <thead><tr><th>Tanggal</th><th>Toko</th><th>Kode mitra</th><th>Angka lama</th><th>Angka baru</th><th>Selisih</th><th>Diunggah</th><th /></tr></thead>
+          <tbody>
+            {pg.rows.map((t) => {
+              const beda = t.selesai - t.lama_selesai
+              return (
+                <tr key={t.id}>
+                  <td className="whitespace-nowrap">{tanggal(t.tanggal)}</td>
+                  <td>{nama(t.ds_id)}</td>
+                  <td className="font-mono text-xs">{t.kode_mtr}</td>
+                  <td>{t.lama_selesai}</td>
+                  <td>{t.selesai}</td>
+                  <td className={beda > 0 ? 'text-success' : 'text-danger'}>{beda > 0 ? '+' : ''}{beda}{t.lama_selesai ? ` (${beda > 0 ? '+' : ''}${Math.round((beda * 100) / t.lama_selesai)}%)` : ''}</td>
+                  <td className="whitespace-nowrap text-xs">{waktu(t.dibuat)}</td>
+                  <td className="whitespace-nowrap text-right">
+                    <button className="btn2" onClick={() => putuskan(t, true)}>Setujui</button>
+                    <button className="btn2 ml-2" onClick={() => putuskan(t, false)}>Tolak</button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pagination {...pg} />
+    </div>
+  )
+}
+
+// ───────── akun klien (Super-admin) ─────────
+const HURUF_PASSWORD = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789' // tanpa karakter yang mudah tertukar (I, l, 1, O, 0)
+function passwordAcak(): string {
+  let out = ''
+  const batas = 256 - (256 % HURUF_PASSWORD.length) // buang nilai di atas batas supaya setiap huruf sama peluangnya
+  while (out.length < 14) for (const b of crypto.getRandomValues(new Uint8Array(24))) if (b < batas && out.length < 14) out += HURUF_PASSWORD[b % HURUF_PASSWORD.length]
+  return out
+}
+
+function AkunKlienDaftar({ klien }: { klien: Klien }) {
+  const akun = useRows<AkunKlien>(() => sb.from('akun_klien').select('id,email,nama,aktif').eq('klien_id', klien.id).order('dibuat'), [klien.id])
+  const [email, setEmail] = useState('')
+  const [nama, setNama] = useState('')
+  const [pw, setPw] = useState('')
+  const [sibuk, setSibuk] = useState(false)
+  const [hasil, setHasil] = useState<{ email: string; password: string; baru: boolean } | null>(null)
+
+  async function buat() {
+    const e = email.trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return toast('Isi email yang valid')
+    if (pw.length < 8) return toast('Password minimal 8 karakter. Pakai tombol "Buat acak" bila perlu.')
+    setSibuk(true)
+    try {
+      const { data, error } = await sb.functions.invoke('kelola-klien', { body: { email: e, password: pw, klien_id: klien.id, nama: nama.trim() } })
+      if (error) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const detail = await (error as any).context?.json?.().then((j: any) => j.error).catch(() => null)
+        return toast(`Akun klien gagal dibuat: ${detail ?? error.message}`)
+      }
+      setHasil({ email: e, password: pw, baru: Boolean((data as { created?: boolean } | null)?.created) })
+      setEmail(''); setNama(''); setPw('')
+      akun.reload()
+    } finally { setSibuk(false) }
+  }
+  async function ubahStatus(a: AkunKlien) {
+    if (a.aktif && !(await konfirmasi(`Nonaktifkan akun ${a.email}? Klien ini tidak bisa melihat data lagi sampai diaktifkan kembali.`, { ya: 'Nonaktifkan', bahaya: true }))) return
+    if (await ok(sb.from('akun_klien').update({ aktif: !a.aktif }).eq('id', a.id))) { toast.ok(a.aktif ? 'Akun dinonaktifkan' : 'Akun diaktifkan'); akun.reload() }
+  }
+  const salin = (t: string) => navigator.clipboard?.writeText(t).then(() => toast.ok('Disalin'), () => toast('Tidak bisa menyalin, salin manual'))
+
+  return (
+    <div className="space-y-3">
+      <div className="card space-y-3">
+        <b>Buat akun login klien atau atur ulang password</b>
+        <p className="text-sm text-muted-foreground">
+          Klien masuk lewat tab <b>Email</b> di layar login dan hanya melihat data <b>{klien.nama}</b>. Email yang sudah dipakai orang di ORCA (rider, Captain, Arcon, Super-admin) ditolak.
+          Email yang sudah punya akun: password-nya diganti.
+        </p>
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); buat() }}>
+          <Field label="Email klien"><input className="inp w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@perusahaan.com" autoComplete="off" /></Field>
+          <Field label="Nama (opsional)"><input className="inp w-full" value={nama} maxLength={80} onChange={(e) => setNama(e.target.value)} placeholder="mis. Tim Alfagift" /></Field>
+          <Field label="Password (min. 8 karakter)"><input className="inp w-full font-mono" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="off" /></Field>
+          <div className="flex items-end gap-2">
+            <button type="button" className="btn2" onClick={() => setPw(passwordAcak())}>Buat acak</button>
+            <button className="btn" disabled={sibuk}>{sibuk ? 'Menyimpan…' : 'Simpan akun'}</button>
+          </div>
+        </form>
+        {hasil && (
+          <div className="space-y-2 rounded-xl border border-success/40 bg-success/5 p-3 text-sm">
+            <div><b>{hasil.baru ? 'Akun dibuat.' : 'Password diganti.'}</b> Berikan data ini ke klien lewat jalur yang aman. <b>Password tidak bisa dilihat lagi</b> setelah kotak ini ditutup.</div>
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs"><span>{hasil.email}</span><button className="btn2" onClick={() => salin(hasil.email)}>Salin email</button></div>
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs"><span>{hasil.password}</span><button className="btn2" onClick={() => salin(hasil.password)}>Salin password</button></div>
+            <button className="btn2" onClick={() => setHasil(null)}>Tutup</button>
+          </div>
+        )}
+      </div>
+      {akun.err ? <Err msg={akun.err} /> : !akun.rows.length ? <Kosong teks="Belum ada akun untuk klien ini" hint="Buat akun pertama di atas." /> : (
+        <div className="card">
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="tbl">
+              <thead><tr><th>Email</th><th>Nama</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {akun.rows.map((a) => (
+                  <tr key={a.id}>
+                    <td className="font-mono text-xs">{a.email}</td>
+                    <td>{a.nama ?? '–'}</td>
+                    <td><span className={`badge ${a.aktif ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'}`}>{a.aktif ? 'Aktif' : 'Nonaktif'}</span></td>
+                    <td className="whitespace-nowrap text-right">
+                      <button className="btn2" onClick={() => { setEmail(a.email); setNama(a.nama ?? ''); setPw(passwordAcak()) }}>Atur ulang password</button>
+                      <button className="btn2 ml-2" onClick={() => ubahStatus(a)}>{a.aktif ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Dipakai akun klien: hanya klien miliknya sendiri
 const klienSaya = (klienId: string): Klien => ({ id: klienId, nama: '', target_ketepatan: null })
 export const UnggahKlien = ({ klienId }: { klienId: string }) => <Unggah klien={klienSaya(klienId)} modeKlien />
@@ -380,7 +537,7 @@ export const RiwayatKlien = ({ klienId }: { klienId: string }) => <Riwayat klien
 
 // ───────── riwayat ─────────
 function Riwayat({ klien }: { klien: Klien }) {
-  const u = useRows<Unggahan>(() => sb.from('unggahan_klien').select('id,waktu,oleh,berkas,tgl_awal,tgl_akhir,baris_total,baris_baru,baris_ubah,baris_sama,baris_tolak,baris_lewat').eq('klien_id', klien.id).order('waktu', { ascending: false }).limit(500), [klien.id])
+  const u = useRows<Unggahan>(() => sb.from('unggahan_klien').select('id,waktu,oleh,berkas,tgl_awal,tgl_akhir,baris_total,baris_baru,baris_ubah,baris_sama,baris_tolak,baris_lewat,baris_tahan').eq('klien_id', klien.id).order('waktu', { ascending: false }).limit(500), [klien.id])
   const pg = usePage(u.rows, [klien.id])
   if (u.err) return <Err msg={u.err} />
   if (!u.rows.length) return <Kosong teks="Belum ada unggahan" hint="Riwayat muncul setelah file pertama diunggah." />
@@ -388,12 +545,12 @@ function Riwayat({ klien }: { klien: Klien }) {
     <div className="card space-y-3">
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="tbl">
-          <thead><tr><th>Waktu</th><th>Oleh</th><th>Berkas</th><th>Periode data</th><th>Baru</th><th>Diperbarui</th><th>Tidak berubah</th><th>Ditolak</th><th>Dilewati</th></tr></thead>
+          <thead><tr><th>Waktu</th><th>Oleh</th><th>Berkas</th><th>Periode data</th><th>Baru</th><th>Diperbarui</th><th>Tidak berubah</th><th>Ditahan</th><th>Ditolak</th><th>Dilewati</th></tr></thead>
           <tbody>{pg.rows.map((x) => (
             <tr key={x.id}>
               <td className="whitespace-nowrap">{waktu(x.waktu)}</td><td className="text-xs">{x.oleh ?? '–'}</td><td className="text-xs">{x.berkas ?? '–'}</td>
               <td className="whitespace-nowrap">{rentang(x.tgl_awal, x.tgl_akhir)}</td>
-              <td>{x.baris_baru}</td><td>{x.baris_ubah}</td><td>{x.baris_sama}</td><td>{x.baris_tolak}</td><td>{x.baris_lewat}</td>
+              <td>{x.baris_baru}</td><td>{x.baris_ubah}</td><td>{x.baris_sama}</td><td>{x.baris_tahan}</td><td>{x.baris_tolak}</td><td>{x.baris_lewat}</td>
             </tr>
           ))}</tbody>
         </table>
