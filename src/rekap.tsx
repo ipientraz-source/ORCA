@@ -285,8 +285,9 @@ const HALAMAN: { id: Halaman; nama: string; Ikon: typeof Gauge }[] = [
   { id: 'budget', nama: 'Budget Trend', Ikon: TrendingUp },
 ]
 const HALAMAN_KLIEN = { id: 'klien' as Halaman, nama: 'Dashboard Klien', Ikon: Handshake }
-export function Dashboard({ superAdmin = false }: { superAdmin?: boolean }) {
-  const daftar = superAdmin ? [...HALAMAN, HALAMAN_KLIEN] : HALAMAN
+// klien: "semua" = Super-admin (semua toko klien), "dipegang" = Arcon (hanya DS yang dipegang; dijaga di database), kosong = Captain (tanpa pilihan ini)
+export function Dashboard({ klien }: { klien?: 'semua' | 'dipegang' }) {
+  const daftar = klien ? [...HALAMAN, HALAMAN_KLIEN] : HALAMAN
   const [hal, setHal] = useState<Halaman>('captain')
   const [geser, setGeser] = useState('') // animasi hanya setelah tab dipilih, bukan saat Dashboard pertama dibuka
   const idx = (h: Halaman) => daftar.findIndex((x) => x.id === h)
@@ -340,7 +341,7 @@ export function Dashboard({ superAdmin = false }: { superAdmin?: boolean }) {
         </div>
       </div>
       <div key={hal} className={geser}>
-        {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : hal === 'klien' ? <DashboardKlien /> : <DashboardCaptain />}
+        {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : hal === 'klien' ? <DashboardKlien terbatas={klien === 'dipegang'} /> : <DashboardCaptain />}
       </div>
     </div>
   )

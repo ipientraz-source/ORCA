@@ -27,7 +27,7 @@ type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = se
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
 
 const SUPER: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard superAdmin /> },
+  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard klien="semua" /> },
   { nama: 'Rider Management', desc: 'Pindah DS, ubah status, impor dan unduh CSV', Icon: Users, View: DataRider },
   { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS mana pun', Icon: CalendarDays, View: () => <JadwalSemua editable /> },
   { nama: 'Schedule Archive', desc: 'Jadwal tersimpan semua DS per minggu', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
@@ -65,7 +65,7 @@ const CAPTAIN: Tab[] = [
 ]
 // Arcon: atasan Captain, memantau beberapa DS. Boleh menyusun jadwal (termasuk otomatis), mengatur kebutuhan harian, mengunci absensi mingguan, dan menonaktifkan rider. Absensi harian dikerjakan Captain; Arcon boleh membantu mengisinya di DS yang dipegang.
 const ARCON: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di DS Anda', Icon: LayoutDashboard, View: () => <Dashboard /> },
+  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di DS Anda', Icon: LayoutDashboard, View: () => <Dashboard klien="dipegang" /> },
   { nama: 'Rider Management', desc: 'Rider DS Anda: tambah baru, nonaktifkan yang tidak jalan', Icon: Users, View: DataRider },
   { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS Anda, termasuk Susun otomatis', Icon: CalendarDays, View: ({ dsList }) => <JadwalSemua daftar={dsList} editable /> },
   { nama: 'Schedule Archive', desc: 'Jadwal tersimpan DS Anda per minggu', Icon: ListChecks, View: () => <DaftarJadwal /> },

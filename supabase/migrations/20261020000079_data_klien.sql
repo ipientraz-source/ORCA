@@ -93,14 +93,19 @@ begin
 end $$;
 create trigger order_klien_catat_t before update on order_klien for each row execute function order_klien_catat();
 
--- Hanya dibaca Super-admin untuk saat ini. Tanpa kebijakan tulis pada tabel data: penulisan hanya lewat simpan_order_klien.
+-- Super-admin membaca semuanya; Arcon hanya order dan klien untuk DS yang dipegang (lihat di bawah); unggahan dan riwayat penimpaan hanya Super-admin.
+-- Tanpa kebijakan tulis pada tabel data: penulisan hanya lewat simpan_order_klien (Super-admin).
 alter table klien enable row level security;
 alter table unggahan_klien enable row level security;
 alter table order_klien enable row level security;
 alter table order_klien_riwayat enable row level security;
 create policy klien_super on klien for all to authenticated using ((select is_super())) with check ((select is_super()));
 create policy unggahan_klien_baca on unggahan_klien for select to authenticated using ((select is_super()));
-create policy order_klien_baca on order_klien for select to authenticated using ((select is_super()));
+-- Arcon boleh MEMBACA order dan klien hanya untuk DS yang dipegangnya (Dashboard Klien dan Detail Order); tidak ada hak tulis. Captain TIDAK: my_ds_ids() juga berisi DS Captain, jadi aturannya menyebut peran Arcon.
+create policy order_klien_baca on order_klien for select to authenticated
+  using ((select is_super()) or ((select my_peran()) = 'arcon' and ds_id = any ((select my_ds_ids())::uuid[])));
+create policy klien_arcon_baca on klien for select to authenticated
+  using (exists (select 1 from ds d where d.klien_id = klien.id and (select my_peran()) = 'arcon' and d.id = any ((select my_ds_ids())::uuid[])));
 create policy order_klien_riwayat_baca on order_klien_riwayat for select to authenticated using ((select is_super()));
 
 -- yyyy-mm-dd yang benar-benar ada di kalender, selain itu NULL (tidak melempar galat)

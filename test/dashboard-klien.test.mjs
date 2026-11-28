@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite'
 
 const db = new PGlite()
 const id = (n) => '00000000-0000-0000-0000-' + String(n).padStart(12, '0')
-const S = 'super@test.local', CG = 'cap-a@test.local', AA = 'arcon-a@test.local'
+const S = 'super@test.local', CG = 'cap-a@test.local', AA = 'arcon-a@test.local', AB = 'arcon-b@test.local'
 const K1 = id(901), K2 = id(902), K3 = id(903)
 const DS_A = id(101), DS_B = id(102), DS_C = id(103)
 const q = async (sql, p) => (await db.query(sql, p)).rows
@@ -37,8 +37,10 @@ before(async () => {
     insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
       ('${id(1)}', null, 'Super', null, 'super_admin', '${S}', 'aktif'),
       ('${id(10)}', 'MTR-CA', 'Captain A', '${DS_A}', 'captain', '${CG}', 'aktif'),
-      ('${id(30)}', null, 'Arcon A', null, 'arcon', '${AA}', 'aktif');
-    update ds set captain_id = '${id(10)}', arcon_id = '${id(30)}' where id = '${DS_A}';
+      ('${id(30)}', null, 'Arcon A', null, 'arcon', '${AA}', 'aktif'),
+      ('${id(31)}', null, 'Arcon B', null, 'arcon', '${AB}', 'aktif');
+    update ds set captain_id = '${id(10)}', arcon_id = '${id(30)}' where id = '${DS_A}'; -- Arcon A: hanya DS A (klien Satu, DS B tidak dipegang)
+    update ds set arcon_id = '${id(31)}' where id = '${DS_C}'; -- Arcon B: hanya DS C (klien Dua)
     insert into order_klien (tanggal, ds_id, kode_mtr, selesai, ontime, late, pod_sesuai, pod_tidak) values
       (${D(3)}, '${DS_A}', 'M1', 10, 9, 1, 8, 2),
       (${D(3)}, '${DS_A}', 'M2', 20, 20, 0, 19, 1),
@@ -99,13 +101,31 @@ test('angka Dash (clock-in BO) sama dengan aktual_bo, hanya untuk toko klien itu
   assert.ok(k1[0].kebutuhan > 0 && k2[0].kebutuhan > 0 && k1[0].kebutuhan !== k2[0].kebutuhan)
 })
 
-test('hak akses: Captain dan Arcon tidak mendapat apa pun, anon ditolak', async () => {
-  for (const e of [CG, AA]) {
-    assert.deepEqual(await harian(e, K1, 5, 0), [])
-    assert.deepEqual(await panggil(e, 'dashboard_klien_toko', `'${K1}', ${D(5)}, ${D(0)}, null`), [])
-    assert.deepEqual(await panggil(e, 'dashboard_klien_rentang', `'${K1}'`), [])
-    assert.deepEqual(await panggil(e, 'dashboard_klien_bo', `'${K1}', ${D(3)}, ${D(3)}, null`), [])
-  }
+test('hak akses: Captain tidak mendapat apa pun; Arcon hanya DS yang dipegangnya (juga lewat p_ds); anon ditolak', async () => {
+  // Captain
+  assert.deepEqual(await harian(CG, K1, 5, 0), [])
+  assert.deepEqual(await panggil(CG, 'dashboard_klien_toko', `'${K1}', ${D(5)}, ${D(0)}, null`), [])
+  assert.deepEqual(await panggil(CG, 'dashboard_klien_rentang', `'${K1}'`), [])
+  assert.deepEqual(await panggil(CG, 'dashboard_klien_bo', `'${K1}', ${D(3)}, ${D(3)}, null`), [])
+  // Arcon A memegang DS A saja: total hanya DS A (30 pesanan dari M1 + M2 pada hari -3), DS B tidak ikut
+  assert.deepEqual(await harian(AA, K1, 5, 0), [
+    { tanggal: await tgl(3), selesai: 30, ontime: 29, late: 1, pod_sesuai: 27, pod_tidak: 3, rider_hari: 2 },
+    { tanggal: await tgl(2), selesai: 10, ontime: 10, late: 0, pod_sesuai: 10, pod_tidak: 0, rider_hari: 1 },
+  ])
+  assert.deepEqual((await panggil(AA, 'dashboard_klien_toko', `'${K1}', ${D(5)}, ${D(0)}, null`)).map((t) => t.ds_nama), ['DS A'])
+  assert.deepEqual(await panggil(AA, 'dashboard_klien_toko', `'${K1}', ${D(5)}, ${D(0)}, array['${DS_B}']::uuid[]`), []) // DS B bukan miliknya
+  assert.deepEqual((await panggil(AA, 'dashboard_klien_toko', `'${K1}', ${D(5)}, ${D(0)}, array['${DS_A}', '${DS_B}']::uuid[]`)).map((t) => t.ds_nama), ['DS A'])
+  const r = await panggil(AA, 'dashboard_klien_rentang', `'${K1}'`)
+  assert.deepEqual([r[0].awal, r[0].akhir, r[0].hari], [await tgl(3), await tgl(2), 2])
+  // angka Dash (BO) Arcon A = aktual_bo untuk DS A saja
+  const boA = await panggil(AA, 'dashboard_klien_bo', `'${K1}', ${D(3)}, ${D(3)}, null`)
+  const orA = num(await as(AA, () => q(`select sum(kebutuhan) as kebutuhan, sum(terpenuhi) as terpenuhi, sum(hadir) as hadir, sum(tepat) as tepat from aktual_bo(${D(3)}, ${D(3)}) where ds_id = '${DS_A}'`)))[0]
+  assert.deepEqual({ kebutuhan: boA[0].kebutuhan, terpenuhi: boA[0].terpenuhi, hadir: boA[0].hadir, tepat: boA[0].tepat }, orA)
+  // lintas klien: Arcon A tidak melihat klien Dua, Arcon B tidak melihat klien Satu
+  assert.deepEqual(await harian(AA, K2, 5, 0), [])
+  assert.deepEqual(await panggil(AA, 'dashboard_klien_rentang', `'${K2}'`), [])
+  assert.deepEqual(await harian(AB, K1, 5, 0), [])
+  assert.equal((await harian(AB, K2, 5, 0))[0].selesai, 100)
   await assert.rejects(as(null, () => q(`select * from dashboard_klien_rentang('${K1}')`)), /permission denied/)
 })
 
@@ -153,10 +173,18 @@ test('detail per hari: satu baris per tanggal dan toko, dengan jumlah rider, tot
   assert.deepEqual((await h(2, 2)).map((r) => r.ds_nama), ['DS B'])
 })
 
-test('detail order: Captain, Arcon, dan anon tidak mendapat apa pun', async () => {
-  for (const e of [CG, AA]) {
-    assert.deepEqual(await panggil(e, 'dashboard_klien_detail_rider', `'${K1}', ${D(5)}, ${D(0)}, null, null, 50, 0`), [])
-    assert.deepEqual(await panggil(e, 'dashboard_klien_detail_hari', `'${K1}', ${D(5)}, ${D(0)}, null, 50, 0`), [])
-  }
+test('detail order: Captain tidak mendapat apa pun; Arcon hanya DS yang dipegangnya; anon ditolak', async () => {
+  const rider = (e, klien) => panggil(e, 'dashboard_klien_detail_rider', `'${klien}', ${D(5)}, ${D(0)}, null, null, 50, 0`)
+  const hari = (e, klien) => panggil(e, 'dashboard_klien_detail_hari', `'${klien}', ${D(5)}, ${D(0)}, null, 50, 0`)
+  assert.deepEqual(await rider(CG, K1), [])
+  assert.deepEqual(await hari(CG, K1), [])
+  const a = await rider(AA, K1) // M1 (hari -2), M1 dan M2 (hari -3), semuanya DS A; M3 milik DS B tidak ikut
+  assert.deepEqual(a.map((r) => [r.ds_nama, r.kode_mtr]), [['DS A', 'M1'], ['DS A', 'M1'], ['DS A', 'M2']])
+  assert.ok(a.every((r) => r.total === 3))
+  assert.deepEqual((await hari(AA, K1)).map((r) => [r.ds_nama, r.total]), [['DS A', 2], ['DS A', 2]])
+  assert.deepEqual(await panggil(AA, 'dashboard_klien_detail_rider', `'${K1}', ${D(5)}, ${D(0)}, array['${DS_B}']::uuid[], 'M3', 50, 0`), []) // mencari DS lain: tetap kosong
+  assert.deepEqual(await rider(AA, K2), [])
+  assert.deepEqual(await rider(AB, K1), [])
+  assert.deepEqual((await rider(AB, K2)).map((r) => r.kode_mtr), ['M9'])
   await assert.rejects(as(null, () => q(`select * from dashboard_klien_detail_hari('${K1}', ${D(5)}, ${D(0)})`)), /permission denied/)
 })

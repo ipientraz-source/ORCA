@@ -7,7 +7,7 @@ import { PGlite } from '@electric-sql/pglite'
 
 const db = new PGlite()
 const id = (n) => '00000000-0000-0000-0000-' + String(n).padStart(12, '0')
-const S = 'super@test.local', CG = 'cap-a@test.local', AA = 'arcon-a@test.local'
+const S = 'super@test.local', CG = 'cap-a@test.local', AA = 'arcon-a@test.local', AB = 'arcon-b@test.local'
 const K1 = id(901), K2 = id(902)
 const DS_A = id(101), DS_B = id(102), DS_C = id(103), DS_D = id(104)
 const q = async (sql, p) => (await db.query(sql, p)).rows
@@ -38,8 +38,10 @@ before(async () => {
     insert into riders (id, kode_mtr, nama, ds_id, peran, email, status) values
       ('${id(1)}', null, 'Super', null, 'super_admin', '${S}', 'aktif'),
       ('${id(10)}', 'MTR-CA', 'Captain A', '${DS_A}', 'captain', '${CG}', 'aktif'),
-      ('${id(30)}', null, 'Arcon A', null, 'arcon', '${AA}', 'aktif');
-    update ds set captain_id = '${id(10)}', arcon_id = '${id(30)}' where id = '${DS_A}';`)
+      ('${id(30)}', null, 'Arcon A', null, 'arcon', '${AA}', 'aktif'),
+      ('${id(31)}', null, 'Arcon B', null, 'arcon', '${AB}', 'aktif');
+    update ds set captain_id = '${id(10)}', arcon_id = '${id(30)}' where id = '${DS_A}';
+    update ds set arcon_id = '${id(31)}' where id = '${DS_C}';`)
 })
 after(() => db.close())
 
@@ -144,15 +146,25 @@ test('bentuk data salah ditolak seluruhnya dan tidak meninggalkan jejak unggahan
   assert.equal((await q('select count(*)::int as n from unggahan_klien'))[0].n, n)
 })
 
-test('hak akses: hanya Super-admin yang boleh menulis dan membaca; Captain, Arcon, dan anon tidak', async () => {
+test('hak akses: hanya Super-admin yang boleh menulis; Arcon hanya membaca order DS yang dipegangnya; Captain dan anon tidak mendapat apa pun', async () => {
   const rows = [await baris({ kode_mtr: 'GELAP' })]
   for (const e of [CG, AA]) await assert.rejects(simpan(e, K1, rows), /Hanya Super-admin/)
   await assert.rejects(simpan(null, K1, rows), /permission denied/)
-  for (const e of [CG, AA]) {
-    for (const t of ['order_klien', 'order_klien_riwayat', 'unggahan_klien', 'klien']) {
-      assert.equal((await as(e, () => q(`select count(*)::int as n from ${t}`)))[0].n, 0, `${e} melihat ${t}`)
-    }
-    // tidak ada kebijakan tulis langsung pada tabel data
+  // Captain: tidak ada yang terbaca
+  for (const t of ['order_klien', 'order_klien_riwayat', 'unggahan_klien', 'klien']) {
+    assert.equal((await as(CG, () => q(`select count(*)::int as n from ${t}`)))[0].n, 0, `Captain melihat ${t}`)
+  }
+  // Arcon A memegang DS_A (klien K1): order hanya DS_A, klien hanya K1; unggahan dan riwayat penimpaan tetap hanya Super-admin
+  const o = (await as(AA, () => q(`select count(*)::int as total, count(*) filter (where ds_id = '${DS_A}')::int as a from order_klien`)))[0]
+  assert.ok(o.a > 0 && o.total === o.a, 'Arcon melihat order DS lain')
+  assert.deepEqual((await as(AA, () => q('select id from klien'))).map((r) => r.id), [K1])
+  for (const t of ['order_klien_riwayat', 'unggahan_klien']) assert.equal((await as(AA, () => q(`select count(*)::int as n from ${t}`)))[0].n, 0, `Arcon melihat ${t}`)
+  // Arcon B memegang DS_C (klien K2): hanya data K2, tidak ada DS_A atau DS_B
+  const ob = await as(AB, () => q('select distinct ds_id from order_klien'))
+  assert.deepEqual(ob.map((r) => r.ds_id), [DS_C])
+  assert.deepEqual((await as(AB, () => q('select id from klien'))).map((r) => r.id), [K2])
+  // tidak ada kebijakan tulis langsung pada tabel data, untuk siapa pun selain lewat fungsi
+  for (const e of [CG, AA, AB]) {
     await assert.rejects(as(e, () => q(`insert into order_klien (tanggal, ds_id, kode_mtr, selesai, ontime, late, pod_sesuai, pod_tidak) values (current_date, '${DS_A}', 'X', 0, 0, 0, 0, 0)`)), /row-level security/)
   }
   assert.ok((await as(S, () => q('select count(*)::int as n from order_klien')))[0].n > 0)

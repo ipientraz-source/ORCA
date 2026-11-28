@@ -186,16 +186,16 @@ export function LaporanOrderRider({ kode }: { kode: string }) {
 
 // ───────── Captain, Arcon, Super-admin ─────────
 // Captain: DS-nya. Arcon: DS yang dipegang (dsList dari App). Super-admin: semua DS.
-// Hanya Super-admin (semua DS) yang punya dropdown sumber: "Report order" (dilaporkan rider) atau "Data klien" (unggahan klien, Detail Order).
-// Captain dan Arcon tetap langsung melihat Report order, tanpa dropdown.
+// Super-admin dan Arcon punya dropdown sumber: "Report order" (dilaporkan rider) atau "Data klien" (unggahan klien, Detail Order).
+// Arcon hanya melihat toko klien di DS yang dipegang (dijaga di database). Captain langsung melihat Report order, tanpa dropdown.
 export function LaporanOrderMenu({ ds, dsList }: { ds: Ds | null; dsList?: Ds[] }) {
   const [sumber, setSumber] = useState<'report' | 'klien'>('report')
-  if (ds || dsList) return <LaporanOrderIsi ds={ds} dsList={dsList} />
+  if (ds) return <LaporanOrderIsi ds={ds} dsList={dsList} />
   return (
     <div>
       <Select className="mb-3 w-72 max-w-full" lebarMin={288} value={sumber} onChange={(v) => setSumber(v as 'report' | 'klien')}
         opsi={[{ value: 'report', label: 'Report order (dilaporkan rider)' }, { value: 'klien', label: 'Data klien (unggahan klien)' }]} />
-      {sumber === 'klien' ? <DetailOrder /> : <LaporanOrderIsi ds={ds} dsList={dsList} />}
+      {sumber === 'klien' ? <DetailOrder terbatas={!!dsList} /> : <LaporanOrderIsi ds={ds} dsList={dsList} />}
     </div>
   )
 }

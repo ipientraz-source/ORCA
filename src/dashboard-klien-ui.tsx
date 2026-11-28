@@ -21,15 +21,19 @@ const kosong = Promise.resolve({ data: [], error: null })
 // Super-admin yang "melihat sebagai klien" tetap memakai istilah internal.
 const Anda = createContext(false)
 const useAnda = () => useContext(Anda)
+// Arcon: hanya DS yang dipegang. Hanya mengubah teks (hak sebenarnya dijaga database), mis. petunjuk "menu Data Klien" yang tidak dimiliki Arcon.
+const Terbatas = createContext(false)
 
 // klienId diisi untuk akun klien: yang dilihat TETAP satu klien itu, tanpa pemilih klien dan tanpa kata-kata admin.
 // Tanpa klienId (Super-admin) ada pemilih "Lihat sebagai klien". Pembatasan sebenarnya ada di database, bukan di sini.
-export function DashboardKlien({ klienId }: { klienId?: string }) {
+export function DashboardKlien({ klienId, terbatas = false }: { klienId?: string; terbatas?: boolean }) {
   const klien = useRows<Klien>(() => (klienId ? sb.from('klien').select('*').eq('id', klienId) : sb.from('klien').select('*').order('nama')), [klienId])
   const [id, setId] = useState('')
   const pilih = klien.rows.find((k) => k.id === (klienId || id || klien.rows[0]?.id))
   if (klien.err) return <Err msg={klien.err} />
-  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." /> : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
+  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." />
+    : terbatas ? <Kosong teks="Belum ada data klien di DS Anda" hint="Data klien untuk DS yang Anda pegang muncul setelah tim Dash mengunggahnya." />
+    : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
@@ -39,10 +43,10 @@ export function DashboardKlien({ klienId }: { klienId?: string }) {
           </Field>
         )}
         <p className="pb-2 text-sm text-muted-foreground">
-          {klienId ? <>Performance pengantaran <b>{pilih.nama}</b></> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
+          {klienId ? <>Performance pengantaran <b>{pilih.nama}</b></> : terbatas ? <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko di DS yang Anda pegang.</> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
         </p>
       </div>
-      <Anda.Provider value={!!klienId}><Isi key={pilih.id} klien={pilih} /></Anda.Provider>
+      <Anda.Provider value={!!klienId}><Terbatas.Provider value={terbatas}><Isi key={pilih.id} klien={pilih} /></Terbatas.Provider></Anda.Provider>
     </div>
   )
 }
@@ -83,6 +87,7 @@ function PilihPeriode({ p }: { p: ReturnType<typeof usePeriode> }) {
 
 function Isi({ klien }: { klien: Klien }) {
   const anda = useAnda()
+  const terbatas = useContext(Terbatas)
   const P = usePeriode(klien.id)
   const { rent, ada, preset, kustomSah, dari, sampai } = P
   const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
@@ -99,6 +104,7 @@ function Isi({ klien }: { klien: Klien }) {
   if (galat) return <Err msg={galat} />
   if (!rent.err && rent.rows.length === 0) return anda
     ? <Kosong teks="Belum ada data" hint="Unggah Data Performance harian di menu Unggah Data, lalu angkanya muncul di sini." />
+    : terbatas ? <Kosong teks="Belum ada data klien di DS Anda" hint="Data muncul setelah tim Dash mengunggah Data Performance klien." />
     : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah Data Performance klien di menu Data Klien, lalu angkanya muncul di sini." />
 
   const a = jumlah(kini.rows), b = jumlah(lalu.rows)
@@ -186,12 +192,14 @@ type BarisDetail = {
 }
 const MAKS_UNDUH = 10000
 
-export function DetailOrder({ klienId }: { klienId?: string }) {
+export function DetailOrder({ klienId, terbatas = false }: { klienId?: string; terbatas?: boolean }) {
   const klien = useRows<Klien>(() => (klienId ? sb.from('klien').select('*').eq('id', klienId) : sb.from('klien').select('*').order('nama')), [klienId])
   const [id, setId] = useState('')
   const pilih = klien.rows.find((k) => k.id === (klienId || id || klien.rows[0]?.id))
   if (klien.err) return <Err msg={klien.err} />
-  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." /> : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
+  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." />
+    : terbatas ? <Kosong teks="Belum ada data klien di DS Anda" hint="Data klien untuk DS yang Anda pegang muncul setelah tim Dash mengunggahnya." />
+    : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
   return (
     <div className="space-y-4">
       {!klienId && klien.rows.length > 1 && (
@@ -199,13 +207,14 @@ export function DetailOrder({ klienId }: { klienId?: string }) {
           <Select className="w-64 max-w-full" value={pilih.id} onChange={setId} opsi={klien.rows.map((k) => ({ value: k.id, label: k.nama }))} />
         </Field>
       )}
-      <Anda.Provider value={!!klienId}><DetailIsi key={pilih.id} klien={pilih} /></Anda.Provider>
+      <Anda.Provider value={!!klienId}><Terbatas.Provider value={terbatas}><DetailIsi key={pilih.id} klien={pilih} /></Terbatas.Provider></Anda.Provider>
     </div>
   )
 }
 
 function DetailIsi({ klien }: { klien: Klien }) {
   const anda = useAnda()
+  const terbatas = useContext(Terbatas)
   const P = usePeriode(klien.id)
   const { rent, dari, sampai, preset, kustomSah } = P
   const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
@@ -254,6 +263,7 @@ function DetailIsi({ klien }: { klien: Klien }) {
   if (rent.err) return <Err msg={rent.err} />
   if (!rent.err && rent.rows.length === 0) return anda
     ? <Kosong teks="Belum ada data" hint="Unggah Data Performance harian di menu Unggah Data, lalu detailnya muncul di sini." />
+    : terbatas ? <Kosong teks="Belum ada data klien di DS Anda" hint="Data muncul setelah tim Dash mengunggah Data Performance klien." />
     : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah Data Performance klien di menu Data Klien, lalu detailnya muncul di sini." />
   return (
     <div className="space-y-3">
