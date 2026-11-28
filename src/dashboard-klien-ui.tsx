@@ -39,7 +39,7 @@ export function DashboardKlien({ klienId }: { klienId?: string }) {
           </Field>
         )}
         <p className="pb-2 text-sm text-muted-foreground">
-          {klienId ? <>Kinerja pengantaran <b>{pilih.nama}</b></> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
+          {klienId ? <>Performance pengantaran <b>{pilih.nama}</b></> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
         </p>
       </div>
       <Anda.Provider value={!!klienId}><Isi key={pilih.id} klien={pilih} /></Anda.Provider>
@@ -98,8 +98,8 @@ function Isi({ klien }: { klien: Klien }) {
   const galat = rent.err || kini.err || perToko.err
   if (galat) return <Err msg={galat} />
   if (!rent.err && rent.rows.length === 0) return anda
-    ? <Kosong teks="Belum ada data" hint="Unggah file kinerja harian Anda di menu Unggah Data, lalu angkanya muncul di sini." />
-    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu angkanya muncul di sini." />
+    ? <Kosong teks="Belum ada data" hint="Unggah Data Performance harian di menu Unggah Data, lalu angkanya muncul di sini." />
+    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah Data Performance klien di menu Data Klien, lalu angkanya muncul di sini." />
 
   const a = jumlah(kini.rows), b = jumlah(lalu.rows)
   const kete = pct(a.ontime, a.selesai), keteLalu = pct(b.ontime, b.selesai)
@@ -253,8 +253,8 @@ function DetailIsi({ klien }: { klien: Klien }) {
 
   if (rent.err) return <Err msg={rent.err} />
   if (!rent.err && rent.rows.length === 0) return anda
-    ? <Kosong teks="Belum ada data" hint="Unggah file kinerja harian Anda di menu Unggah Data, lalu detailnya muncul di sini." />
-    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu detailnya muncul di sini." />
+    ? <Kosong teks="Belum ada data" hint="Unggah Data Performance harian di menu Unggah Data, lalu detailnya muncul di sini." />
+    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah Data Performance klien di menu Data Klien, lalu detailnya muncul di sini." />
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -472,13 +472,13 @@ function TabelToko({ toko, target, klien }: { toko: Toko[]; target: number | nul
   const Th = ({ k, children }: { k: Urut; children: string }) => (
     <th><button className="inline-flex items-center gap-1 font-semibold" onClick={() => { if (k === urut) setNaik(!naik); else { setUrut(k); setNaik(k === 'ds_nama') } }} aria-label={`Urutkan menurut ${children}`}>{children}{urut === k && <span aria-hidden>{naik ? '▲' : '▼'}</span>}</button></th>
   )
-  const unduh = () => download(`kinerja-toko-${klien}.csv`, toCsv(terurut.map((t) => ({
+  const unduh = () => download(`performance-toko-${klien}.csv`, toCsv(terurut.map((t) => ({
     Toko: t.ds_nama, 'Kode toko': t.kode_toko ?? '', 'Pesanan selesai': t.selesai, 'Ketepatan antar (%)': t.kete === null ? '' : t.kete.toFixed(1), Late: t.late,
     'POD sesuai (%)': t.pod === null ? '' : t.pod.toFixed(1), [kolomRider]: t.rider_hari, 'Pesanan per rider per hari': t.per_rider === null ? '' : t.per_rider.toFixed(1),
   }))))
   return (
     <div className="card space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><b>Kinerja per toko</b><div className="flex items-center gap-2"><Sumber s="klien" /><button className="btn2" onClick={unduh}><Download size={14} />Unduh CSV</button></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><b>Performance per toko</b><div className="flex items-center gap-2"><Sumber s="klien" /><button className="btn2" onClick={unduh}><Download size={14} />Unduh CSV</button></div></div>
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="tbl">
           <thead><tr><Th k="ds_nama">Toko</Th><Th k="selesai">Pesanan</Th><Th k="kete">Ketepatan antar</Th><Th k="late">Late</Th><Th k="pod">POD sesuai</Th><Th k="rider_hari">{kolomRider}</Th><Th k="per_rider">Per rider/hari</Th></tr></thead>

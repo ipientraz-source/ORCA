@@ -1,4 +1,4 @@
-// Data Klien (Super-admin): unggah kinerja antar dari file klien (.xlsx atau .csv), pasangkan toko klien ke DS, dan lihat riwayat unggahan.
+// Data Klien (Super-admin): unggah Data Performance dari file klien (.xlsx atau .csv), pasangkan toko klien ke DS, dan lihat riwayat unggahan.
 // Berkas dibaca di browser. Yang dikirim ke database hanya tanggal, kode toko, kode mitra, dan angka; nama rider dipakai di layar untuk
 // pencocokan lalu dibuang. Semua pemeriksaan "boleh disimpan atau tidak" ada di database (simpan_order_klien, migrasi 0079).
 import { useEffect, useMemo, useState } from 'react'
@@ -230,7 +230,7 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
   return (
     <div className="card space-y-3">
       <p className="text-sm text-muted-foreground">
-        {modeKlien ? 'Unggah file kinerja harian Anda apa adanya' : 'Unggah file kinerja klien apa adanya'} (.xlsx sheet <b>data</b>, atau .csv). Kolom wajib: Tgl Periode, Nik (kode mitra), Kode Toko, Pesanan Selesai, Ontime, Late, Pod Sesuai, Pod Tidak Sesuai.
+        {modeKlien ? 'Unggah Data Performance harian apa adanya' : 'Unggah Data Performance klien apa adanya'} (.xlsx sheet <b>data</b>, atau .csv). Kolom wajib: Tgl Periode, Nik (kode mitra), Kode Toko, Pesanan Selesai, Ontime, Late, Pod Sesuai, Pod Tidak Sesuai.
         Nama rider <b>tidak ikut dikirim</b>. File yang sama boleh diunggah ulang: baris yang sama tidak berubah, nilai yang berbeda {modeKlien ? 'diperbarui' : 'ditimpa'} dan nilai lamanya disimpan.
       </p>
       <label
@@ -239,7 +239,7 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
         className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors hover:bg-primary-soft/60 ${berkas ? 'border-success/60 bg-success/5' : 'border-primary/60 bg-primary-soft/30'}`}
       >
         <FileUp size={28} className={berkas ? 'text-success' : 'text-primary'} />
-        <span className="text-sm font-semibold text-foreground">{berkas ? `Terpilih: ${berkas.nama}` : modeKlien ? 'UNGGAH FILE KINERJA ANDA DI SINI' : 'UNGGAH FILE KLIEN DI SINI'}</span>
+        <span className="text-sm font-semibold text-foreground">{berkas ? `Terpilih: ${berkas.nama}` : 'UNGGAH DATA PERFORMANCE DI SINI'}</span>
         <span className="text-xs text-muted-foreground">{berkas ? 'Klik untuk mengganti berkas' : 'Klik area ini atau seret berkas .xlsx atau .csv ke sini'}</span>
         <input key={berkas?.nama ?? (laporan ? 'x' : '')} type="file" accept=".xlsx,.csv,text/csv" aria-label="Berkas klien" className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
       </label>

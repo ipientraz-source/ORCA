@@ -39,17 +39,17 @@ const SUPER: Tab[] = [
   { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
-  { nama: 'Dashboard Klien', desc: 'Angka, grafik, dan detail kinerja per klien (tampilan yang nanti dilihat klien)', Icon: TrendingUp, View: () => <DashboardKlien /> },
+  { nama: 'Dashboard Klien', desc: 'Angka, grafik, dan detail performance per klien (tampilan yang nanti dilihat klien)', Icon: TrendingUp, View: () => <DashboardKlien /> },
   { nama: 'Detail Order Klien', desc: 'Order per rider per hari dan per toko dari unggahan klien', Icon: ListChecks, View: () => <DetailOrder /> },
-  { nama: 'Data Klien', desc: 'Unggah kinerja antar dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
+  { nama: 'Data Klien', desc: 'Unggah Data Performance dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
 ]
 // Akun klien: HANYA tiga menu ini. Menu lain tidak dirender dan tidak ada jalan masuknya; pembatasan datanya ada di database.
 const KLIEN: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kinerja pengantaran di toko Anda', Icon: LayoutDashboard, View: ({ me }) => <DashboardKlien klienId={me.klien_id} /> },
+  { nama: 'Dashboard', desc: 'Performance pengantaran di toko Anda', Icon: LayoutDashboard, View: ({ me }) => <DashboardKlien klienId={me.klien_id} /> },
   { nama: 'Detail Order', desc: 'Order per rider per hari dan per toko, persis seperti yang Anda unggah', Icon: ListChecks, View: ({ me }) => <DetailOrder klienId={me.klien_id} /> },
-  { nama: 'Unggah Data', desc: 'Unggah file kinerja harian dari sistem Anda', Icon: FileUp, View: ({ me }) => <UnggahKlien klienId={me.klien_id as string} /> },
+  { nama: 'Unggah Data', desc: 'Unggah Data Performance harian dari sistem Anda', Icon: FileUp, View: ({ me }) => <UnggahKlien klienId={me.klien_id as string} /> },
   { nama: 'Riwayat Unggahan', desc: 'Daftar unggahan yang pernah Anda lakukan', Icon: History, View: ({ me }) => <RiwayatKlien klienId={me.klien_id as string} /> },
 ]
 const CAPTAIN: Tab[] = [
