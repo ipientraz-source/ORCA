@@ -108,3 +108,55 @@ test('hak akses: Captain dan Arcon tidak mendapat apa pun, anon ditolak', async 
   }
   await assert.rejects(as(null, () => q(`select * from dashboard_klien_rentang('${K1}')`)), /permission denied/)
 })
+
+// ───────── detail order (migrasi 0081) ─────────
+const detail = (email, fn, args) => panggil(email, fn, args)
+const rider = (klien, dari, sampai, { ds = 'null', cari = 'null', limit = 50, offset = 0 } = {}) =>
+  detail(email0, 'dashboard_klien_detail_rider', `'${klien}', ${D(dari)}, ${D(sampai)}, ${ds}, ${cari}, ${limit}, ${offset}`)
+const email0 = S
+
+test('detail per rider: urut tanggal terbaru, total seluruh baris di tiap halaman, dan paginasi tidak menggandakan atau melewatkan baris', async () => {
+  const semua = await rider(K1, 5, 0)
+  assert.deepEqual(semua.map((r) => [r.tanggal, r.ds_nama, r.kode_mtr, r.selesai]), [
+    [await tgl(2), 'DS A', 'M1', 10],
+    [await tgl(3), 'DS A', 'M1', 10],
+    [await tgl(3), 'DS A', 'M2', 20],
+    [await tgl(3), 'DS B', 'M3', 5],
+  ])
+  assert.ok(semua.every((r) => r.total === 4))
+  const h1 = await rider(K1, 5, 0, { limit: 3, offset: 0 }), h2 = await rider(K1, 5, 0, { limit: 3, offset: 3 })
+  assert.deepEqual([h1.length, h2.length, h1[0].total, h2[0].total], [3, 1, 4, 4])
+  assert.deepEqual([...h1, ...h2].map((r) => r.kode_mtr + r.tanggal), semua.map((r) => r.kode_mtr + r.tanggal))
+  assert.deepEqual(await rider(K1, 5, 0, { offset: 10 }), [])
+  assert.equal((await rider(K1, 5, 0, { limit: 0 })).length, 1) // batas bawah 1
+  assert.equal((await rider(K1, 5, 0, { limit: 99999 })).length, 4) // batas atas 200
+})
+
+test('detail per rider: cari kode mitra (huruf besar-kecil tak berpengaruh, karakter khusus bukan pola), saring toko, dan data klien lain tidak bercampur', async () => {
+  assert.deepEqual((await rider(K1, 5, 0, { cari: `'m1'` })).map((r) => r.kode_mtr), ['M1', 'M1'])
+  assert.deepEqual((await rider(K1, 5, 0, { cari: `'  m3 '` })).map((r) => r.kode_mtr), ['M3'])
+  assert.deepEqual(await rider(K1, 5, 0, { cari: `'%'` }), []) // % bukan "semua"
+  assert.deepEqual(await rider(K1, 5, 0, { cari: `'_'` }), [])
+  assert.equal((await rider(K1, 5, 0, { cari: `''` })).length, 4)
+  assert.deepEqual((await rider(K1, 5, 0, { ds: `array['${DS_B}']::uuid[]` })).map((r) => r.kode_mtr), ['M3'])
+  assert.deepEqual(await rider(K1, 5, 0, { ds: `array['${DS_C}']::uuid[]` }), [])
+  assert.deepEqual((await rider(K2, 5, 0)).map((r) => r.kode_mtr), ['M9'])
+  assert.deepEqual(await rider(K1, 500, 0), []) // lebih dari 400 hari
+})
+
+test('detail per hari: satu baris per tanggal dan toko, dengan jumlah rider, total, dan paginasi', async () => {
+  const h = (limit, offset) => panggil(S, 'dashboard_klien_detail_hari', `'${K1}', ${D(5)}, ${D(0)}, null, ${limit}, ${offset}`)
+  const semua = await h(50, 0)
+  assert.deepEqual(semua.map((r) => [r.tanggal, r.ds_nama, r.selesai, r.rider, r.total]), [
+    [await tgl(2), 'DS A', 10, 1, 3], [await tgl(3), 'DS A', 30, 2, 3], [await tgl(3), 'DS B', 5, 1, 3],
+  ])
+  assert.deepEqual((await h(2, 2)).map((r) => r.ds_nama), ['DS B'])
+})
+
+test('detail order: Captain, Arcon, dan anon tidak mendapat apa pun', async () => {
+  for (const e of [CG, AA]) {
+    assert.deepEqual(await panggil(e, 'dashboard_klien_detail_rider', `'${K1}', ${D(5)}, ${D(0)}, null, null, 50, 0`), [])
+    assert.deepEqual(await panggil(e, 'dashboard_klien_detail_hari', `'${K1}', ${D(5)}, ${D(0)}, null, 50, 0`), [])
+  }
+  await assert.rejects(as(null, () => q(`select * from dashboard_klien_detail_hari('${K1}', ${D(5)}, ${D(0)})`)), /permission denied/)
+})

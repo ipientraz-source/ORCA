@@ -1,9 +1,9 @@
 // Dashboard Klien: angka, grafik, dan detail data untuk toko milik satu klien. Hanya membaca. Untuk saat ini dilihat Super-admin ("Lihat sebagai klien");
 // fungsi database yang sama nanti dipakai login klien. Satu angka resmi per ukuran, dan tiap kartu menyebut sumbernya:
 // "Data klien" = unggahan klien, "Data Dash" = clock-in BO yang dinilai ORCA. Hari tanpa unggahan tidak ditampilkan sebagai 0%.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
-import { sb, Select, Field, Err, Kosong, useRows, usePage, Pagination, toCsv, download, tanggal } from './lib'
+import { sb, Select, Field, Err, Kosong, useRows, usePage, Pagination, toCsv, download, tanggal, toast } from './lib'
 import {
   jumlah, jumlahBo, pct, perubahan, periodeSebelum, poin, rentangBawaan, teksAngka, teksDesimal, teksPct, trenFulfillment, trenKetepatan, trenMasuk,
   type Bo, type Hari, type Tren,
@@ -42,21 +42,45 @@ export function DashboardKlien({ klienId }: { klienId?: string }) {
   )
 }
 
-function Isi({ klien }: { klien: Klien }) {
-  const rent = useRows<Rentang>(() => sb.rpc('dashboard_klien_rentang', { p_klien: klien.id }), [klien.id])
-  const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
+// Periode yang dipilih (7 hari, 30 hari, semua, atau tanggal sendiri) dihitung dari rentang data klien; dipakai Dashboard dan Detail Order
+function usePeriode(klienId: string) {
+  const rent = useRows<Rentang>(() => sb.rpc('dashboard_klien_rentang', { p_klien: klienId }), [klienId])
   const [preset, setPreset] = useState<Preset>('semua')
   const [kDari, setKDari] = useState('')
   const [kSampai, setKSampai] = useState('')
-  const [toko, setToko] = useState('')
   const ada = rent.rows[0]
-
   const kustomSah = preset === 'kustom' && !!kDari && !!kSampai && kDari <= kSampai
   const [dari, sampai] = useMemo<[string, string]>(() => {
     if (!ada) return ['', '']
     if (preset === 'kustom') return kustomSah ? [kDari, kSampai] : ['', '']
     return rentangBawaan(ada.awal, ada.akhir, preset === '7' ? 7 : preset === '30' ? 30 : 0)
   }, [ada, preset, kustomSah, kDari, kSampai])
+  return { rent, ada, preset, setPreset, kDari, setKDari, kSampai, setKSampai, kustomSah, dari, sampai }
+}
+
+function PilihPeriode({ p }: { p: ReturnType<typeof usePeriode> }) {
+  return (
+    <>
+      <div role="tablist" aria-label="Periode" className="flex flex-wrap gap-2">
+        {([['7', '7 hari data terakhir'], ['30', '30 hari data terakhir'], ['semua', 'Semua data'], ['kustom', 'Pilih tanggal']] as const).map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={p.preset === k} onClick={() => p.setPreset(k)} className={`tab !px-3 ${p.preset === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
+        ))}
+      </div>
+      {p.preset === 'kustom' && (
+        <>
+          <Field label="Dari"><input type="date" className="inp" value={p.kDari} min={p.ada?.awal} max={p.ada?.akhir} onChange={(e) => p.setKDari(e.target.value)} /></Field>
+          <Field label="Sampai"><input type="date" className="inp" value={p.kSampai} min={p.ada?.awal} max={p.ada?.akhir} onChange={(e) => p.setKSampai(e.target.value)} /></Field>
+        </>
+      )}
+    </>
+  )
+}
+
+function Isi({ klien }: { klien: Klien }) {
+  const P = usePeriode(klien.id)
+  const { rent, ada, preset, kustomSah, dari, sampai } = P
+  const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
+  const [toko, setToko] = useState('')
   const [pd, ps] = dari ? periodeSebelum(dari, sampai) : ['', '']
 
   const arg = (a: string, b: string) => ({ p_klien: klien.id, p_dari: a, p_sampai: b, p_ds: toko ? [toko] : null })
@@ -82,17 +106,7 @@ function Isi({ klien }: { klien: Klien }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div role="tablist" aria-label="Periode" className="flex flex-wrap gap-2">
-          {([['7', '7 hari data terakhir'], ['30', '30 hari data terakhir'], ['semua', 'Semua data'], ['kustom', 'Pilih tanggal']] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={preset === k} onClick={() => setPreset(k)} className={`tab !px-3 ${preset === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
-          ))}
-        </div>
-        {preset === 'kustom' && (
-          <>
-            <Field label="Dari"><input type="date" className="inp" value={kDari} min={ada?.awal} max={ada?.akhir} onChange={(e) => setKDari(e.target.value)} /></Field>
-            <Field label="Sampai"><input type="date" className="inp" value={kSampai} min={ada?.awal} max={ada?.akhir} onChange={(e) => setKSampai(e.target.value)} /></Field>
-          </>
-        )}
+        <PilihPeriode p={P} />
         <Field label="Toko">
           <Select className="w-64 max-w-full" value={toko} onChange={setToko} opsi={[{ value: '', label: `Semua toko (${dsKlien.rows.length})` }, ...dsKlien.rows.map((d) => ({ value: d.id, label: d.kode_toko ? `${d.nama} · ${d.kode_toko}` : d.nama }))]} />
         </Field>
@@ -150,6 +164,141 @@ function Isi({ klien }: { klien: Klien }) {
           <TabelToko toko={perToko.rows} target={target} klien={klien.nama} />
         </>
       )}
+    </div>
+  )
+}
+
+// ───────── detail order ─────────
+// Baris order yang diunggah klien: per rider per hari (kode mitra; nama rider tidak pernah disimpan) atau ringkasan per hari per toko.
+// Dimuat per halaman dari database (setahun bisa puluhan ribu baris); unduhan CSV mengambil halaman demi halaman sampai MAKS_UNDUH baris.
+type BarisDetail = {
+  tanggal: string; ds_id: string; ds_nama: string; kode_toko: string | null; selesai: number; ontime: number; late: number; pod_sesuai: number; pod_tidak: number; total: number
+  kode_mtr?: string // mode rider
+  rider?: number // mode hari: jumlah rider yang bekerja
+}
+const MAKS_UNDUH = 10000
+
+export function DetailOrder({ klienId }: { klienId?: string }) {
+  const klien = useRows<Klien>(() => (klienId ? sb.from('klien').select('*').eq('id', klienId) : sb.from('klien').select('*').order('nama')), [klienId])
+  const [id, setId] = useState('')
+  const pilih = klien.rows.find((k) => k.id === (klienId || id || klien.rows[0]?.id))
+  if (klien.err) return <Err msg={klien.err} />
+  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." /> : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
+  return (
+    <div className="space-y-4">
+      {!klienId && klien.rows.length > 1 && (
+        <Field label="Lihat sebagai klien">
+          <Select className="w-64 max-w-full" value={pilih.id} onChange={setId} opsi={klien.rows.map((k) => ({ value: k.id, label: k.nama }))} />
+        </Field>
+      )}
+      <DetailIsi key={pilih.id} klien={pilih} />
+    </div>
+  )
+}
+
+function DetailIsi({ klien }: { klien: Klien }) {
+  const P = usePeriode(klien.id)
+  const { rent, dari, sampai, preset, kustomSah } = P
+  const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
+  const [toko, setToko] = useState('')
+  const [mode, setMode] = useState<'rider' | 'hari'>('rider')
+  const [cari, setCari] = useState('')
+  const [cariPakai, setCariPakai] = useState('')
+  const [ukuran, setUkuran] = useState(50)
+  const [mengunduh, setMengunduh] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setCariPakai(cari.trim()), 350)
+    return () => clearTimeout(t)
+  }, [cari])
+  // Ganti penyaring = kembali ke halaman 1, tanpa efek tambahan (halaman tersimpan bersama kunci penyaringnya)
+  const kunci = [klien.id, dari, sampai, toko, mode, cariPakai, ukuran].join('|')
+  const [h, setH] = useState({ kunci, hal: 0 })
+  const hal = h.kunci === kunci ? h.hal : 0
+  const panggil = (limit: number, offset: number) => {
+    const arg = { p_klien: klien.id, p_dari: dari, p_sampai: sampai, p_ds: toko ? [toko] : null, p_limit: limit, p_offset: offset }
+    return mode === 'rider' ? sb.rpc('dashboard_klien_detail_rider', { ...arg, p_cari: cariPakai || null }) : sb.rpc('dashboard_klien_detail_hari', arg)
+  }
+  const baris = useRows<BarisDetail>(() => (dari ? panggil(ukuran, hal * ukuran) : kosong), [kunci, hal])
+  const total = Number(baris.rows[0]?.total ?? 0)
+  const halaman = Math.max(1, Math.ceil(total / ukuran))
+
+  async function unduh() {
+    setMengunduh(true)
+    try {
+      const semua: BarisDetail[] = []
+      for (let off = 0; off < Math.min(total, MAKS_UNDUH); off += 200) {
+        const { data, error } = await panggil(200, off)
+        if (error) return toast(error.message)
+        semua.push(...((data ?? []) as BarisDetail[]))
+      }
+      download(`detail-order-${klien.nama}-${dari}-${sampai}.csv`, toCsv(semua.map((r) => ({
+        Tanggal: r.tanggal, Toko: r.ds_nama, 'Kode toko': r.kode_toko ?? '', ...(mode === 'rider' ? { 'Kode mitra': r.kode_mtr ?? '' } : { 'Jumlah rider': r.rider ?? '' }),
+        'Pesanan selesai': r.selesai, Ontime: r.ontime, Late: r.late, 'Ketepatan antar (%)': r.selesai ? ((r.ontime * 100) / r.selesai).toFixed(1) : '',
+        'POD sesuai': r.pod_sesuai, 'POD tidak sesuai': r.pod_tidak,
+      }))))
+      if (total > MAKS_UNDUH) toast(`Unduhan dibatasi ${teksAngka(MAKS_UNDUH)} baris pertama dari ${teksAngka(total)}. Persempit periode atau toko untuk sisanya.`)
+    } finally {
+      setMengunduh(false)
+    }
+  }
+
+  if (rent.err) return <Err msg={rent.err} />
+  if (!rent.err && rent.rows.length === 0) return <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu detailnya muncul di sini." />
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <PilihPeriode p={P} />
+        <Field label="Toko">
+          <Select className="w-64 max-w-full" value={toko} onChange={setToko} opsi={[{ value: '', label: `Semua toko (${dsKlien.rows.length})` }, ...dsKlien.rows.map((d) => ({ value: d.id, label: d.kode_toko ? `${d.nama} · ${d.kode_toko}` : d.nama }))]} />
+        </Field>
+        {mode === 'rider' && <Field label="Cari kode mitra"><input className="inp w-44" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="mis. MTR9000" /></Field>}
+      </div>
+      {preset === 'kustom' && !kustomSah && <p className="text-sm text-warning">Pilih tanggal awal dan akhir (awal tidak boleh setelah akhir).</p>}
+
+      <div className="card space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div role="tablist" aria-label="Bentuk detail" className="flex gap-2">
+            {([['rider', 'Per rider per hari'], ['hari', 'Per hari per toko']] as const).map(([k, label]) => (
+              <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)} className={`tab !px-3 ${mode === k ? 'tab-on' : 'border border-border bg-card'}`}>{label}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2"><Sumber s="klien" /><button className="btn2" disabled={!total || mengunduh} onClick={unduh}><Download size={14} />{mengunduh ? 'Menyiapkan…' : 'Unduh CSV'}</button></div>
+        </div>
+
+        {baris.err ? <Err msg={baris.err} /> : !baris.rows.length ? <Kosong teks="Tidak ada baris yang cocok" hint="Ubah periode, toko, atau kata pencarian." /> : (
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="tbl">
+              <thead><tr><th>Tanggal</th><th>Toko</th><th>{mode === 'rider' ? 'Kode mitra' : 'Rider'}</th><th>Pesanan</th><th>Ontime</th><th>Late</th><th>Ketepatan</th><th>POD sesuai</th><th>POD tidak</th></tr></thead>
+              <tbody>
+                {baris.rows.map((r) => (
+                  <tr key={`${r.tanggal}|${r.ds_id}|${r.kode_mtr ?? ''}`}>
+                    <td className="whitespace-nowrap">{tanggal(r.tanggal)}</td>
+                    <td>{r.ds_nama}{r.kode_toko && <span className="ml-2 font-mono text-[11px] text-muted-foreground">{r.kode_toko}</span>}</td>
+                    <td className="font-mono text-xs">{mode === 'rider' ? r.kode_mtr : r.rider}</td>
+                    <td>{teksAngka(Number(r.selesai))}</td>
+                    <td>{teksAngka(Number(r.ontime))}</td>
+                    <td className={Number(r.late) > 0 ? 'text-danger' : ''}>{teksAngka(Number(r.late))}</td>
+                    <td>{teksPct(pct(Number(r.ontime), Number(r.selesai)))}</td>
+                    <td>{teksAngka(Number(r.pod_sesuai))}</td>
+                    <td>{teksAngka(Number(r.pod_tidak))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">{total ? `${teksAngka(hal * ukuran + 1)}–${teksAngka(Math.min((hal + 1) * ukuran, total))} dari ${teksAngka(total)} baris` : 'Tidak ada baris'}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select className="w-28" lebarMin={120} value={String(ukuran)} onChange={(v) => setUkuran(Number(v))} opsi={[25, 50, 100, 200].map((n) => ({ value: String(n), label: `${n} baris` }))} />
+            <button className="btn2" disabled={hal === 0} onClick={() => setH({ kunci, hal: hal - 1 })}>Sebelumnya</button>
+            <span className="text-muted-foreground">Hal {teksAngka(hal + 1)} / {teksAngka(halaman)}</span>
+            <button className="btn2" disabled={hal + 1 >= halaman} onClick={() => setH({ kunci, hal: hal + 1 })}>Berikutnya</button>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Data persis seperti yang diunggah klien. Nama rider tidak disimpan, hanya kode mitra. Urutan: tanggal terbaru lebih dulu.</p>
+      </div>
     </div>
   )
 }
