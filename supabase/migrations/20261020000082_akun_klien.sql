@@ -6,8 +6,8 @@
 --
 -- KLIEN TIDAK MEMBACA TABEL ds: tabel itu memuat data internal (Captain, Arcon, grup WA, budget). Toko klien dibaca lewat toko_klien(), dan semua
 -- fungsi dashboard dan detail kini SECURITY DEFINER dengan syarat akses eksplisit di tiap baris: Super-admin (semua toko klien), Arcon (hanya DS
--- yang dipegang), atau akun klien (hanya klien miliknya). p_klien yang bukan milik klien itu menghasilkan kosong. Data Dash (clock-in BO) tidak
--- diberikan ke klien: dashboard_klien_bo tetap memakai aktual_bo yang hanya mengenal Super-admin dan Arcon.
+-- yang dipegang), atau akun klien (hanya klien miliknya). p_klien yang bukan milik klien itu menghasilkan kosong. Data Dash (clock-in BO, angka harian
+-- fulfillment dan tepat waktu masuk) juga boleh dilihat klien untuk tokonya sendiri lewat dashboard_klien_bo.
 --
 -- UNGGAH MANDIRI (simpan_order_klien): klien hanya bisa mengunggah untuk klien miliknya. Aturan tambahan khusus klien (Super-admin tidak terkena):
 --   KUNCI    tanggal yang bulannya sudah lewat tanggal 5 bulan berikutnya terkunci: baris yang berbeda dari data tersimpan ditolak, yang sama dilewati.
@@ -170,6 +170,24 @@ language sql stable security definer set search_path = public as $$
   where d.klien_id = p_klien
     and ((select is_super()) or ((select my_peran()) = 'arcon' and d.id = any ((select my_ds_ids())::uuid[])) or p_klien = (select klien_saya()))
   order by d.nama
+$$;
+
+-- Data Dash (clock-in BO) untuk toko klien: kebutuhan rider, yang terpenuhi, hadir, dan tepat waktu masuk, per hari. Klien boleh melihatnya (untuk
+-- cek harian), hanya untuk tokonya sendiri. Memakai aktual_bo_semua (tanpa pembatas pengguna, hanya bisa dipanggil fungsi database) dengan daftar
+-- toko yang SUDAH disaring syarat akses yang sama dengan fungsi lain; kolom internal (captain, tanpa_orca) tidak ikut dikembalikan.
+-- aktual_bo_semua hanya menghitung rentang sampai 92 hari, jadi untuk rentang lebih panjang yang dihitung 92 hari terakhir.
+create or replace function dashboard_klien_bo(p_klien uuid, p_dari date, p_sampai date, p_ds uuid[] default null)
+returns table (tanggal date, kebutuhan bigint, terpenuhi bigint, hadir bigint, tepat bigint)
+language sql stable security definer set search_path = public as $$
+  select a.tanggal, sum(a.kebutuhan), sum(a.terpenuhi), sum(a.hadir), sum(a.tepat)
+  from aktual_bo_semua(
+         greatest(p_dari, p_sampai - 91), p_sampai,
+         coalesce((select array_agg(d.id) from ds d
+                   where d.klien_id = p_klien and (p_ds is null or d.id = any(p_ds))
+                     and ((select is_super()) or ((select my_peran()) = 'arcon' and d.id = any ((select my_ds_ids())::uuid[])) or p_klien = (select klien_saya()))),
+                 '{}'::uuid[])) a
+  where p_sampai - p_dari between 0 and 400
+  group by a.tanggal order by a.tanggal
 $$;
 
 -- ───────── unggah: Super-admin atau akun klien yang bersangkutan ─────────

@@ -98,8 +98,8 @@ function Isi({ klien }: { klien: Klien }) {
   const kini = useRows<Hari>(() => (dari ? sb.rpc('dashboard_klien_harian', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
   const lalu = useRows<Hari>(() => (dari ? sb.rpc('dashboard_klien_harian', arg(pd, ps)) : kosong), [klien.id, pd, ps, toko])
   const perToko = useRows<Toko>(() => (dari ? sb.rpc('dashboard_klien_toko', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
-  // Data Dash (clock-in BO) hanya untuk tampilan internal; akun klien tidak memanggilnya dan database juga tidak memberinya
-  const bo = useRows<Bo>(() => (dari && !anda ? sb.rpc('dashboard_klien_bo', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko, anda])
+  // Data Dash (clock-in BO): klien juga boleh melihatnya untuk tokonya sendiri (cek harian); database membatasi ke toko klien itu
+  const bo = useRows<Bo>(() => (dari ? sb.rpc('dashboard_klien_bo', arg(dari, sampai)) : kosong), [klien.id, dari, sampai, toko])
 
   const galat = rent.err || kini.err || perToko.err
   if (galat) return <Err msg={galat} />
@@ -146,14 +146,10 @@ function Isi({ klien }: { klien: Klien }) {
               sub={<Delta v={poin(pod, podLalu)} satuan=" poin" />} />
             <Kpi label="Pesanan per rider per hari" nilai={teksDesimal(perRider)} sumber="klien" rumus={anda ? 'Pesanan selesai ÷ jumlah hari kerja rider (satu rider bekerja satu hari dihitung 1)' : 'Pesanan selesai ÷ jumlah rider-hari'}
               sub={<Delta v={poin(perRider, perRiderLalu)} satuan="" />} />
-            {!anda && (
-              <>
-                <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus="Rider yang bekerja ÷ budget rider (clock-in BO)"
-                  sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} slot rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
-                <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus="Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)"
-                  sub={adaBo ? <span>{teksAngka(jb.tepat)} dari {teksAngka(jb.hadir)} rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
-              </>
-            )}
+            <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus={anda ? 'Rider yang bekerja ÷ kebutuhan rider per shift' : 'Rider yang bekerja ÷ budget rider (clock-in BO)'}
+              sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} {anda ? 'rider yang dibutuhkan' : 'slot rider'}</span> : <span>Belum ada data kehadiran di periode ini</span>} />
+            <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus={anda ? 'Rider yang masuk kerja tepat waktu ÷ rider yang hadir' : 'Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)'}
+              sub={adaBo ? <span>{teksAngka(jb.tepat)} dari {teksAngka(jb.hadir)} rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -169,18 +165,17 @@ function Isi({ klien }: { klien: Klien }) {
             </div>
           </div>
 
-          <div className={`grid gap-4 ${anda ? '' : 'lg:grid-cols-2'}`}>
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="card">
               <div className="mb-1 flex items-center justify-between gap-2"><b>Toko dengan ketepatan antar terendah</b><Sumber s="klien" /></div>
               <Peringkat toko={perToko.rows} target={target} />
             </div>
-            {!anda && (
-              <div className="card">
-                <div className="mb-1 flex items-center justify-between gap-2"><b>Kehadiran rider per hari</b><Sumber s="dash" /></div>
-                {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">Belum ada data clock-in BO untuk toko dan periode ini.</p>}
-              </div>
-            )}
+            <div className="card">
+              <div className="mb-1 flex items-center justify-between gap-2"><b>Kehadiran rider per hari</b><Sumber s="dash" /></div>
+              {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">{anda ? 'Belum ada data kehadiran rider untuk toko dan periode ini.' : 'Belum ada data clock-in BO untuk toko dan periode ini.'}</p>}
+            </div>
           </div>
+          {adaBo && <TabelKehadiran bo={bo.rows} />}
 
           <TabelToko toko={perToko.rows} target={target} klien={klien.nama} onPilih={setToko} />
           {toko && dari && <RincianToko klienId={klien.id} toko={toko} nama={dsKlien.rows.find((d) => d.id === toko)?.nama ?? ''} dari={dari} sampai={sampai} onSemua={() => setToko('')} />}
@@ -505,6 +500,38 @@ function KehadiranHarian({ bo }: { bo: Bo[] }) {
       </div>
       <SumbuTanggal tgl={bo.map((b) => b.tanggal)} />
       <p className="mt-1 text-[11px] text-muted-foreground"><span className="text-primary">━</span> Fulfillment rider · <span className="text-success">━</span> Tepat waktu masuk. Skala {lo}–100%.</p>
+    </div>
+  )
+}
+
+// Tabel harian Data Dash: cek per hari berapa rider yang dibutuhkan, yang bekerja, yang hadir, dan yang masuk tepat waktu
+function TabelKehadiran({ bo }: { bo: Bo[] }) {
+  const anda = useAnda()
+  const baris = useMemo(() => [...bo].reverse(), [bo]) // hari terbaru di atas
+  const pg = usePage(baris, [bo.length])
+  return (
+    <div className="card space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2"><b>Kehadiran rider per hari (rincian)</b><Sumber s="dash" /></div>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="tbl">
+          <thead><tr><th>Tanggal</th><th>{anda ? 'Rider dibutuhkan' : 'Budget'}</th><th>Bekerja</th><th>Fulfillment</th><th>Hadir</th><th>Tepat waktu masuk</th><th>% Tepat waktu</th></tr></thead>
+          <tbody>
+            {pg.rows.map((r) => (
+              <tr key={r.tanggal}>
+                <td className="whitespace-nowrap">{tanggal(r.tanggal)}</td>
+                <td>{teksAngka(Number(r.kebutuhan))}</td>
+                <td>{teksAngka(Number(r.terpenuhi))}</td>
+                <td>{teksPct(pct(Number(r.terpenuhi), Number(r.kebutuhan)))}</td>
+                <td>{teksAngka(Number(r.hadir))}</td>
+                <td>{teksAngka(Number(r.tepat))}</td>
+                <td>{teksPct(pct(Number(r.tepat), Number(r.hadir)))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pagination {...pg} />
+      <p className="text-[11px] text-muted-foreground">Bekerja dibatasi sebesar kebutuhan per shift (kelebihan rider tidak menambah). Hari yang belum berjalan tidak dihitung.</p>
     </div>
   )
 }

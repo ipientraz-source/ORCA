@@ -54,7 +54,9 @@ before(async () => {
     -- data internal supaya uji isolasi bermakna (klien tidak boleh melihat satu baris pun)
     insert into jadwal (tanggal, rider_id, shift, ds_id) values (${D(1)}, '${id(40)}', 'pagi', '${DS_A}');
     insert into kehadiran_bo (hub, ds_id, kode_mtr, tanggal, masuk_lokal, zona, masuk_wib) values
-      ('hub-a', '${DS_A}', 'MTR040', ${D(1)}, '06:00', 'WIB', (${D(1)})::timestamp + time '06:00');`)
+      ('hub-a', '${DS_A}', 'MTR040', ${D(1)}, '06:00', 'WIB', (${D(1)})::timestamp + time '06:00'),
+      ('hub-b', '${DS_B}', 'MTR041', ${D(1)}, '15:30', 'WIB', (${D(1)})::timestamp + time '15:30'),
+      ('hub-c', '${DS_C}', 'MTR042', ${D(1)}, '06:00', 'WIB', (${D(1)})::timestamp + time '06:00');`)
 })
 after(() => db.close())
 
@@ -141,10 +143,30 @@ test('fungsi baca untuk klien: hanya kliennya, hanya tokonya; p_klien atau p_ds 
   const r = await panggil(KL1, 'dashboard_klien_rentang', `'${K1}'`)
   assert.deepEqual([r.length, r[0].hari], [1, 1])
   assert.deepEqual(await panggil(KL1, 'dashboard_klien_rentang', `'${K2}'`), [])
-  // tidak ada Data Dash (BO) untuk klien
-  assert.deepEqual(await panggil(KL1, 'dashboard_klien_bo', `'${K1}', ${D(3)}, ${D(3)}, null`), [])
-  // dan klien tidak bisa membaca tabel ds langsung
+  // klien tidak bisa membaca tabel ds langsung, dan tidak bisa memanggil aktual_bo yang mentah (Super-admin dan Arcon saja)
   assert.equal((await as(KL1, () => q('select count(*)::int as n from ds')))[0].n, 0)
+  assert.deepEqual(await panggil(KL1, 'aktual_bo', `${D(1)}, ${D(1)}`), [])
+})
+
+test('Data Dash (clock-in BO) untuk klien: angka harian sama dengan aktual_bo, hanya untuk tokonya; klien lain, nonaktif, dan Captain kosong', async () => {
+  const oracle = async (ids) => num(await as(S, () => q(`select sum(kebutuhan) as kebutuhan, sum(terpenuhi) as terpenuhi, sum(hadir) as hadir, sum(tepat) as tepat
+    from aktual_bo(${D(1)}, ${D(1)}) where ds_id = any(array[${ids.map((i) => `'${i}'`).join(',')}]::uuid[])`)))[0]
+  const bo = (e, k, ds = 'null') => panggil(e, 'dashboard_klien_bo', `'${k}', ${D(1)}, ${D(1)}, ${ds}`)
+  const ambil = (r) => ({ kebutuhan: r.kebutuhan, terpenuhi: r.terpenuhi, hadir: r.hadir, tepat: r.tepat })
+  const k1 = await bo(KL1, K1), k2 = await bo(KL2, K2)
+  assert.equal(k1.length, 1)
+  assert.deepEqual(ambil(k1[0]), await oracle([DS_A, DS_B])) // DS A dan DS B (toko klien Satu), tanpa DS C
+  assert.deepEqual(ambil(k2[0]), await oracle([DS_C]))
+  assert.ok(k1[0].hadir === 2 && k2[0].hadir === 1 && k1[0].kebutuhan !== k2[0].kebutuhan) // dua klien tidak bercampur
+  assert.deepEqual(ambil((await bo(KL1, K1, `array['${DS_B}']::uuid[]`))[0]), await oracle([DS_B])) // penyaring toko
+  assert.deepEqual(await bo(KL1, K2), []) // klien lain
+  assert.deepEqual(await bo(KL1, K1, `array['${DS_C}']::uuid[]`), []) // toko klien lain lewat p_ds
+  assert.deepEqual(await bo(KOFF, K1), []) // akun nonaktif
+  assert.deepEqual(await bo(CG, K1), []) // Captain
+  assert.deepEqual(ambil((await bo(AA, K1))[0]), await oracle([DS_A])) // Arcon A hanya DS A
+  assert.deepEqual(await bo(AA, K2), [])
+  // hanya empat kolom agregat: tidak ada kolom internal (captain, tanpa_orca, per rider)
+  assert.deepEqual(Object.keys(k1[0]).sort(), ['hadir', 'kebutuhan', 'tanggal', 'tepat', 'terpenuhi'])
 })
 
 test('unggah mandiri: hanya untuk klien sendiri; akun nonaktif, Captain, Arcon, dan klien lain ditolak; kode toko dibaca dalam lingkup klien', async () => {
