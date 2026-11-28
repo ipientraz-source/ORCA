@@ -2,7 +2,8 @@
 // Angkanya dari fungsi database budget_trend_* (migrasi 0076): total harian, ringkasan per DS, dan catatan perubahan.
 // Super-admin melihat semua DS, Arcon hanya DS yang dipegang (dibatasi database). Hanya baca.
 import { useMemo, useState } from 'react'
-import { Building2, Copy, Download, Layers, TrendingDown, TrendingUp } from 'lucide-react'
+import { MenuUnduh } from './menu-unduh'
+import { Building2, Copy, Layers, TrendingDown, TrendingUp } from 'lucide-react'
 import { sb, useRows, Err, Kosong, Select, Stat, usePage, Pagination, toCsv, download, toast, today, addDays, tanggal, useGayaAktif } from './lib'
 import { Dumbbell, KolomBertumpuk } from './chart-formal'
 
@@ -170,10 +171,12 @@ export function BudgetTrend() {
             <div><span className="mb-1 block text-xs text-muted-foreground">Sampai</span><input type="date" className="inp !w-40" value={sampai} max={hariIni} onChange={(e) => setSampai(e.target.value)} /></div>
           </>
         )}
-        <div className="ml-auto flex flex-wrap gap-2">
-          <button className="btn2 inline-flex items-center gap-2" disabled={!har.rows.length} onClick={unduhTren}><Download size={14} />CSV tren</button>
-          <button className="btn2 inline-flex items-center gap-2" disabled={!baris.length} onClick={unduhDs}><Download size={14} />CSV per DS</button>
-          <button className="btn2 inline-flex items-center gap-2" disabled={!ubr.rows.length} onClick={unduhUbah}><Download size={14} />CSV perubahan</button>
+        <div className="ml-auto">
+          <MenuUnduh item={[
+            { label: 'CSV tren', aksi: unduhTren, mati: !har.rows.length },
+            { label: 'CSV per DS', aksi: unduhDs, mati: !baris.length },
+            { label: 'CSV perubahan', aksi: unduhUbah, mati: !ubr.rows.length },
+          ]} />
         </div>
       </div>
       {salah && <p className="text-sm text-danger">Rentang tanggal tidak valid (tanggal awal harus sebelum akhir, maksimal {MAKS_HARI} hari).</p>}
