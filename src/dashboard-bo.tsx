@@ -9,6 +9,8 @@ import { persenBo, teksPersen, type AktualBo, type AktualBoHari } from './aktual
 import { SelShift } from './aktual-bo-ui'
 import { Rings } from './chart-formal'
 
+// Satu baris "Rider teratas" (RPC rekap_order_rider_teratas, migrasi 0078): rata-rata order per hari lapor
+type RiderTeratas = { rider_id: string; nama: string; kode_mtr: string | null; ds_id: string; ds_nama: string; total_order: number; hari_lapor: number; rata: number }
 const SELISIH_MERAH = 3 // rider dicatat hadir oleh Captain tapi tidak clock-in (atau sebaliknya) sebanyak ini atau lebih
 const HARI_TREN = 14
 
@@ -104,6 +106,13 @@ export function DashboardBo() {
     const ok = rows.reduce((s, r) => s + Math.min(r[b], r[h]), 0)
     return { nama, nilai: bud > 0 ? (ok / bud) * 100 : null, detail: `${ok} dari ${bud} rider` }
   }
+  // Rider teratas (hanya tampilan Linear, jadi gaya lain tidak memanggil database): rata-rata order per hari lapor tertinggi
+  // dalam 30 hari yang berakhir di tanggal terpilih; rider dengan kurang dari 5 hari lapor tidak ikut supaya tidak jadi juara palsu.
+  const kosong = Promise.resolve({ data: [], error: null })
+  const teratas = useRows<RiderTeratas>(() => (formal ? sb.rpc('rekap_order_rider_teratas', { p_dari: addDays(tgl, -29), p_sampai: tgl, p_min_hari: 5, p_limit: 5 }) : kosong), [tgl, formal])
+  // Nama DS yang berawalan sama (mis. "Dark Store Alfagift - ...") diringkas ke bagian yang membedakan
+  const awalSama = new Set(teratas.rows.map((r) => r.ds_nama.split(' - ')[0]).filter((a, i, arr) => arr.indexOf(a) !== i))
+  const pendek = (s: string) => (s.includes(' - ') && awalSama.has(s.split(' - ')[0]) ? s.slice(s.split(' - ')[0].length + 3) : s)
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -122,7 +131,37 @@ export function DashboardBo() {
       {formal && rows.length > 0 && (
         <div className="card mb-4">
           <b className="mb-2 block">Per shift</b>
-          <Rings items={[perShift('Pagi', 'b_pagi', 'h_pagi'), perShift('Middle', 'b_tengah', 'h_tengah'), perShift('Siang', 'b_siang', 'h_siang')]} tengah={teksPersen(ful)} label="Cincin fulfillment aktual per shift: pagi, middle, siang" />
+          <div className="flex flex-wrap items-start gap-x-12 gap-y-6">
+            <Rings items={[perShift('Pagi', 'b_pagi', 'h_pagi'), perShift('Middle', 'b_tengah', 'h_tengah'), perShift('Siang', 'b_siang', 'h_siang')]} tengah={teksPersen(ful)} label="Cincin fulfillment aktual per shift: pagi, middle, siang" />
+            <div className="min-w-64 flex-1">
+              <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
+                <span className="text-sm font-medium">Rider teratas</span>
+                <span className="text-xs text-muted-foreground">rata-rata order per hari lapor · 30 hari sampai {tanggal(tgl)}</span>
+              </div>
+              {teratas.err ? (
+                <p className="py-2 text-sm text-muted-foreground">Daftar belum bisa dimuat.</p>
+              ) : teratas.rows.length === 0 ? (
+                <p className="py-2 text-sm text-muted-foreground">Belum ada rider dengan minimal 5 hari melapor order di periode ini.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {teratas.rows.map((x, i) => (
+                    <li key={x.rider_id} className="flex items-center gap-3 py-2 text-sm">
+                      <span className="w-5 shrink-0 text-center font-mono text-xs text-muted-foreground">{i + 1}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate">{x.nama}</b>
+                        <span className="block truncate text-[11px] text-muted-foreground" title={x.ds_nama}>{pendek(x.ds_nama)}</span>
+                      </span>
+                      <span className="text-right">
+                        <b className="font-mono">{Number(x.rata)}</b><span className="text-xs text-muted-foreground"> order/hari</span>
+                        <span className="block text-[11px] text-muted-foreground">{x.hari_lapor} hari lapor · {x.total_order} order</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2 text-[11px] text-muted-foreground">Dari Order Report. Rider yang melapor kurang dari 5 hari tidak dihitung.</p>
+            </div>
+          </div>
         </div>
       )}
       <div className="card">
