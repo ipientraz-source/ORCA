@@ -1780,6 +1780,8 @@ table thead th :is(div, span) { color: inherit; }
   --border: #d9d7cf;
   --garis: #cdcac1;
   --garis-tegas: #b3b0a5;
+  --tepi-3d: #1a1a1a;
+  --bayang-3d: #1a1a1a;
   --input: #d3d1c9;
   --edge: transparent;
   --edge-primary: transparent;
@@ -1812,6 +1814,8 @@ table thead th :is(div, span) { color: inherit; }
   --border: #343434;
   --garis: #3f3f3f;
   --garis-tegas: #565656;
+  --tepi-3d: #6a6a6a;
+  --bayang-3d: #5e2aac;
   --input: #3a3a3a;
   --ring: #b589f0;
   --primary: #5e2aac;
@@ -1939,3 +1943,21 @@ table thead th :is(div, span) { color: inherit; }
 :root:root[data-gaya="formal"] :is(.tbl, table.border-spacing-0) tbody tr:last-child td { border-bottom-color: var(--garis-tegas); }
 :root:root[data-gaya="formal"] :is(.border-t, .border-b, .border-y).border-border { border-color: var(--garis); }
 :root:root[data-gaya="formal"] tfoot td { border-top: 1px solid var(--garis-tegas); }
+
+/* Efek 3D ala Neo untuk Linear: bayangan keras tanpa blur, tepi 2px, dan tombol yang "tertekan". Warna hanya hitam, putih, dan ungu merek
+   (terang: bayangan hitam; gelap: bayangan ungu merek). Tombol utama punya tepi bawah lebih gelap dan kilau tipis di atas (masih shade ungu). */
+:root:root[data-gaya="formal"] :is(.card, .stat):not(.cetak *) { border-width: 2px; border-color: var(--tepi-3d); box-shadow: 5px 5px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] .stat:hover:not(.cetak *) { transform: translate(-2px, -2px); border-color: var(--tepi-3d); box-shadow: 7px 7px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] :is(.btn, .btn2):not(.cetak *) { border-width: 2px; border-color: var(--tepi-3d); box-shadow: 3px 3px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] .btn:not(:disabled):not(.cetak *) { box-shadow: 3px 3px 0 var(--bayang-3d), inset 0 -3px 0 rgb(0 0 0 / 0.24), inset 0 1px 0 rgb(255 255 255 / 0.22); }
+:root:root[data-gaya="formal"] :is(.btn, .btn2):hover:not(:disabled):not(.cetak *) { transform: translate(-1px, -1px); border-color: var(--tepi-3d); box-shadow: 5px 5px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] .btn:hover:not(:disabled):not(.cetak *) { box-shadow: 5px 5px 0 var(--bayang-3d), inset 0 -3px 0 rgb(0 0 0 / 0.24), inset 0 1px 0 rgb(255 255 255 / 0.22); }
+:root:root[data-gaya="formal"] :is(.btn, .btn2):active:not(:disabled):not(.cetak *) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] :is(.btn, .btn2):disabled { box-shadow: none; }
+:root:root[data-gaya="formal"] .inp:not(.cetak *) { border-width: 2px; border-color: var(--tepi-3d); box-shadow: 3px 3px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] .inp:focus:not(.cetak *) { border-color: var(--tepi-3d); box-shadow: 4px 4px 0 var(--primary); }
+:root:root[data-gaya="formal"] .select-hud:not(.tanggal-hud) { border-width: 2px; border-color: var(--tepi-3d); box-shadow: 6px 6px 0 var(--bayang-3d); }
+:root:root[data-gaya="formal"] :is(button[aria-haspopup="listbox"], button[aria-haspopup="dialog"])[aria-expanded="true"] { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--bayang-3d); }
+@media (prefers-reduced-motion: no-preference) {
+  :root:root[data-gaya="formal"] :is(.stat, .btn, .btn2) { transition-property: background-color, border-color, color, box-shadow, opacity, transform; }
+}
