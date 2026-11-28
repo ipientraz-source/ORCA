@@ -170,7 +170,8 @@ function BarisToko({ d, klien, semua, selesai }: { d: DsK; klien: Klien; semua: 
 // ───────── unggah ─────────
 type Berkas = { nama: string; sidik: string; hasil: HasilBaca }
 
-function Unggah({ klien }: { klien: Klien }) {
+// modeKlien (akun klien): tanpa pemasangan toko dan tanpa pencocokan rider ORCA. Keduanya data internal Dash; klien hanya diberi tahu toko mana yang belum terdaftar.
+function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolean }) {
   const ds = useDs()
   const [berkas, setBerkas] = useState<Berkas | null>(null)
   const [galat, setGalat] = useState('')
@@ -179,7 +180,7 @@ function Unggah({ klien }: { klien: Klien }) {
   const [riders, setRiders] = useState<RiderOrca[] | null>(null)
 
   useEffect(() => {
-    if (!berkas || riders) return
+    if (!berkas || riders || modeKlien) return
     let batal = false
     ambilSemua<RiderOrca>((a, b) => sb.from('riders').select('kode_mtr,nama,ds_id').eq('peran', 'rider').range(a, b))
       .then((r) => {
@@ -188,7 +189,7 @@ function Unggah({ klien }: { klien: Klien }) {
         setRiders(r.data)
       })
     return () => { batal = true }
-  }, [berkas, riders])
+  }, [berkas, riders, modeKlien])
 
   const dsPerToko = useMemo(() => new Map(ds.rows.filter((d) => d.klien_id === klien.id && d.kode_toko).map((d) => [d.kode_toko as string, d.id])), [ds.rows, klien.id])
   const ring = useMemo(() => (berkas ? ringkas(berkas.hasil.baris) : null), [berkas])
@@ -272,11 +273,27 @@ function Unggah({ klien }: { klien: Klien }) {
             <button className="btn ml-auto" disabled={!siap.length || sibuk || siap.length > 20000} onClick={simpan}>{sibuk ? 'Menyimpan…' : `Simpan ${siap.length.toLocaleString('id-ID')} baris`}</button>
           </div>
           {siap.length > 20000 && <p className="text-sm text-danger">Satu unggahan maksimal 20.000 baris. Bagi file menjadi beberapa bagian per tanggal.</p>}
-          {!siap.length && <p className="text-sm text-warning">Belum ada toko di file ini yang kodenya terpasang ke klien ini. Pasangkan tokonya di bawah atau di tab Toko klien.</p>}
-          {belum.length > 0 && <PasangToko belum={belum} klien={klien} ds={ds.rows} selesai={ds.reload} />}
-          <Mitra cocok={cocok} memuat={riders === null} />
+          {!siap.length && <p className="text-sm text-warning">{modeKlien ? 'Belum ada toko di file ini yang terdaftar di Dash. Hubungi tim Dash untuk mendaftarkannya.' : 'Belum ada toko di file ini yang kodenya terpasang ke klien ini. Pasangkan tokonya di bawah atau di tab Toko klien.'}</p>}
+          {belum.length > 0 && (modeKlien ? <TokoBelumTerdaftar belum={belum} /> : <PasangToko belum={belum} klien={klien} ds={ds.rows} selesai={ds.reload} />)}
+          {!modeKlien && <Mitra cocok={cocok} memuat={riders === null} />}
         </>
       )}
+    </div>
+  )
+}
+
+function TokoBelumTerdaftar({ belum }: { belum: { kode: string; nama: string; baris: number }[] }) {
+  const pg = usePage(belum, [belum.length])
+  return (
+    <div className="space-y-2">
+      <div className="text-sm"><b>Toko ini belum terdaftar di Dash</b> dan dilewati (tidak disimpan). Hubungi tim Dash untuk mendaftarkannya, lalu unggah ulang file yang sama.</div>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="tbl">
+          <thead><tr><th>Kode toko</th><th>Nama di file</th><th>Baris</th></tr></thead>
+          <tbody>{pg.rows.map((t) => <tr key={t.kode}><td className="font-mono text-xs">{t.kode}</td><td>{t.nama || '–'}</td><td>{t.baris}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <Pagination {...pg} />
     </div>
   )
 }
@@ -355,6 +372,11 @@ function Mitra({ cocok, memuat }: { cocok: CocokMitra[]; memuat: boolean }) {
     </div>
   )
 }
+
+// Dipakai akun klien: hanya klien miliknya sendiri
+const klienSaya = (klienId: string): Klien => ({ id: klienId, nama: '', target_ketepatan: null })
+export const UnggahKlien = ({ klienId }: { klienId: string }) => <Unggah klien={klienSaya(klienId)} modeKlien />
+export const RiwayatKlien = ({ klienId }: { klienId: string }) => <Riwayat klien={klienSaya(klienId)} />
 
 // ───────── riwayat ─────────
 function Riwayat({ klien }: { klien: Klien }) {

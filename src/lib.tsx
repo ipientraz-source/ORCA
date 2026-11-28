@@ -6,7 +6,8 @@ import { AlertCircle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRigh
 export const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 
 export type Peran = 'rider' | 'captain' | 'arcon' | 'recruiter' | 'super_admin'
-export type Me = { id: string; nama: string; peran: Peran; ds_id: string | null; email: string; kode_mtr?: string | null }
+// peran 'klien' bukan peran di tabel riders: akun klien ada di tabel terpisah (akun_klien), id berisi id klien-nya dan hanya klien_id yang dipakai
+export type Me = { id: string; nama: string; peran: Peran | 'klien'; ds_id: string | null; email: string; kode_mtr?: string | null; klien_id?: string }
 export type Ds = { id: string; nama: string; kuota_pagi: number; kuota_siang: number; kuota_tengah?: number /* kosong sebelum migrasi shift tengah dijalankan */; captain_id: string | null; arcon_id: string | null; group_wa_id: string | null; aktif?: boolean /* kosong sebelum migrasi DS nonaktif dijalankan: dianggap aktif */ }
 // DS yang masih aktif (kosong = aktif). Dipakai di pilihan DS untuk bertindak (jadwal, absensi, rider); layar riwayat dan laporan tetap memuat semua DS.
 export const dsAktif = (d: { aktif?: boolean }) => d.aktif !== false

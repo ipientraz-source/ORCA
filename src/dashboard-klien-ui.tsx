@@ -17,21 +17,25 @@ type Preset = '7' | '30' | 'semua' | 'kustom'
 
 const kosong = Promise.resolve({ data: [], error: null })
 
-export function DashboardKlien() {
-  const klien = useRows<Klien>(() => sb.from('klien').select('*').order('nama'), [])
+// klienId diisi untuk akun klien: yang dilihat TETAP satu klien itu, tanpa pemilih klien dan tanpa kata-kata admin.
+// Tanpa klienId (Super-admin) ada pemilih "Lihat sebagai klien". Pembatasan sebenarnya ada di database, bukan di sini.
+export function DashboardKlien({ klienId }: { klienId?: string }) {
+  const klien = useRows<Klien>(() => (klienId ? sb.from('klien').select('*').eq('id', klienId) : sb.from('klien').select('*').order('nama')), [klienId])
   const [id, setId] = useState('')
-  const pilih = klien.rows.find((k) => k.id === (id || klien.rows[0]?.id))
+  const pilih = klien.rows.find((k) => k.id === (klienId || id || klien.rows[0]?.id))
   if (klien.err) return <Err msg={klien.err} />
-  if (!pilih) return <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
+  if (!pilih) return klienId ? <Kosong teks="Data belum tersedia" hint="Hubungi tim Dash bila ini tidak seharusnya kosong." /> : <Kosong teks="Belum ada klien" hint="Tambahkan klien dan unggah datanya di menu Data Klien." />
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        {klien.rows.length > 1 && (
+        {!klienId && klien.rows.length > 1 && (
           <Field label="Lihat sebagai klien">
             <Select className="w-64 max-w-full" value={pilih.id} onChange={setId} opsi={klien.rows.map((k) => ({ value: k.id, label: k.nama }))} />
           </Field>
         )}
-        <p className="pb-2 text-sm text-muted-foreground">Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</p>
+        <p className="pb-2 text-sm text-muted-foreground">
+          {klienId ? <>Kinerja pengantaran <b>{pilih.nama}</b></> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
+        </p>
       </div>
       <Isi key={pilih.id} klien={pilih} />
     </div>

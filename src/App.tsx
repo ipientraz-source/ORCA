@@ -18,7 +18,7 @@ import { Riwayat } from './riwayat'
 import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
 import { ImporData } from './impor-data-ui'
-import { DataKlien } from './data-klien-ui'
+import { DataKlien, RiwayatKlien, UnggahKlien } from './data-klien-ui'
 import { DashboardKlien } from './dashboard-klien-ui'
 import { LencanaPengajuan } from './pengajuan'
 import { HudOrbit } from './hud-orbit'
@@ -43,6 +43,12 @@ const SUPER: Tab[] = [
   { nama: 'Data Klien', desc: 'Unggah kinerja antar dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
+]
+// Akun klien: HANYA tiga menu ini. Menu lain tidak dirender dan tidak ada jalan masuknya; pembatasan datanya ada di database.
+const KLIEN: Tab[] = [
+  { nama: 'Dashboard', desc: 'Kinerja pengantaran di toko Anda', Icon: LayoutDashboard, View: ({ me }) => <DashboardKlien klienId={me.klien_id} /> },
+  { nama: 'Unggah Data', desc: 'Unggah file kinerja harian dari sistem Anda', Icon: FileUp, View: ({ me }) => <UnggahKlien klienId={me.klien_id as string} /> },
+  { nama: 'Riwayat Unggahan', desc: 'Daftar unggahan yang pernah Anda lakukan', Icon: History, View: ({ me }) => <RiwayatKlien klienId={me.klien_id as string} /> },
 ]
 const CAPTAIN: Tab[] = [
   { nama: 'Jadwal Saya', desc: 'Jadwal kerja Anda', Icon: CalendarCheck, View: JadwalSaya },
@@ -319,7 +325,7 @@ function PasswordBaru({ selesai }: { selesai: () => void }) {
   )
 }
 
-const tabsDari = (peran: Me['peran']) => peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
+const tabsDari = (peran: Me['peran']) => peran === 'klien' ? KLIEN : peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
 
 function AdminApp({ email }: { email: string }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined)
@@ -334,6 +340,14 @@ function AdminApp({ email }: { email: string }) {
       const { data, error } = await sb.from('riders').select('id,nama,peran,ds_id,email,kode_mtr').eq('email', email.toLowerCase()).maybeSingle()
       // gagal memuat (mis. sinyal HP putus) bukan berarti akun tidak terdaftar
       if (error) return setGalat(error.message)
+      // Bukan orang di tabel riders: coba akun klien (tabel terpisah). Galat (mis. tabel belum ada) dianggap bukan akun klien.
+      if (!data) {
+        const k = await sb.from('akun_klien').select('klien_id,nama').eq('email', email.toLowerCase()).maybeSingle()
+        if (k.data) {
+          const kl = await sb.from('klien').select('nama').eq('id', k.data.klien_id).maybeSingle()
+          return setMe({ id: k.data.klien_id, nama: kl.data?.nama ?? k.data.nama, peran: 'klien', ds_id: null, email, klien_id: k.data.klien_id })
+        }
+      }
       // DS dimuat lebih dulu daripada me, supaya Captain tidak sempat melihat "belum ditunjuk" sebelum DS-nya terbaca
       if (data?.peran === 'arcon') {
         const r = await sb.from('ds').select('*').eq('arcon_id', data.id).order('nama')
