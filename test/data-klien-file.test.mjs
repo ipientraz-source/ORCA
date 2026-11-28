@@ -4,6 +4,38 @@ import assert from 'node:assert/strict'
 import { deflateRawSync, crc32 } from 'node:zlib'
 import { bacaXlsx } from '../src/xlsx-baca.ts'
 import { bacaTabelKlien, cocokkanMitra, ringkas, sarankanDs, tanggalDariSel } from '../src/data-klien.ts'
+import { jumlah, jumlahBo, pct, perubahan, periodeSebelum, poin, rentangBawaan, teksDesimal, teksPct, trenKetepatan } from '../src/dashboard-klien.ts'
+
+test('rumus dashboard klien: jumlah, ketepatan, per rider per hari; pembagi nol bukan 0%', () => {
+  const hari = [
+    { tanggal: '2026-11-01', selesai: 100, ontime: 96, late: 4, pod_sesuai: 70, pod_tidak: 30, rider_hari: 4 },
+    { tanggal: '2026-11-02', selesai: 50, ontime: 49, late: 1, pod_sesuai: 36, pod_tidak: 14, rider_hari: 2 },
+  ]
+  const a = jumlah(hari)
+  assert.deepEqual(a, { selesai: 150, ontime: 145, late: 5, podSesuai: 106, podTidak: 44, riderHari: 6, hari: 2 })
+  assert.equal(teksPct(pct(a.ontime, a.selesai)), '96,7%')
+  assert.equal(teksDesimal(a.selesai / a.riderHari), '25,0')
+  assert.equal(pct(0, 0), null)
+  assert.equal(teksPct(null), '–')
+  assert.deepEqual(trenKetepatan(hari).map((t) => Math.round((t.nilai ?? 0) * 10) / 10), [96, 98])
+  assert.deepEqual(jumlah([]), { selesai: 0, ontime: 0, late: 0, podSesuai: 0, podTidak: 0, riderHari: 0, hari: 0 })
+  assert.deepEqual(jumlahBo([{ tanggal: 'a', kebutuhan: '10', terpenuhi: '9', hadir: '9', tepat: '8' }, { tanggal: 'b', kebutuhan: 5, terpenuhi: 5, hadir: 6, tepat: 6 }]), { kebutuhan: 15, terpenuhi: 14, hadir: 15, tepat: 14 })
+})
+
+test('perbandingan periode: periode pembanding sama panjang dan tepat sebelumnya; selisih hanya bila kedua sisi ada', () => {
+  assert.deepEqual(periodeSebelum('2026-11-16', '2026-11-22'), ['2026-11-09', '2026-11-15'])
+  assert.deepEqual(periodeSebelum('2026-11-01', '2026-11-01'), ['2026-10-31', '2026-10-31'])
+  assert.equal(perubahan(110, 100), 10)
+  assert.equal(perubahan(5, 0), null)
+  assert.equal(poin(96, 95), 1)
+  assert.equal(poin(null, 95), null)
+})
+
+test('rentang bawaan: n hari terakhir yang berdata, tidak mendahului data pertama; 0 = semua data', () => {
+  assert.deepEqual(rentangBawaan('2026-11-01', '2026-11-22', 7), ['2026-11-16', '2026-11-22'])
+  assert.deepEqual(rentangBawaan('2026-11-20', '2026-11-22', 30), ['2026-11-20', '2026-11-22'])
+  assert.deepEqual(rentangBawaan('2026-11-01', '2026-11-22', 0), ['2026-11-01', '2026-11-22'])
+})
 
 // ───────── perakit xlsx minimal ─────────
 function zip(berkas) {

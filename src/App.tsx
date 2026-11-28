@@ -19,6 +19,7 @@ import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
 import { ImporData } from './impor-data-ui'
 import { DataKlien } from './data-klien-ui'
+import { DashboardKlien } from './dashboard-klien-ui'
 import { LencanaPengajuan } from './pengajuan'
 import { HudOrbit } from './hud-orbit'
 
@@ -38,6 +39,7 @@ const SUPER: Tab[] = [
   { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
+  { nama: 'Dashboard Klien', desc: 'Angka, grafik, dan detail kinerja per klien (tampilan yang nanti dilihat klien)', Icon: TrendingUp, View: () => <DashboardKlien /> },
   { nama: 'Data Klien', desc: 'Unggah kinerja antar dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
