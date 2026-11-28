@@ -1,14 +1,14 @@
 // Data Klien (Super-admin): unggah Data Performance dari file klien (.xlsx atau .csv), pasangkan toko klien ke DS, dan lihat riwayat unggahan.
 // Berkas dibaca di browser. Yang dikirim ke database hanya tanggal, kode toko, kode mitra, dan angka; nama rider dipakai di layar untuk
 // pencocokan lalu dibuang. Semua pemeriksaan "boleh disimpan atau tidak" ada di database (simpan_order_klien, migrasi 0079).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Download, FileUp, Link2, Plus } from 'lucide-react'
 import { sb, ok, toast, konfirmasi, Field, Select, Err, Kosong, useRows, usePage, Pagination, parseCsv, toCsv, download, tanggal } from './lib'
 import { ambilSemua } from './laporan-order'
 import { bacaXlsx } from './xlsx-baca'
 import { bacaTabelKlien, cocokkanMitra, ringkas, sarankanDs, type CocokMitra, type HasilBaca, type RiderOrca, type StatusMitra } from './data-klien.ts'
 
-type Klien = { id: string; nama: string; target_ketepatan: number | null }
+type Klien = { id: string; nama: string; target_ketepatan: number | null; logo?: string | null }
 type DsK = { id: string; nama: string; klien_id: string | null; kode_toko: string | null; aktif: boolean }
 type Unggahan = { id: string; waktu: string; oleh: string | null; berkas: string | null; tgl_awal: string | null; tgl_akhir: string | null; baris_total: number; baris_baru: number; baris_ubah: number; baris_sama: number; baris_tolak: number; baris_lewat: number; baris_tahan: number }
 type AkunKlien = { id: string; email: string; nama: string | null; aktif: boolean }
@@ -52,6 +52,7 @@ export function DataKlien() {
         )}
         <KlienBaru selesai={klien.reload} />
         {pilih && <Target key={pilih.id} klien={pilih} />}
+        {pilih && <LogoKlien key={`logo-${pilih.id}`} klien={pilih} />}
       </div>
       {!pilih ? <Kosong teks="Belum ada klien" hint="Tambahkan klien pertama (mis. Alfagift), lalu pasangkan tokonya ke DS dan unggah datanya." /> : (
         <>
@@ -104,6 +105,52 @@ function Target({ klien }: { klien: Klien }) {
   return (
     <Field label="Target ketepatan antar (%)" hint="Kosongkan bila belum ada target">
       <input className="inp w-32" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onBlur={simpan} placeholder="mis. 95" />
+    </Field>
+  )
+}
+
+// Logo klien untuk Laporan bulanan (Dash × klien). Gambar dikecilkan di browser (maks 480 px lebar, PNG agar latar transparan tetap) lalu disimpan
+// sebagai data URL di baris klien; database menolak yang bukan PNG/JPEG/WebP atau terlalu besar (migrasi 0083).
+const LOGO_KARAKTER_MAKS = 190000
+async function kecilkanLogo(f: File): Promise<string> {
+  if (!/^image\/(png|jpeg|webp)$/.test(f.type)) throw new Error('Logo harus berupa PNG, JPEG, atau WebP (bukan SVG).')
+  const bmp = await createImageBitmap(f)
+  for (const lebar of [480, 360, 240]) {
+    const w = Math.min(lebar, bmp.width), h = Math.max(1, Math.round((bmp.height * w) / bmp.width))
+    const c = document.createElement('canvas')
+    c.width = w; c.height = h
+    c.getContext('2d')?.drawImage(bmp, 0, 0, w, h)
+    const url = c.toDataURL('image/png')
+    if (url.length <= LOGO_KARAKTER_MAKS) return url
+  }
+  throw new Error('Gambar logo terlalu rumit untuk disimpan. Pakai logo yang lebih sederhana atau lebih kecil.')
+}
+
+function LogoKlien({ klien }: { klien: Klien }) {
+  const [logo, setLogo] = useState(klien.logo ?? null)
+  const [sibuk, setSibuk] = useState(false)
+  async function simpan(url: string | null) {
+    setSibuk(true)
+    const berhasil = await ok(sb.from('klien').update({ logo: url }).eq('id', klien.id))
+    setSibuk(false)
+    if (berhasil) { toast.ok(url ? 'Logo disimpan' : 'Logo dihapus'); klien.logo = url; setLogo(url) }
+  }
+  async function pilihBerkas(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    try { await simpan(await kecilkanLogo(f)) } catch (x) { toast((x as Error).message) }
+  }
+  return (
+    <Field label="Logo klien" hint="Tampil di Laporan bulanan (Dash × klien). PNG berlatar transparan paling bagus.">
+      <div className="flex items-center gap-2">
+        {logo ? <img src={logo} alt={`Logo ${klien.nama}`} className="h-10 max-w-[150px] rounded border border-border bg-white object-contain p-1" /> : <span className="text-sm text-muted-foreground">Belum ada</span>}
+        <label className={`btn2 cursor-pointer ${sibuk ? 'pointer-events-none opacity-40' : ''}`}>
+          {logo ? 'Ganti' : 'Unggah'}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pilihBerkas} disabled={sibuk} />
+        </label>
+        {logo && <button type="button" className="btn2" disabled={sibuk} onClick={() => simpan(null)}>Hapus</button>}
+      </div>
     </Field>
   )
 }

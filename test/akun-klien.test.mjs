@@ -251,3 +251,36 @@ test('batas 30 unggahan per jam untuk klien; Super-admin tidak dibatasi', async 
   assert.equal((await simpan(KL2, K2, [await baris({ kode_mtr: 'KC2', ...angka(3) })])).baru, 1) // klien lain tidak ikut terhitung
   assert.equal((await simpan(S, K1, [await baris({ kode_mtr: 'LIMIT', ...angka(3) })])).baru, 1)
 })
+
+test('logo klien (migrasi 0083): hanya Super-admin yang mengubah, format dan ukuran dijaga, dan tiap pihak hanya melihat logo yang menjadi haknya', async () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo='
+  await as(S, () => q(`update klien set logo = $1 where id = '${K1}'`, [PNG]))
+  assert.equal((await q(`select logo from klien where id = '${K1}'`))[0].logo, PNG)
+  // bukan gambar, SVG (bisa memuat skrip), alamat luar, base64 rusak, atau terlalu besar: ditolak database
+  for (const buruk of ['http://x.test/logo.png', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,<script>', 'logo.png', 'data:image/png;base64,' + 'A'.repeat(200000)]) {
+    await assert.rejects(as(S, () => q(`update klien set logo = $1 where id = '${K1}'`, [buruk])), /check/i, buruk.slice(0, 40))
+  }
+  // klien tidak bisa mengganti logonya sendiri (tidak ada kebijakan tulis: update tidak mengenai baris)
+  await as(KL1, () => q(`update klien set logo = $1 where id = '${K1}'`, ['data:image/png;base64,AAAA']))
+  assert.equal((await q(`select logo from klien where id = '${K1}'`))[0].logo, PNG)
+  // baca: klien melihat logonya sendiri saja, Arcon hanya klien di DS yang dipegang, Captain tidak melihat baris klien
+  assert.equal((await as(KL1, () => q(`select logo from klien where id = '${K1}'`)))[0].logo, PNG)
+  assert.equal((await as(KL2, () => q(`select logo from klien where id = '${K1}'`))).length, 0)
+  assert.deepEqual((await as(AA, () => q('select id from klien'))).map((r) => r.id), [K1])
+  assert.equal((await as(CG, () => q('select logo from klien'))).length, 0)
+  await q(`update klien set logo = null where id = '${K1}'`)
+
+  // Logo Alfagift dari migrasi: terpasang pada klien bernama Alfagift (huruf besar/spasi diabaikan), lolos CHECK, dan tidak menimpa logo yang sudah ada
+  const sql = readFileSync('supabase/migrations/20261020000083_logo_klien.sql', 'utf8')
+  const seed = sql.slice(sql.indexOf('update klien set logo'))
+  await q(`insert into klien (id, nama) values ('${id(905)}', ' ALFAGIFT ')`)
+  await db.exec(seed)
+  const logo = (await q(`select logo from klien where id = '${id(905)}'`))[0].logo
+  assert.match(logo, /^data:image\/png;base64,/)
+  assert.ok(logo.length < 200000)
+  await q(`update klien set logo = $1 where id = '${id(905)}'`, [PNG])
+  await db.exec(seed)
+  assert.equal((await q(`select logo from klien where id = '${id(905)}'`))[0].logo, PNG)
+  assert.equal((await q(`select count(*)::int as n from klien where logo is not null and id <> '${id(905)}'`))[0].n, 0) // klien lain tidak tersentuh
+  await q(`delete from klien where id = '${id(905)}'`)
+})

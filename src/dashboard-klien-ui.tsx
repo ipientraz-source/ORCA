@@ -2,14 +2,15 @@
 // fungsi database yang sama nanti dipakai login klien. Satu angka resmi per ukuran, dan tiap kartu menyebut sumbernya:
 // "Data klien" = unggahan klien, "Data Dash" = clock-in BO yang dinilai ORCA. Hari tanpa unggahan tidak ditampilkan sebagai 0%.
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
 import { sb, Select, Field, Err, Kosong, useRows, usePage, Pagination, toCsv, download, tanggal, toast } from './lib'
 import {
   jumlah, jumlahBo, pct, perubahan, periodeSebelum, poin, rentangBawaan, teksAngka, teksDesimal, teksPct, trenFulfillment, trenKetepatan, trenMasuk,
   type Bo, type Hari, type Tren,
 } from './dashboard-klien.ts'
+import { LaporanBulanan } from './laporan-klien-ui'
 
-type Klien = { id: string; nama: string; target_ketepatan: number | null }
+type Klien = { id: string; nama: string; target_ketepatan: number | null; logo?: string | null }
 type Rentang = { awal: string; akhir: string; hari: number }
 type TokoDs = { id: string; nama: string; kode_toko: string | null }
 type Toko = { ds_id: string; ds_nama: string; kode_toko: string | null; selesai: number; ontime: number; late: number; pod_sesuai: number; pod_tidak: number; rider_hari: number; hari: number }
@@ -92,6 +93,7 @@ function Isi({ klien }: { klien: Klien }) {
   const { rent, ada, preset, kustomSah, dari, sampai } = P
   const dsKlien = useRows<TokoDs>(() => sb.rpc('toko_klien', { p_klien: klien.id }), [klien.id]) // lewat fungsi: akun klien tidak membaca tabel ds
   const [toko, setToko] = useState('')
+  const [laporan, setLaporan] = useState(false)
   const [pd, ps] = dari ? periodeSebelum(dari, sampai) : ['', '']
 
   const arg = (a: string, b: string) => ({ p_klien: klien.id, p_dari: a, p_sampai: b, p_ds: toko ? [toko] : null })
@@ -125,7 +127,9 @@ function Isi({ klien }: { klien: Klien }) {
         <Field label="Toko">
           <Select className="w-64 max-w-full" value={toko} onChange={setToko} opsi={[{ value: '', label: `Semua toko (${dsKlien.rows.length})` }, ...dsKlien.rows.map((d) => ({ value: d.id, label: d.kode_toko ? `${d.nama} · ${d.kode_toko}` : d.nama }))]} />
         </Field>
+        {ada && <button className="btn2 ml-auto" onClick={() => setLaporan(true)} title="Laporan satu bulan penuh, siap dicetak atau disimpan sebagai PDF"><FileText size={16} /> Laporan bulanan</button>}
       </div>
+      {laporan && ada && <LaporanBulanan klien={klien} awal={ada.awal} akhir={ada.akhir} totalToko={dsKlien.rows.length} anda={anda} onTutup={() => setLaporan(false)} />}
       {preset === 'kustom' && !kustomSah && <p className="text-sm text-warning">Pilih tanggal awal dan akhir (awal tidak boleh setelah akhir).</p>}
       {dari && ada && (
         <p className="text-xs text-muted-foreground">
