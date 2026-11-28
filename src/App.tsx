@@ -27,20 +27,18 @@ type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = se
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
 
 const SUPER: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard /> },
+  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard superAdmin /> },
   { nama: 'Rider Management', desc: 'Pindah DS, ubah status, impor dan unduh CSV', Icon: Users, View: DataRider },
   { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS mana pun', Icon: CalendarDays, View: () => <JadwalSemua editable /> },
   { nama: 'Schedule Archive', desc: 'Jadwal tersimpan semua DS per minggu', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
   { nama: 'Report Absensi', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
   { nama: 'Schedule Compliance', desc: 'Jadwal vs kehadiran sebenarnya, rekap per rider, kunci absensi', Icon: ClipboardList, View: Rekap },
-  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
+  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari, atau data order unggahan klien', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
   { nama: 'Dash Attendance', desc: 'Sinkron clock-in dari BO, pasangkan hub ke DS, atur jam shift', Icon: UserCheck, View: () => <KehadiranBo /> },
   { nama: 'WA Automation', desc: 'Atur pesan WhatsApp otomatis dan lihat riwayat kirim', Icon: Send, View: () => <PengaturanWa /> },
   { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
-  { nama: 'Dashboard Klien', desc: 'Angka, grafik, dan detail performance per klien (tampilan yang nanti dilihat klien)', Icon: TrendingUp, View: () => <DashboardKlien /> },
-  { nama: 'Detail Order Klien', desc: 'Order per rider per hari dan per toko dari unggahan klien', Icon: ListChecks, View: () => <DetailOrder /> },
   { nama: 'Data Klien', desc: 'Unggah Data Performance dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
