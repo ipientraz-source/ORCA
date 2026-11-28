@@ -3,10 +3,11 @@
 // Super-admin melihat semua DS, Arcon hanya DS yang dipegangnya (dibatasi database).
 import { useEffect, useRef, useState } from 'react'
 import { Gauge, TrendingUp, Users, UserX } from 'lucide-react'
-import { sb, today, addDays, tanggal, hari, useRows, Err, Kosong, Stat, usePage, Pagination, type Ds } from './lib'
+import { sb, today, addDays, tanggal, hari, useRows, Err, Kosong, Stat, usePage, Pagination, useGayaAktif, type Ds } from './lib'
 import { InputTanggal } from './tanggal'
 import { persenBo, teksPersen, type AktualBo, type AktualBoHari } from './aktual-bo'
 import { SelShift } from './aktual-bo-ui'
+import { Rings } from './chart-formal'
 
 const SELISIH_MERAH = 3 // rider dicatat hadir oleh Captain tapi tidak clock-in (atau sebaliknya) sebanyak ini atau lebih
 const HARI_TREN = 14
@@ -96,6 +97,13 @@ export function DashboardBo() {
   const pg = usePage(rows, [tgl])
   const ful = persenBo(jum('terpenuhi'), jum('kebutuhan'))
   const tw = persenBo(jum('tepat'), jum('hadir'))
+  // Tampilan Formal: cincin progres per shift (rider clock-in dibanding budget, kelebihan tidak menutup kekurangan)
+  const formal = useGayaAktif() === 'formal'
+  const perShift = (nama: string, b: 'b_pagi' | 'b_tengah' | 'b_siang', h: 'h_pagi' | 'h_tengah' | 'h_siang') => {
+    const bud = rows.reduce((s, r) => s + r[b], 0)
+    const ok = rows.reduce((s, r) => s + Math.min(r[b], r[h]), 0)
+    return { nama, nilai: bud > 0 ? (ok / bud) * 100 : null, detail: `${ok} dari ${bud} rider` }
+  }
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -111,6 +119,12 @@ export function DashboardBo() {
         <Stat icon={Users} label={`Dash Attendance · ${rows.length} DS`} value={jum('hadir')} tone="zinc" />
         <Stat icon={UserX} label="Mitra belum terdaftar di Orca" value={jum('tanpa_orca')} tone={jum('tanpa_orca') ? 'red' : 'zinc'} />
       </div>
+      {formal && rows.length > 0 && (
+        <div className="card mb-4">
+          <b className="mb-2 block">Per shift</b>
+          <Rings items={[perShift('Pagi', 'b_pagi', 'h_pagi'), perShift('Middle', 'b_tengah', 'h_tengah'), perShift('Siang', 'b_siang', 'h_siang')]} tengah={teksPersen(ful)} label="Cincin fulfillment aktual per shift: pagi, middle, siang" />
+        </div>
+      )}
       <div className="card">
         <b className="mb-3 block">Per DS</b>
         {!rows.length ? (

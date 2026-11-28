@@ -1,8 +1,9 @@
 // Kartu "Fulfillment rate per hari": berapa persen kebutuhan client terpenuhi tiap hari, per DS, dan total periode.
 // Rumus dan aturannya ada di src/fulfillment.ts.
 import { Gauge } from 'lucide-react'
-import { sb, useRows, Err, Kosong, usePage, Pagination, toCsv, download, hari } from './lib'
-import { persen, ringkasFulfillment, tingkatFulfillment, type BarisFulfillment } from './fulfillment'
+import { sb, useRows, Err, Kosong, usePage, Pagination, toCsv, download, hari, useGayaAktif } from './lib'
+import { hitungDsHari, persen, ringkasFulfillment, tingkatFulfillment, type BarisFulfillment } from './fulfillment'
+import { AreaTarget, Heatmap, KpiSpark, type SelHeat } from './chart-formal'
 
 const WARNA_BAR = { baik: 'bg-success', perhatian: 'bg-warning', kurang: 'bg-danger', kosong: 'bg-border' }
 const WARNA_TEKS = { baik: 'text-success', perhatian: 'text-warning', kurang: 'text-danger', kosong: 'text-muted-foreground' }
@@ -27,6 +28,17 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
   const terbaru = [...harian].reverse()
   const pg = usePage(terbaru, [from, to, dsId])
   const belum = harian.filter((h) => h.belumLapor.length).length
+  // Tampilan Formal: area bertarget, heatmap DS x hari, dan kartu angka bersparkline (data sama, hanya cara menggambarnya)
+  const formal = useGayaAktif() === 'formal'
+  const dataArea = harian.map((h) => ({ tanggal: h.tanggal, nilai: h.rate === null ? null : h.rate * 100 }))
+  const deret = harian.filter((h) => h.rate !== null).slice(-7).map((h) => (h.rate as number) * 100)
+  const rataTiga = (xs: number[]) => xs.reduce((a, x) => a + x, 0) / xs.length
+  const selisih = deret.length >= 6 ? rataTiga(deret.slice(-3)) - rataTiga(deret.slice(-6, -3)) : null
+  const selHeat = new Map<string, SelHeat>()
+  for (const r of rows) {
+    const h = hitungDsHari(r)
+    selHeat.set(`${r.ds_id}|${r.tanggal}`, { rate: h.rate, belum: h.belumLapor.length > 0 })
+  }
   const unduh = () =>
     download(
       `fulfillment_${from}_${to}.csv`,
@@ -60,11 +72,15 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="relative rounded-xl border border-border p-3">
-              <span className="cincin" style={{ ['--p' as string]: total.rate === null ? 0 : Math.round(total.rate * 100) }} aria-hidden />
-              <div className={`font-mono text-2xl font-bold ${WARNA_TEKS[tingkat]}`}>{persen(total.rate)}</div>
-              <div className="text-xs text-muted-foreground">Terpenuhi</div>
-            </div>
+            {formal ? (
+              <KpiSpark label="Terpenuhi" nilai={persen(total.rate)} deret={deret} selisih={selisih} />
+            ) : (
+              <div className="relative rounded-xl border border-border p-3">
+                <span className="cincin" style={{ ['--p' as string]: total.rate === null ? 0 : Math.round(total.rate * 100) }} aria-hidden />
+                <div className={`font-mono text-2xl font-bold ${WARNA_TEKS[tingkat]}`}>{persen(total.rate)}</div>
+                <div className="text-xs text-muted-foreground">Terpenuhi</div>
+              </div>
+            )}
             <div className="rounded-xl border border-border p-3">
               <div className="font-mono text-2xl font-bold">
                 {total.terpenuhi}
@@ -82,32 +98,46 @@ export function Fulfillment({ from, to, dsId }: { from: string; to: string; dsId
             </div>
           </div>
 
-          <div className="mb-1 flex items-end gap-1 overflow-x-auto pb-1" style={{ height: '8.5rem' }} role="img" aria-label="Grafik fulfillment rate harian">
-            {harian.map((h) => {
-              const t = tingkatFulfillment(h.rate)
-              return (
-                <div
-                  key={h.tanggal}
-                  className="flex h-full min-w-6 max-w-20 flex-1 flex-col justify-end"
-                  title={`${hari(h.tanggal)}: ${persen(h.rate)} (${h.terpenuhi}/${h.kebutuhan})${h.belumLapor.length ? ', belum dilaporkan: ' + h.belumLapor.join(' dan ') : ''}`}
-                >
-                  <div className="mb-0.5 text-center font-mono text-[9px] text-muted-foreground">{h.rate === null ? '' : Math.round(h.rate * 100)}</div>
-                  <div className={`w-full rounded-t border-2 border-b-0 border-border ${WARNA_BAR[t]} ${h.belumLapor.length ? 'bar-belum' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
-                </div>
-              )
-            })}
-          </div>
-          <div className="mb-4 flex justify-between font-mono text-[10px] text-muted-foreground">
-            <span>{hari(harian[0].tanggal)}</span>
-            <span>{hari(harian[harian.length - 1].tanggal)}</span>
-          </div>
-          <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-success" />95% atau lebih</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-warning" />80–94%</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-danger" />di bawah 80%</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-border" />belum dilaporkan</span>
-            <span className="flex items-center gap-1.5"><span className="bar-belum size-2.5 rounded-sm bg-muted-foreground" />garis-garis = laporan belum lengkap</span>
-          </div>
+          {formal ? (
+            <>
+              <div className="mb-4">
+                <AreaTarget data={dataArea} label="Fulfillment rate harian dengan garis target 95 persen" />
+              </div>
+              <div className="mb-4">
+                <div className="mb-1 text-xs text-muted-foreground">Fulfillment per DS dan hari</div>
+                <Heatmap dsList={perDs.map((d) => ({ id: d.ds_id, nama: d.ds_nama }))} hariList={harian.map((h) => h.tanggal)} sel={(id, t) => selHeat.get(`${id}|${t}`) ?? { rate: null, belum: false }} label="Peta panas fulfillment per DS dan hari" />
+              </div>
+            </>
+          ) : (
+            <>
+            <div className="mb-1 flex items-end gap-1 overflow-x-auto pb-1" style={{ height: '8.5rem' }} role="img" aria-label="Grafik fulfillment rate harian">
+              {harian.map((h) => {
+                const t = tingkatFulfillment(h.rate)
+                return (
+                  <div
+                    key={h.tanggal}
+                    className="flex h-full min-w-6 max-w-20 flex-1 flex-col justify-end"
+                    title={`${hari(h.tanggal)}: ${persen(h.rate)} (${h.terpenuhi}/${h.kebutuhan})${h.belumLapor.length ? ', belum dilaporkan: ' + h.belumLapor.join(' dan ') : ''}`}
+                  >
+                    <div className="mb-0.5 text-center font-mono text-[9px] text-muted-foreground">{h.rate === null ? '' : Math.round(h.rate * 100)}</div>
+                    <div className={`w-full rounded-t border-2 border-b-0 border-border ${WARNA_BAR[t]} ${h.belumLapor.length ? 'bar-belum' : ''}`} style={{ height: h.rate === null ? '3px' : `${Math.max(3, h.rate * 100)}%` }} />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mb-4 flex justify-between font-mono text-[10px] text-muted-foreground">
+              <span>{hari(harian[0].tanggal)}</span>
+              <span>{hari(harian[harian.length - 1].tanggal)}</span>
+            </div>
+            <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-success" />95% atau lebih</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-warning" />80–94%</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-danger" />di bawah 80%</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-border" />belum dilaporkan</span>
+              <span className="flex items-center gap-1.5"><span className="bar-belum size-2.5 rounded-sm bg-muted-foreground" />garis-garis = laporan belum lengkap</span>
+            </div>
+            </>
+          )}
 
           {perDs.length > 1 && (
             <div className="mb-4 overflow-x-auto rounded-xl border border-border">
