@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { UserCheck, UserMinus, Users } from 'lucide-react'
+import { Pencil, Trash2, UserCheck, UserMinus, Users } from 'lucide-react'
 import { cocokDs, namaDsBaru, ringkasPerRider, type Baris } from './impor'
 import { DialogBerhenti } from './berhenti'
+import { DialogUbahRider } from './ubah-rider'
 import { sb, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Field, Select, usePage, Pagination, toCsv, download, parseCsv, type Ds, type Me, type Rider, dsAktif } from './lib'
 
 type Hasil = { inserted: number; updated: number; errors: { baris: number; pesan: string }[] }
@@ -34,6 +35,22 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
     if (await ok(sb.from('riders').update({ status: baru }).eq('id', r.id))) rs.reload()
     else setLokal((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== r.id)))
   }
+  // Siapa boleh apa mengikuti database (fungsi ubah_rider, hapus_rider, riders_guard); di sini hanya menyembunyikan tombol yang pasti ditolak
+  const pegang = (r: Rider) => !!r.ds_id && (r.ds_id === ds?.id || (me.peran === 'arcon' && dsList.some((d) => d.id === r.ds_id)))
+  const bisaUbah = (r: Rider) => sup || (r.peran === 'rider' && pegang(r))
+  const bisaHapus = (r: Rider) => r.peran === 'rider' && (sup || (me.peran === 'arcon' && pegang(r)))
+  const [ubah, setUbah] = useState<Rider | null>(null)
+  // Hapus permanen hanya untuk rider tanpa riwayat (salah ketik atau salah masuk); yang sudah punya riwayat diarahkan ke Nonaktifkan
+  const hapus = async (r: Rider) => {
+    const { data, error } = await sb.rpc('jejak_rider', { p_rider: r.id })
+    if (error) return toast(error.message)
+    if (data) return toast(`${r.nama} sudah punya riwayat (${data}) dan tidak bisa dihapus. Nonaktifkan saja supaya jadwal, absensi, dan angka turnover lama tetap utuh.`)
+    if (!(await konfirmasi(`${r.nama} (${r.kode_mtr ?? 'tanpa kode'}) dihapus permanen dan tidak bisa dikembalikan. Rider ini belum punya jadwal atau absensi apa pun. Penghapusan dicatat di Riwayat.`, { judul: 'Hapus rider ini?', ya: 'Hapus', bahaya: true }))) return
+    if (await ok(sb.rpc('hapus_rider', { p_rider: r.id }))) {
+      toast.ok(`${r.nama} dihapus`)
+      rs.reload()
+    }
+  }
   const setDs = async (r: Rider, ds_id: string) => {
     if (await ok(sb.from('riders').update({ ds_id: ds_id || null }).eq('id', r.id))) rs.reload()
   }
@@ -64,6 +81,7 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
       </div>
       <Err msg={rs.err} />
       {berhenti && <DialogBerhenti rider={berhenti} tutup={() => setBerhenti(null)} selesai={() => { setBerhenti(null); rs.reload() }} />}
+      {ubah && <DialogUbahRider rider={ubah} tutup={() => setUbah(null)} selesai={() => { setUbah(null); rs.reload() }} />}
       {!shown.length && (
         <div className="card">
           <Kosong teks={orang.length ? 'Tidak ada rider yang cocok' : 'Belum ada rider'} hint={orang.length ? 'Ubah kata kunci atau filter DS.' : 'Import CSV di bawah, atau tambah rider satuan.'} />
@@ -73,7 +91,7 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
         <div className="overflow-x-auto">
         <table className="tbl">
           <thead>
-            <tr><th>Kode MTR</th><th>Nama</th><th>No HP</th><th>DS</th><th>Peran</th><th>Status</th></tr>
+            <tr><th>Kode MTR</th><th>Nama</th><th>No HP</th><th>DS</th><th>Peran</th><th>Status</th><th className="text-right">Aksi</th></tr>
           </thead>
           <tbody>
             {pg.rows.map((r) => (
@@ -93,6 +111,10 @@ export function DataRider({ me, ds, dsList = [] }: { me: Me; ds: Ds | null; dsLi
                   <button className={r.status === 'aktif' ? 'btn2 capitalize text-success' : 'btn2 capitalize text-muted-foreground'} disabled={!sup && (!(r.ds_id && (r.ds_id === ds?.id || (me.peran === 'arcon' && dsList.some((d) => d.id === r.ds_id)))) || r.peran !== 'rider')} title={!sup && r.peran !== 'rider' ? 'Hanya Super-admin yang bisa mengubah status Arcon dan Captain' : undefined} onClick={() => setStatus(r)}>
                     {r.status}
                   </button>
+                </td>
+                <td className="whitespace-nowrap text-right">
+                  {bisaUbah(r) && <button className="btn2 !px-2.5" onClick={() => setUbah(r)} title="Ubah nama, Kode MTR, atau no HP" aria-label={`Ubah data ${r.nama}`}><Pencil size={15} /></button>}
+                  {bisaHapus(r) && <button className="btn2 ml-2 !px-2.5 text-danger" onClick={() => hapus(r)} title="Hapus rider yang salah masuk (hanya yang belum punya riwayat)" aria-label={`Hapus ${r.nama}`}><Trash2 size={15} /></button>}
                 </td>
               </tr>
             ))}
