@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { sb, today, monday, addDays, hari, tanggal, useRows, ok, toast, konfirmasi, Err, Kosong, Stat, Select, usePage, Pagination, toCsv, download, type Ds, type Me } from './lib'
 import { WARNA } from './daily'
 import { Fulfillment } from './fulfillment-ui'
-import { CalendarDays, Check, ChevronDown, ClipboardCheck, ClipboardX, Download, Gauge, TrendingUp, UserX } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ClipboardCheck, ClipboardX, Download, Gauge, Handshake, TrendingUp, UserX } from 'lucide-react'
 import { InputTanggal } from './tanggal'
 import { ambilSemua } from './laporan-order'
 import { DashboardBo } from './dashboard-bo'
 import { BudgetTrend } from './budget-trend'
+import { DashboardKlien } from './dashboard-klien-ui'
 
 type DsRow = {
   ds_id: string; ds_nama: string; dijadwalkan: number; terisi: number; patuh: number; alpha: number; tukar: number
@@ -276,17 +277,21 @@ function DashboardCaptain() {
 
 // Dashboard Super-admin dan Arcon: tiga halaman, absensi Captain, On-time Performance (clock-in BO, aktual), dan Budget Trend (naik turunnya budget).
 // Tombol ikon di kanan atas membuka menu halaman, dengan animasi geser sesuai arah perpindahan.
-type Halaman = 'captain' | 'bo' | 'budget'
+// Super-admin mendapat satu pilihan tambahan, "Dashboard Klien": tampilan yang dilihat klien, supaya bisa dicek dari sini (Arcon tidak melihatnya).
+type Halaman = 'captain' | 'bo' | 'budget' | 'klien'
 const HALAMAN: { id: Halaman; nama: string; Ikon: typeof Gauge }[] = [
   { id: 'captain', nama: 'Absensi Captain', Ikon: ClipboardCheck },
   { id: 'bo', nama: 'On-time Performance', Ikon: Gauge },
   { id: 'budget', nama: 'Budget Trend', Ikon: TrendingUp },
 ]
-export function Dashboard() {
+const HALAMAN_KLIEN = { id: 'klien' as Halaman, nama: 'Dashboard Klien', Ikon: Handshake }
+// klien: "semua" = Super-admin (semua toko klien), "dipegang" = Arcon (hanya DS yang dipegang; dijaga di database), kosong = Captain (tanpa pilihan ini)
+export function Dashboard({ klien }: { klien?: 'semua' | 'dipegang' }) {
+  const daftar = klien ? [...HALAMAN, HALAMAN_KLIEN] : HALAMAN
   const [hal, setHal] = useState<Halaman>('captain')
   const [geser, setGeser] = useState('') // animasi hanya setelah tab dipilih, bukan saat Dashboard pertama dibuka
-  const idx = (h: Halaman) => HALAMAN.findIndex((x) => x.id === h)
-  const Ikon = HALAMAN[idx(hal)].Ikon // ikon halaman yang sedang dibuka
+  const idx = (h: Halaman) => daftar.findIndex((x) => x.id === h)
+  const Ikon = daftar[idx(hal)].Ikon // ikon halaman yang sedang dibuka
   const [buka, setBuka] = useState(false)
   const kotak = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -301,7 +306,7 @@ export function Dashboard() {
   return (
     <div className="overflow-x-clip pr-1.5">
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <b className="min-w-0 flex-1 text-base">{HALAMAN[idx(hal)].nama}</b>
+        <b className="min-w-0 flex-1 text-base">{daftar[idx(hal)].nama}</b>
         <div ref={kotak} className="relative">
           <button
             type="button"
@@ -317,7 +322,7 @@ export function Dashboard() {
           </button>
           {buka && (
             <div role="menu" className="rise absolute right-0 top-full z-[60] mt-1.5 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-2xl">
-              {HALAMAN.map((x) => (
+              {daftar.map((x) => (
                 <button
                   key={x.id}
                   type="button"
@@ -336,7 +341,7 @@ export function Dashboard() {
         </div>
       </div>
       <div key={hal} className={geser}>
-        {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : <DashboardCaptain />}
+        {hal === 'bo' ? <DashboardBo /> : hal === 'budget' ? <BudgetTrend /> : hal === 'klien' ? <DashboardKlien terbatas={klien === 'dipegang'} /> : <DashboardCaptain />}
       </div>
     </div>
   )

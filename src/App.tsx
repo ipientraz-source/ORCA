@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, UserCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { BellRing, Bike, Building2, Eye, EyeOff, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, FileUp, Handshake, History, LayoutDashboard, ListChecks, LogOut, Receipt, Send, ShieldCheck, UserCheck, TrendingUp, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { sb, store, useRows, toast, Err, Logo, TemaSwitch, TemaToggle, type Ds, type Me, dsAktif } from './lib'
 import { IkonMenu } from './ikon-gaya'
 import { RiderApp, JadwalSaya, SayaRider } from './rider'
@@ -18,6 +18,8 @@ import { Riwayat } from './riwayat'
 import { Rekrutmen } from './rekrutmen'
 import { DaftarJadwal } from './daftarjadwal'
 import { ImporData } from './impor-data-ui'
+import { DataKlien, RiwayatKlien, UnggahKlien } from './data-klien-ui'
+import { DashboardKlien, DetailOrder } from './dashboard-klien-ui'
 import { LencanaPengajuan } from './pengajuan'
 import { HudOrbit } from './hud-orbit'
 
@@ -25,20 +27,28 @@ type P = { me: Me; ds: Ds | null; dsList: Ds[] } // ds = DS Captain; dsList = se
 type Tab = { nama: string; desc: string; Icon: LucideIcon; View: (p: P) => ReactElement }
 
 const SUPER: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard /> },
+  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di semua DS', Icon: LayoutDashboard, View: () => <Dashboard klien="semua" /> },
   { nama: 'Rider Management', desc: 'Pindah DS, ubah status, impor dan unduh CSV', Icon: Users, View: DataRider },
   { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS mana pun', Icon: CalendarDays, View: () => <JadwalSemua editable /> },
   { nama: 'Schedule Archive', desc: 'Jadwal tersimpan semua DS per minggu', Icon: ListChecks, View: () => <DaftarJadwal bolehHapus /> },
   { nama: 'Report Absensi', desc: 'Isi atau koreksi absensi rider di DS mana pun', Icon: ClipboardCheck, View: () => <AbsensiSemua /> },
   { nama: 'Schedule Compliance', desc: 'Jadwal vs kehadiran sebenarnya, rekap per rider, kunci absensi', Icon: ClipboardList, View: Rekap },
-  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
+  { nama: 'Order Report', desc: 'Order dan screenshot yang dilaporkan rider per hari, atau data order unggahan klien', Icon: Receipt, View: () => <LaporanOrderMenu ds={null} /> },
   { nama: 'Dash Attendance', desc: 'Sinkron clock-in dari BO, pasangkan hub ke DS, atur jam shift', Icon: UserCheck, View: () => <KehadiranBo /> },
   { nama: 'WA Automation', desc: 'Atur pesan WhatsApp otomatis dan lihat riwayat kirim', Icon: Send, View: () => <PengaturanWa /> },
   { nama: 'Hub Control', desc: 'Buat DS, atur budget, pilih Captain, tambah Super-admin', Icon: Building2, View: () => <Kelola /> },  { nama: 'Fleet', desc: 'Motor listrik, servis rutin, dan kerusakan di semua DS', Icon: Bike, View: Armada },
   { nama: 'Talent Pipeline', desc: 'Kandidat rider dan kebutuhan rekrut tiap DS', Icon: UserPlus, View: ({ me }) => <Rekrutmen me={me} /> },
   { nama: 'Data Import', desc: 'Tambah data lewat CSV atau input manual. Data dobel dilewati.', Icon: FileUp, View: () => <ImporData /> },
+  { nama: 'Data Klien', desc: 'Unggah Data Performance dari klien, pasangkan toko klien ke DS', Icon: Handshake, View: () => <DataKlien /> },
   { nama: 'Access Control', desc: 'Pengguna per peran. Status Arcon dan Captain hanya diubah Super-admin.', Icon: UserCog, View: () => <Pengguna /> },
   { nama: 'Activity Log', desc: 'Semua aktivitas sistem beserta waktu dan pelakunya', Icon: History, View: () => <Riwayat /> },
+]
+// Akun klien: HANYA tiga menu ini. Menu lain tidak dirender dan tidak ada jalan masuknya; pembatasan datanya ada di database.
+const KLIEN: Tab[] = [
+  { nama: 'Dashboard', desc: 'Performance pengantaran di toko Anda', Icon: LayoutDashboard, View: ({ me }) => <DashboardKlien klienId={me.klien_id} /> },
+  { nama: 'Detail Order', desc: 'Order per rider per hari dan per toko, persis seperti yang Anda unggah', Icon: ListChecks, View: ({ me }) => <DetailOrder klienId={me.klien_id} /> },
+  { nama: 'Unggah Data', desc: 'Unggah Data Performance harian dari sistem Anda', Icon: FileUp, View: ({ me }) => <UnggahKlien klienId={me.klien_id as string} /> },
+  { nama: 'Riwayat Unggahan', desc: 'Daftar unggahan yang pernah Anda lakukan', Icon: History, View: ({ me }) => <RiwayatKlien klienId={me.klien_id as string} /> },
 ]
 const CAPTAIN: Tab[] = [
   { nama: 'Jadwal Saya', desc: 'Jadwal kerja Anda', Icon: CalendarCheck, View: JadwalSaya },
@@ -55,7 +65,7 @@ const CAPTAIN: Tab[] = [
 ]
 // Arcon: atasan Captain, memantau beberapa DS. Boleh menyusun jadwal (termasuk otomatis), mengatur kebutuhan harian, mengunci absensi mingguan, dan menonaktifkan rider. Absensi harian dikerjakan Captain; Arcon boleh membantu mengisinya di DS yang dipegang.
 const ARCON: Tab[] = [
-  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di DS Anda', Icon: LayoutDashboard, View: () => <Dashboard /> },
+  { nama: 'Dashboard', desc: 'Kehadiran rider dan keaktifan Captain di DS Anda', Icon: LayoutDashboard, View: () => <Dashboard klien="dipegang" /> },
   { nama: 'Rider Management', desc: 'Rider DS Anda: tambah baru, nonaktifkan yang tidak jalan', Icon: Users, View: DataRider },
   { nama: 'Shift Planner', desc: 'Lihat dan susun jadwal DS Anda, termasuk Susun otomatis', Icon: CalendarDays, View: ({ dsList }) => <JadwalSemua daftar={dsList} editable /> },
   { nama: 'Schedule Archive', desc: 'Jadwal tersimpan DS Anda per minggu', Icon: ListChecks, View: () => <DaftarJadwal /> },
@@ -315,7 +325,7 @@ function PasswordBaru({ selesai }: { selesai: () => void }) {
   )
 }
 
-const tabsDari = (peran: Me['peran']) => peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
+const tabsDari = (peran: Me['peran']) => peran === 'klien' ? KLIEN : peran === 'super_admin' ? SUPER : peran === 'captain' ? CAPTAIN : peran === 'arcon' ? ARCON : peran === 'recruiter' ? RECRUITER : RIDER
 
 function AdminApp({ email }: { email: string }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined)
@@ -330,6 +340,14 @@ function AdminApp({ email }: { email: string }) {
       const { data, error } = await sb.from('riders').select('id,nama,peran,ds_id,email,kode_mtr').eq('email', email.toLowerCase()).maybeSingle()
       // gagal memuat (mis. sinyal HP putus) bukan berarti akun tidak terdaftar
       if (error) return setGalat(error.message)
+      // Bukan orang di tabel riders: coba akun klien (tabel terpisah). Galat (mis. tabel belum ada) dianggap bukan akun klien.
+      if (!data) {
+        const k = await sb.from('akun_klien').select('klien_id,nama').eq('email', email.toLowerCase()).maybeSingle()
+        if (k.data) {
+          const kl = await sb.from('klien').select('nama').eq('id', k.data.klien_id).maybeSingle()
+          return setMe({ id: k.data.klien_id, nama: kl.data?.nama ?? k.data.nama, peran: 'klien', ds_id: null, email, klien_id: k.data.klien_id })
+        }
+      }
       // DS dimuat lebih dulu daripada me, supaya Captain tidak sempat melihat "belum ditunjuk" sebelum DS-nya terbaca
       if (data?.peran === 'arcon') {
         const r = await sb.from('ds').select('*').eq('arcon_id', data.id).order('nama')
@@ -383,7 +401,7 @@ function AdminApp({ email }: { email: string }) {
   const tabs = tabsDari(me.peran)
   const lokasi = ds ? ds.nama : me.peran === 'arcon' ? `${dsList.length} DS` : ''
   const cur = tabs[tab] ?? tabs[0]
-  const peran = me.peran.replace('_', '-')
+  const peran = me.peran === 'klien' ? 'portal klien' : me.peran.replace('_', '-')
   const tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
 
   return (

@@ -6,6 +6,7 @@ import { sb, today, addDays, hari, useRows, toast, Err, Kosong, Field, Select, u
 import { InputTanggal } from './tanggal'
 import { FotoGaleri, kecilkan } from './armada-lib'
 import { RekapOrder } from './rekap-order'
+import { DetailOrder } from './dashboard-klien-ui'
 
 const MAKS_FOTO = 10 // sama dengan batas di Edge Function dan tabel
 const HARI_MUNDUR = 7
@@ -185,7 +186,21 @@ export function LaporanOrderRider({ kode }: { kode: string }) {
 
 // ───────── Captain, Arcon, Super-admin ─────────
 // Captain: DS-nya. Arcon: DS yang dipegang (dsList dari App). Super-admin: semua DS.
+// Super-admin dan Arcon punya dropdown sumber: "Report order" (dilaporkan rider) atau "Data klien" (unggahan klien, Detail Order).
+// Arcon hanya melihat toko klien di DS yang dipegang (dijaga di database). Captain langsung melihat Report order, tanpa dropdown.
 export function LaporanOrderMenu({ ds, dsList }: { ds: Ds | null; dsList?: Ds[] }) {
+  const [sumber, setSumber] = useState<'report' | 'klien'>('report')
+  if (ds) return <LaporanOrderIsi ds={ds} dsList={dsList} />
+  return (
+    <div>
+      <Select className="mb-3 w-72 max-w-full" lebarMin={288} value={sumber} onChange={(v) => setSumber(v as 'report' | 'klien')}
+        opsi={[{ value: 'report', label: 'Report order (dilaporkan rider)' }, { value: 'klien', label: 'Data klien (unggahan klien)' }]} />
+      {sumber === 'klien' ? <DetailOrder terbatas={!!dsList} /> : <LaporanOrderIsi ds={ds} dsList={dsList} />}
+    </div>
+  )
+}
+
+function LaporanOrderIsi({ ds, dsList }: { ds: Ds | null; dsList?: Ds[] }) {
   const semua = useRows<Ds>(() => (ds || dsList ? Promise.resolve({ data: [], error: null }) : sb.from('ds').select('*').order('nama')), [ds?.id, dsList?.length])
   const daftar = (ds ? [ds] : dsList ?? semua.rows).filter(dsAktif)
   const [id, setId] = useState('')
