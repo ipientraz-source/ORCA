@@ -403,7 +403,7 @@ function AdminApp({ email }: { email: string }) {
   const tabs = tabsDari(me.peran)
   const lokasi = ds ? ds.nama : me.peran === 'arcon' ? `${dsList.length} DS` : ''
   const cur = tabs[tab] ?? tabs[0]
-  const peran = me.peran.replace('_', '-')
+  const peran = me.peran === 'klien' ? 'portal klien' : me.peran.replace('_', '-')
   const tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
 
   return (

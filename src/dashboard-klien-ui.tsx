@@ -1,7 +1,7 @@
 // Dashboard Klien: angka, grafik, dan detail data untuk toko milik satu klien. Hanya membaca. Untuk saat ini dilihat Super-admin ("Lihat sebagai klien");
 // fungsi database yang sama nanti dipakai login klien. Satu angka resmi per ukuran, dan tiap kartu menyebut sumbernya:
 // "Data klien" = unggahan klien, "Data Dash" = clock-in BO yang dinilai ORCA. Hari tanpa unggahan tidak ditampilkan sebagai 0%.
-import { useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import { sb, Select, Field, Err, Kosong, useRows, usePage, Pagination, toCsv, download, tanggal, toast } from './lib'
 import {
@@ -16,6 +16,11 @@ type Toko = { ds_id: string; ds_nama: string; kode_toko: string | null; selesai:
 type Preset = '7' | '30' | 'semua' | 'kustom'
 
 const kosong = Promise.resolve({ data: [], error: null })
+
+// Di akun klien kata "klien" menjadi "Anda", dan istilah internal Dash (BO, budget, rider-hari, nama menu admin) tidak muncul.
+// Super-admin yang "melihat sebagai klien" tetap memakai istilah internal.
+const Anda = createContext(false)
+const useAnda = () => useContext(Anda)
 
 // klienId diisi untuk akun klien: yang dilihat TETAP satu klien itu, tanpa pemilih klien dan tanpa kata-kata admin.
 // Tanpa klienId (Super-admin) ada pemilih "Lihat sebagai klien". Pembatasan sebenarnya ada di database, bukan di sini.
@@ -37,7 +42,7 @@ export function DashboardKlien({ klienId }: { klienId?: string }) {
           {klienId ? <>Kinerja pengantaran <b>{pilih.nama}</b></> : <>Tampilan hanya baca untuk <b>{pilih.nama}</b>, hanya toko milik klien ini.</>}
         </p>
       </div>
-      <Isi key={pilih.id} klien={pilih} />
+      <Anda.Provider value={!!klienId}><Isi key={pilih.id} klien={pilih} /></Anda.Provider>
     </div>
   )
 }
@@ -77,6 +82,7 @@ function PilihPeriode({ p }: { p: ReturnType<typeof usePeriode> }) {
 }
 
 function Isi({ klien }: { klien: Klien }) {
+  const anda = useAnda()
   const P = usePeriode(klien.id)
   const { rent, ada, preset, kustomSah, dari, sampai } = P
   const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
@@ -91,7 +97,9 @@ function Isi({ klien }: { klien: Klien }) {
 
   const galat = rent.err || kini.err || perToko.err
   if (galat) return <Err msg={galat} />
-  if (!rent.err && rent.rows.length === 0) return <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu angkanya muncul di sini." />
+  if (!rent.err && rent.rows.length === 0) return anda
+    ? <Kosong teks="Belum ada data" hint="Unggah file kinerja harian Anda di menu Unggah Data, lalu angkanya muncul di sini." />
+    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu angkanya muncul di sini." />
 
   const a = jumlah(kini.rows), b = jumlah(lalu.rows)
   const kete = pct(a.ontime, a.selesai), keteLalu = pct(b.ontime, b.selesai)
@@ -114,7 +122,7 @@ function Isi({ klien }: { klien: Klien }) {
       {preset === 'kustom' && !kustomSah && <p className="text-sm text-warning">Pilih tanggal awal dan akhir (awal tidak boleh setelah akhir).</p>}
       {dari && ada && (
         <p className="text-xs text-muted-foreground">
-          Data klien terakhir: <b>{tanggal(ada.akhir)}</b> · {ada.hari} hari berdata · periode <b>{tanggal(dari)} – {tanggal(sampai)}</b>{lalu.rows.length ? `, dibandingkan dengan ${tanggal(pd)} – ${tanggal(ps)}` : ', belum ada data di periode sebelumnya untuk dibandingkan'}. Hari tanpa unggahan tidak ditampilkan sebagai 0%.
+          {anda ? 'Data terakhir' : 'Data klien terakhir'}: <b>{tanggal(ada.akhir)}</b> · {ada.hari} hari berdata · periode <b>{tanggal(dari)} – {tanggal(sampai)}</b>{lalu.rows.length ? `, dibandingkan dengan ${tanggal(pd)} – ${tanggal(ps)}` : ', belum ada data di periode sebelumnya untuk dibandingkan'}. Hari tanpa unggahan tidak ditampilkan sebagai 0%.
         </p>
       )}
 
@@ -129,11 +137,11 @@ function Isi({ klien }: { klien: Klien }) {
               sub={<span>{teksPct(pct(a.late, a.selesai))} dari pesanan selesai</span>} />
             <Kpi label="POD sesuai" nilai={teksPct(pod)} sumber="klien" rumus="POD sesuai ÷ pesanan selesai"
               sub={<Delta v={poin(pod, podLalu)} satuan=" poin" />} />
-            <Kpi label="Pesanan per rider per hari" nilai={teksDesimal(perRider)} sumber="klien" rumus="Pesanan selesai ÷ jumlah rider-hari"
+            <Kpi label="Pesanan per rider per hari" nilai={teksDesimal(perRider)} sumber="klien" rumus={anda ? 'Pesanan selesai ÷ jumlah hari kerja rider (satu rider bekerja satu hari dihitung 1)' : 'Pesanan selesai ÷ jumlah rider-hari'}
               sub={<Delta v={poin(perRider, perRiderLalu)} satuan="" />} />
-            <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus="Rider yang bekerja ÷ budget rider (clock-in BO)"
-              sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} slot rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
-            <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus="Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)"
+            <Kpi label="Fulfillment rider" nilai={adaBo ? teksPct(fulf) : '–'} sumber="dash" rumus={anda ? 'Rider yang bekerja ÷ kebutuhan rider per shift' : 'Rider yang bekerja ÷ budget rider (clock-in BO)'}
+              sub={adaBo ? <span>{teksAngka(jb.terpenuhi)} dari {teksAngka(jb.kebutuhan)} {anda ? 'rider yang dibutuhkan' : 'slot rider'}</span> : <span>Belum ada data kehadiran di periode ini</span>} />
+            <Kpi label="Tepat waktu masuk" nilai={adaBo ? teksPct(masuk) : '–'} sumber="dash" rumus={anda ? 'Rider yang masuk kerja tepat waktu ÷ rider yang hadir' : 'Rider yang clock-in tepat waktu ÷ rider hadir (clock-in BO)'}
               sub={adaBo ? <span>{teksAngka(jb.tepat)} dari {teksAngka(jb.hadir)} rider</span> : <span>Belum ada data kehadiran di periode ini</span>} />
           </div>
 
@@ -157,7 +165,7 @@ function Isi({ klien }: { klien: Klien }) {
             </div>
             <div className="card">
               <div className="mb-1 flex items-center justify-between gap-2"><b>Kehadiran rider per hari</b><Sumber s="dash" /></div>
-              {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">Belum ada data clock-in BO untuk toko dan periode ini.</p>}
+              {adaBo ? <KehadiranHarian bo={bo.rows} /> : <p className="py-6 text-sm text-muted-foreground">{anda ? 'Belum ada data kehadiran rider untuk toko dan periode ini.' : 'Belum ada data clock-in BO untuk toko dan periode ini.'}</p>}
             </div>
           </div>
 
@@ -191,12 +199,13 @@ export function DetailOrder({ klienId }: { klienId?: string }) {
           <Select className="w-64 max-w-full" value={pilih.id} onChange={setId} opsi={klien.rows.map((k) => ({ value: k.id, label: k.nama }))} />
         </Field>
       )}
-      <DetailIsi key={pilih.id} klien={pilih} />
+      <Anda.Provider value={!!klienId}><DetailIsi key={pilih.id} klien={pilih} /></Anda.Provider>
     </div>
   )
 }
 
 function DetailIsi({ klien }: { klien: Klien }) {
+  const anda = useAnda()
   const P = usePeriode(klien.id)
   const { rent, dari, sampai, preset, kustomSah } = P
   const dsKlien = useRows<TokoDs>(() => sb.from('ds').select('id,nama,kode_toko').eq('klien_id', klien.id).order('nama'), [klien.id])
@@ -243,7 +252,9 @@ function DetailIsi({ klien }: { klien: Klien }) {
   }
 
   if (rent.err) return <Err msg={rent.err} />
-  if (!rent.err && rent.rows.length === 0) return <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu detailnya muncul di sini." />
+  if (!rent.err && rent.rows.length === 0) return anda
+    ? <Kosong teks="Belum ada data" hint="Unggah file kinerja harian Anda di menu Unggah Data, lalu detailnya muncul di sini." />
+    : <Kosong teks="Belum ada data untuk klien ini" hint="Unggah file kinerja klien di menu Data Klien, lalu detailnya muncul di sini." />
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -268,7 +279,7 @@ function DetailIsi({ klien }: { klien: Klien }) {
         {baris.err ? <Err msg={baris.err} /> : !baris.rows.length ? <Kosong teks="Tidak ada baris yang cocok" hint="Ubah periode, toko, atau kata pencarian." /> : (
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="tbl">
-              <thead><tr><th>Tanggal</th><th>Toko</th><th>{mode === 'rider' ? 'Kode mitra' : 'Rider'}</th><th>Pesanan</th><th>Ontime</th><th>Late</th><th>Ketepatan</th><th>POD sesuai</th><th>POD tidak</th></tr></thead>
+              <thead><tr><th>Tanggal</th><th>Toko</th><th>{mode === 'rider' ? 'Kode mitra' : 'Jumlah rider'}</th><th>Pesanan</th><th>Ontime</th><th>Late</th><th>Ketepatan</th><th>POD sesuai</th><th>POD tidak</th></tr></thead>
               <tbody>
                 {baris.rows.map((r) => (
                   <tr key={`${r.tanggal}|${r.ds_id}|${r.kode_mtr ?? ''}`}>
@@ -297,18 +308,22 @@ function DetailIsi({ klien }: { klien: Klien }) {
             <button className="btn2" disabled={hal + 1 >= halaman} onClick={() => setH({ kunci, hal: hal + 1 })}>Berikutnya</button>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground">Data persis seperti yang diunggah klien. Nama rider tidak disimpan, hanya kode mitra. Urutan: tanggal terbaru lebih dulu.</p>
+        <p className="text-[11px] text-muted-foreground">Data persis seperti yang {anda ? 'Anda' : 'diunggah klien'} unggah. Nama rider tidak disimpan, hanya kode mitra. Urutan: tanggal terbaru lebih dulu.</p>
       </div>
     </div>
   )
 }
 
 // ───────── bagian kecil ─────────
-const Sumber = ({ s }: { s: 'klien' | 'dash' }) => (
-  <span className={`badge shrink-0 ${s === 'klien' ? 'bg-primary-soft text-primary' : 'bg-muted text-muted-foreground'}`} title={s === 'klien' ? 'Dari file yang diunggah klien' : 'Dari clock-in BO, dinilai ORCA'}>
-    {s === 'klien' ? 'Data klien' : 'Data Dash'}
-  </span>
-)
+function Sumber({ s }: { s: 'klien' | 'dash' }) {
+  const anda = useAnda()
+  const judul = s === 'klien' ? (anda ? 'Dari file yang Anda unggah' : 'Dari file yang diunggah klien') : anda ? 'Dari catatan kehadiran rider yang dicatat Dash' : 'Dari clock-in BO, dinilai ORCA'
+  return (
+    <span className={`badge shrink-0 ${s === 'klien' ? 'bg-primary-soft text-primary' : 'bg-muted text-muted-foreground'}`} title={judul}>
+      {s === 'klien' ? (anda ? 'Data Anda' : 'Data klien') : 'Data Dash'}
+    </span>
+  )
+}
 
 function Kpi({ label, nilai, sub, sumber, rumus }: { label: string; nilai: string; sub: React.ReactNode; sumber: 'klien' | 'dash'; rumus: string }) {
   return (
@@ -441,6 +456,8 @@ function KehadiranHarian({ bo }: { bo: Bo[] }) {
 
 type Urut = 'ds_nama' | 'selesai' | 'kete' | 'late' | 'pod' | 'rider_hari' | 'per_rider'
 function TabelToko({ toko, target, klien }: { toko: Toko[]; target: number | null; klien: string }) {
+  const anda = useAnda()
+  const kolomRider = anda ? 'Hari kerja rider' : 'Rider-hari'
   const [urut, setUrut] = useState<Urut>('selesai')
   const [naik, setNaik] = useState(false)
   const baris = useMemo(() => toko.map((t) => ({
@@ -457,14 +474,14 @@ function TabelToko({ toko, target, klien }: { toko: Toko[]; target: number | nul
   )
   const unduh = () => download(`kinerja-toko-${klien}.csv`, toCsv(terurut.map((t) => ({
     Toko: t.ds_nama, 'Kode toko': t.kode_toko ?? '', 'Pesanan selesai': t.selesai, 'Ketepatan antar (%)': t.kete === null ? '' : t.kete.toFixed(1), Late: t.late,
-    'POD sesuai (%)': t.pod === null ? '' : t.pod.toFixed(1), 'Rider-hari': t.rider_hari, 'Pesanan per rider per hari': t.per_rider === null ? '' : t.per_rider.toFixed(1),
+    'POD sesuai (%)': t.pod === null ? '' : t.pod.toFixed(1), [kolomRider]: t.rider_hari, 'Pesanan per rider per hari': t.per_rider === null ? '' : t.per_rider.toFixed(1),
   }))))
   return (
     <div className="card space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><b>Kinerja per toko</b><div className="flex items-center gap-2"><Sumber s="klien" /><button className="btn2" onClick={unduh}><Download size={14} />Unduh CSV</button></div></div>
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="tbl">
-          <thead><tr><Th k="ds_nama">Toko</Th><Th k="selesai">Pesanan</Th><Th k="kete">Ketepatan antar</Th><Th k="late">Late</Th><Th k="pod">POD sesuai</Th><Th k="rider_hari">Rider-hari</Th><Th k="per_rider">Per rider/hari</Th></tr></thead>
+          <thead><tr><Th k="ds_nama">Toko</Th><Th k="selesai">Pesanan</Th><Th k="kete">Ketepatan antar</Th><Th k="late">Late</Th><Th k="pod">POD sesuai</Th><Th k="rider_hari">{kolomRider}</Th><Th k="per_rider">Per rider/hari</Th></tr></thead>
           <tbody>
             {pg.rows.map((t) => (
               <tr key={t.ds_id}>

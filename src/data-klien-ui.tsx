@@ -230,8 +230,8 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
   return (
     <div className="card space-y-3">
       <p className="text-sm text-muted-foreground">
-        Unggah file kinerja klien apa adanya (.xlsx sheet <b>data</b>, atau .csv). Kolom wajib: Tgl Periode, Nik (kode mitra), Kode Toko, Pesanan Selesai, Ontime, Late, Pod Sesuai, Pod Tidak Sesuai.
-        Nama rider <b>tidak dikirim</b>. File yang sama boleh diunggah ulang: baris yang sama tidak berubah, nilai yang berbeda ditimpa dan nilai lamanya disimpan.
+        {modeKlien ? 'Unggah file kinerja harian Anda apa adanya' : 'Unggah file kinerja klien apa adanya'} (.xlsx sheet <b>data</b>, atau .csv). Kolom wajib: Tgl Periode, Nik (kode mitra), Kode Toko, Pesanan Selesai, Ontime, Late, Pod Sesuai, Pod Tidak Sesuai.
+        Nama rider <b>tidak ikut dikirim</b>. File yang sama boleh diunggah ulang: baris yang sama tidak berubah, nilai yang berbeda {modeKlien ? 'diperbarui' : 'ditimpa'} dan nilai lamanya disimpan.
       </p>
       <label
         onDragOver={(e) => e.preventDefault()}
@@ -239,7 +239,7 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
         className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors hover:bg-primary-soft/60 ${berkas ? 'border-success/60 bg-success/5' : 'border-primary/60 bg-primary-soft/30'}`}
       >
         <FileUp size={28} className={berkas ? 'text-success' : 'text-primary'} />
-        <span className="text-sm font-semibold text-foreground">{berkas ? `Terpilih: ${berkas.nama}` : 'UNGGAH FILE KLIEN DI SINI'}</span>
+        <span className="text-sm font-semibold text-foreground">{berkas ? `Terpilih: ${berkas.nama}` : modeKlien ? 'UNGGAH FILE KINERJA ANDA DI SINI' : 'UNGGAH FILE KLIEN DI SINI'}</span>
         <span className="text-xs text-muted-foreground">{berkas ? 'Klik untuk mengganti berkas' : 'Klik area ini atau seret berkas .xlsx atau .csv ke sini'}</span>
         <input key={berkas?.nama ?? (laporan ? 'x' : '')} type="file" accept=".xlsx,.csv,text/csv" aria-label="Berkas klien" className="hidden" onChange={(e) => baca(e.target.files?.[0])} />
       </label>
@@ -255,7 +255,7 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
           </div>
           {laporan.ditolak.length > 0 && (
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2"><b>Baris ditolak database</b> (tidak disimpan){laporan.tolak > laporan.ditolak.length && ` · ${laporan.ditolak.length} pertama dari ${laporan.tolak}`}
+              <div className="flex flex-wrap items-center gap-2"><b>{modeKlien ? 'Baris yang ditolak' : 'Baris ditolak database'}</b> (tidak disimpan){laporan.tolak > laporan.ditolak.length && ` · ${laporan.ditolak.length} pertama dari ${laporan.tolak}`}
                 <button className="btn2" onClick={unduhDitolak}><Download size={14} />Unduh daftar</button></div>
               <ul className="list-disc pl-5 text-xs text-muted-foreground">{laporan.ditolak.slice(0, 8).map((x) => <li key={x.baris}>Baris {x.baris}: {x.alasan}</li>)}</ul>
             </div>
@@ -268,8 +268,8 @@ function Unggah({ klien, modeKlien = false }: { klien: Klien; modeKlien?: boolea
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="badge bg-primary-soft text-primary">{ring.jumlah.toLocaleString('id-ID')} baris</span>
             <span className="badge bg-muted text-muted-foreground">{rentang(ring.awal || null, ring.akhir || null)}</span>
-            <span className="badge bg-success-soft text-success">{ring.toko.length - belum.length} toko terpasang</span>
-            {belum.length > 0 && <span className="badge bg-warning-soft text-warning">{belum.length} toko belum terpasang (dilewati)</span>}
+            <span className="badge bg-success-soft text-success">{ring.toko.length - belum.length} toko {modeKlien ? 'terdaftar' : 'terpasang'}</span>
+            {belum.length > 0 && <span className="badge bg-warning-soft text-warning">{belum.length} toko belum {modeKlien ? 'terdaftar' : 'terpasang'} (dilewati)</span>}
             <button className="btn ml-auto" disabled={!siap.length || sibuk || siap.length > 20000} onClick={simpan}>{sibuk ? 'Menyimpan…' : `Simpan ${siap.length.toLocaleString('id-ID')} baris`}</button>
           </div>
           {siap.length > 20000 && <p className="text-sm text-danger">Satu unggahan maksimal 20.000 baris. Bagi file menjadi beberapa bagian per tanggal.</p>}
@@ -388,7 +388,7 @@ function Riwayat({ klien }: { klien: Klien }) {
     <div className="card space-y-3">
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="tbl">
-          <thead><tr><th>Waktu</th><th>Oleh</th><th>Berkas</th><th>Periode data</th><th>Baru</th><th>Diperbarui</th><th>Sama</th><th>Ditolak</th><th>Dilewati</th></tr></thead>
+          <thead><tr><th>Waktu</th><th>Oleh</th><th>Berkas</th><th>Periode data</th><th>Baru</th><th>Diperbarui</th><th>Tidak berubah</th><th>Ditolak</th><th>Dilewati</th></tr></thead>
           <tbody>{pg.rows.map((x) => (
             <tr key={x.id}>
               <td className="whitespace-nowrap">{waktu(x.waktu)}</td><td className="text-xs">{x.oleh ?? '–'}</td><td className="text-xs">{x.berkas ?? '–'}</td>
